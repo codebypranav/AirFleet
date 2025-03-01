@@ -8,11 +8,9 @@ export default function Navbar() {
     const router = useRouter();
 
     const handleLogout = () => {
-        // Remove the tokens
         Cookies.remove('accessToken');
         Cookies.remove('refreshToken');
         
-        // Redirect to login page
         router.push('/login');
     };
 
@@ -25,6 +23,9 @@ export default function Navbar() {
                 <div className="flex items-center gap-4">
                     <Link href="/flights" className="hover:text-gray-300">
                         Flights
+                    </Link>
+                    <Link href="/flights/narrative" className="hover:text-gray-300">
+                        Flight Stories
                     </Link>
                     <Link href="/rankings" className="hover:text-gray-300">
                         Rankings
@@ -39,4 +40,4 @@ export default function Navbar() {
             </div>
         </nav>
     );
-} 
+}
