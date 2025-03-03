@@ -11,8 +11,18 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.conf import settings
 import openai
+import inspect
+from .openai_patch import create_safe_openai_client
 
 logger = logging.getLogger(__name__)
+
+# Apply our OpenAI patches early
+try:
+    from .openai_patch import apply_openai_patches
+    apply_openai_patches()
+    logger.info("Applied OpenAI patches at module level")
+except Exception as e:
+    logger.error(f"Failed to apply OpenAI patches: {e}")
 
 class FlightListView(APIView):
     permission_classes = [IsAuthenticated]
@@ -93,7 +103,8 @@ def generate_narrative(request):
         # Call the OpenAI API with proper error handling
         logger.info("Initializing OpenAI client with API key")
         try:
-            client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+            # Use our safe client creator that handles the proxies issue
+            client = create_safe_openai_client(api_key=settings.OPENAI_API_KEY)
             
             logger.info("Sending request to OpenAI API")
             response = client.chat.completions.create(
@@ -113,17 +124,20 @@ def generate_narrative(request):
             return Response({"narrative": narrative})
         except TypeError as e:
             logger.error(f"TypeError in OpenAI client initialization: {str(e)}")
-            if "unexpected keyword argument 'proxies'" in str(e):
-                # Handle the proxies issue
-                logger.info("Attempting to initialize OpenAI client without proxies")
-                import os
-                # Make sure no proxy environment variables are set
-                for env_var in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
-                    if env_var in os.environ:
-                        del os.environ[env_var]
+            if "unexpected keyword argument" in str(e):
+                # Use the raw approach as a fallback
+                logger.error(f"Monkey patch didn't work, trying last resort approach")
                 
-                # Try again with clean initialization
-                client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+                # Create a completely minimal client
+                import openai as openai_raw
+                # Reload the module to ensure clean state
+                import importlib
+                importlib.reload(openai_raw)
+                
+                # Last resort - try to work around it with an absolutely minimal client
+                from openai import OpenAI
+                client = OpenAI(api_key=settings.OPENAI_API_KEY)
+                
                 response = client.chat.completions.create(
                     model="gpt-4o-mini",
                     messages=[
