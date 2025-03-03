@@ -18,7 +18,8 @@ COPY . /app/
 # Make sure the scripts are executable
 RUN chmod +x /app/start.sh && \
     chmod +x /app/diagnose_db.py && \
-    chmod +x /app/initialize_db.py
+    chmod +x /app/initialize_db.py && \
+    chmod +x /app/test_db_connection.py
 
 # Set Python path for the application
 ENV PYTHONPATH=/app:$PYTHONPATH

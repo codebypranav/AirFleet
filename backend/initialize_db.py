@@ -13,6 +13,8 @@ import sys
 import subprocess
 import django
 from django.db import connection
+import dj_database_url
+import psycopg2
 
 def run_command(command):
     """Run a shell command and return its output"""
@@ -27,51 +29,102 @@ def run_command(command):
         print(f"Command succeeded with output: {result.stdout}")
         return True
 
+def check_postgres_service():
+    """Check if PostgreSQL service is properly configured"""
+    database_url = os.environ.get('DATABASE_URL')
+    
+    if not database_url:
+        print("ERROR: DATABASE_URL environment variable is not set!")
+        print("SOLUTION: In Railway, import the PostgreSQL service variables to your backend service.")
+        return False
+    
+    print(f"DATABASE_URL is set and appears to be: {database_url.replace('://', '://[USERNAME]:[PASSWORD]@')}")
+    
+    # Parse the DATABASE_URL
+    try:
+        config = dj_database_url.parse(database_url)
+        # Print connection details (without password)
+        safe_config = {k: v for k, v in config.items() if k != 'PASSWORD'}
+        print(f"Connection parameters: {safe_config}")
+    except Exception as e:
+        print(f"ERROR: Invalid DATABASE_URL format: {e}")
+        return False
+    
+    # Try to connect directly with psycopg2
+    try:
+        print("\nAttempting direct connection to PostgreSQL...")
+        conn = psycopg2.connect(
+            host=config['HOST'],
+            port=config['PORT'],
+            user=config['USER'],
+            password=config['PASSWORD'],
+            dbname=config['NAME']
+        )
+        
+        print("SUCCESS: Connected to PostgreSQL database!")
+        conn.close()
+        return True
+    except Exception as e:
+        print(f"ERROR: Failed to connect to PostgreSQL database: {e}")
+        print("SOLUTION: Check if your PostgreSQL service is running and properly linked.")
+        return False
+
 def main():
+    # Check PostgreSQL service configuration
+    print("\n=== Checking PostgreSQL Service Configuration ===")
+    if not check_postgres_service():
+        print("\nERROR: PostgreSQL service check failed. Cannot proceed with initialization.")
+        print("SOLUTION: In Railway, make sure to:")
+        print("1. Go to your backend service's Variables tab")
+        print("2. Click 'Add Shared Variables' at the bottom")
+        print("3. Select your PostgreSQL service to import all its variables")
+        print("4. Redeploy your backend service")
+        return 1
+    
     # Set up Django
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'AirFleet_api.settings')
     django.setup()
     
     # Check database connection
-    print("Checking database connection...")
+    print("\n=== Checking Django Database Connection ===")
     try:
         with connection.cursor() as cursor:
             cursor.execute("SELECT 1")
-            print("Database connection successful")
+            print("Django database connection successful")
     except Exception as e:
-        print(f"Database connection failed: {e}")
+        print(f"Django database connection failed: {e}")
         return 1
     
     # Force create initial migrations
-    print("\nCreating initial migrations...")
+    print("\n=== Creating Initial Migrations ===")
     if not run_command("python manage.py makemigrations"):
         print("Creating initial migrations failed, but continuing...")
     
     # Create migrations for users app specifically
-    print("\nCreating migrations for users app...")
+    print("\n=== Creating Migrations for Users App ===")
     if not run_command("python manage.py makemigrations users"):
         print("Creating users migrations failed, but continuing...")
     
     # Print migrations status before applying
-    print("\nMigration status before applying:")
+    print("\n=== Migration Status Before Applying ===")
     run_command("python manage.py showmigrations")
     
     # Apply migrations
-    print("\nApplying migrations...")
+    print("\n=== Applying Migrations ===")
     if not run_command("python manage.py migrate"):
         print("Warning: Migrations failed")
     
     # Apply users migrations specifically
-    print("\nApplying users migrations specifically...")
+    print("\n=== Applying Users Migrations Specifically ===")
     if not run_command("python manage.py migrate users"):
         print("Warning: Users migrations failed")
     
     # Print migrations status after applying
-    print("\nMigration status after applying:")
+    print("\n=== Migration Status After Applying ===")
     run_command("python manage.py showmigrations")
     
     # Verify users_customuser table exists
-    print("\nVerifying users_customuser table...")
+    print("\n=== Verifying users_customuser Table ===")
     try:
         with connection.cursor() as cursor:
             cursor.execute("""
@@ -87,7 +140,7 @@ def main():
                 print("ERROR: users_customuser table DOES NOT exist")
                 
                 # Let's try a direct SQL approach if Django migrations failed
-                print("\nAttempting direct SQL table creation...")
+                print("\n=== Attempting Direct SQL Table Creation ===")
                 try:
                     with connection.cursor() as create_cursor:
                         create_cursor.execute("""
@@ -125,7 +178,7 @@ def main():
         print(f"Error verifying table: {e}")
         return 1
         
-    print("\nDatabase initialization complete")
+    print("\n=== Database Initialization Complete ===")
     return 0
 
 if __name__ == "__main__":
