@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# Print environment variables for debugging
+echo "DJANGO_SETTINGS_MODULE: $DJANGO_SETTINGS_MODULE"
+echo "ALLOWED_HOSTS: $ALLOWED_HOSTS"
+echo "DEBUG: $DEBUG"
+
 # Wait for database to be ready
 echo "Waiting for PostgreSQL..."
 python manage.py wait_for_db
@@ -8,9 +13,13 @@ python manage.py wait_for_db
 echo "Running migrations..."
 python manage.py migrate
 
-# Start server
+# Collect static files
+python manage.py collectstatic --noinput
+
+# Start server with the correct WSGI application path
 echo "Starting server..."
-gunicorn airfleet.wsgi:application --bind 0.0.0.0:8000
+export PYTHONPATH=/app:$PYTHONPATH
+gunicorn AirFleet_api.wsgi:application --bind 0.0.0.0:${PORT:-8000} --chdir /app
 ```
 ```bash
 #!/bin/bash
