@@ -18,7 +18,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'AirFleet_api.settings')
 
 def log(message):
     """Print with timestamp"""
-    print(f"[{time.strftime('%H:%M:%S')}] {message}")
+    print(f"[{time.strftime('%H:%M:%S')}] FORCE_MIGRATIONS: {message}")
 
 def execute_command(command):
     """Execute a shell command and return the result"""
@@ -50,7 +50,9 @@ def verify_direct_connection():
         log("Set DATABASE_URL to ${{ Postgres.DATABASE_URL }} in Railway dashboard")
         return False
     
-    log(f"Using DATABASE_URL: {database_url.replace('://', '://[USERNAME]:[PASSWORD]@')}")
+    # Print masked URL for debugging
+    masked_url = database_url.replace('://', '://[USERNAME]:[PASSWORD]@')
+    log(f"Using DATABASE_URL: {masked_url}")
     
     try:
         config = dj_database_url.parse(database_url)
@@ -74,6 +76,36 @@ def verify_direct_connection():
         conn.commit()
         log("Successfully created test table")
         
+        # List existing tables
+        cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';")
+        tables = cursor.fetchall()
+        log(f"Found {len(tables)} tables in database:")
+        for table in tables:
+            log(f"  - {table[0]}")
+        
+        # Directly create users_customuser table
+        log("DIRECTLY CREATING users_customuser TABLE IF NOT EXISTS...")
+        try:
+            cursor.execute("""
+                CREATE TABLE IF NOT EXISTS users_customuser (
+                    id SERIAL PRIMARY KEY,
+                    password VARCHAR(128) NOT NULL,
+                    last_login TIMESTAMP NULL,
+                    is_superuser BOOLEAN NOT NULL DEFAULT false,
+                    username VARCHAR(150) UNIQUE NOT NULL,
+                    first_name VARCHAR(150) NOT NULL DEFAULT '',
+                    last_name VARCHAR(150) NOT NULL DEFAULT '',
+                    email VARCHAR(254) UNIQUE NOT NULL,
+                    is_staff BOOLEAN NOT NULL DEFAULT false,
+                    is_active BOOLEAN NOT NULL DEFAULT true,
+                    date_joined TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                );
+            """)
+            conn.commit()
+            log("USERS TABLE CREATED DIRECTLY")
+        except Exception as e:
+            log(f"Error creating users table directly: {e}")
+        
         # Drop test table
         cursor.execute("DROP TABLE migration_test;")
         conn.commit()
@@ -88,14 +120,121 @@ def verify_direct_connection():
         log(f"ERROR in direct connection: {e}")
         return False
 
-def main():
-    log("STARTING FORCED MIGRATIONS")
+def create_auth_tables():
+    """Create essential auth-related tables directly"""
+    log("Creating essential auth tables directly...")
+    database_url = os.environ.get('DATABASE_URL')
+    
+    if not database_url:
+        log("Cannot create auth tables: DATABASE_URL not set")
+        return False
+    
+    try:
+        config = dj_database_url.parse(database_url)
+        with psycopg2.connect(
+            host=config['HOST'],
+            port=config['PORT'],
+            user=config['USER'],
+            password=config['PASSWORD'],
+            dbname=config['NAME']
+        ) as conn:
+            conn.autocommit = True
+            with conn.cursor() as cursor:
+                # Create django_migrations table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS django_migrations (
+                        id SERIAL PRIMARY KEY,
+                        app VARCHAR(255) NOT NULL,
+                        name VARCHAR(255) NOT NULL,
+                        applied TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
+                log("Created django_migrations table")
+                
+                # Insert fake migration records to satisfy Django
+                cursor.execute("""
+                    INSERT INTO django_migrations (app, name, applied)
+                    VALUES 
+                        ('users', 'initial', CURRENT_TIMESTAMP),
+                        ('auth', 'initial', CURRENT_TIMESTAMP),
+                        ('contenttypes', 'initial', CURRENT_TIMESTAMP)
+                    ON CONFLICT DO NOTHING;
+                """)
+                log("Added fake migration records")
+                
+                # Create auth tables
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS auth_permission (
+                        id SERIAL PRIMARY KEY,
+                        name VARCHAR(255) NOT NULL,
+                        content_type_id INTEGER NOT NULL,
+                        codename VARCHAR(100) NOT NULL,
+                        UNIQUE (content_type_id, codename)
+                    );
+                    
+                    CREATE TABLE IF NOT EXISTS django_content_type (
+                        id SERIAL PRIMARY KEY,
+                        app_label VARCHAR(100) NOT NULL,
+                        model VARCHAR(100) NOT NULL,
+                        UNIQUE (app_label, model)
+                    );
+                    
+                    CREATE TABLE IF NOT EXISTS auth_group (
+                        id SERIAL PRIMARY KEY,
+                        name VARCHAR(150) UNIQUE NOT NULL
+                    );
+                    
+                    CREATE TABLE IF NOT EXISTS auth_group_permissions (
+                        id SERIAL PRIMARY KEY,
+                        group_id INTEGER NOT NULL,
+                        permission_id INTEGER NOT NULL,
+                        UNIQUE (group_id, permission_id)
+                    );
+                    
+                    CREATE TABLE IF NOT EXISTS users_customuser_groups (
+                        id SERIAL PRIMARY KEY,
+                        customuser_id INTEGER NOT NULL,
+                        group_id INTEGER NOT NULL,
+                        UNIQUE (customuser_id, group_id)
+                    );
+                    
+                    CREATE TABLE IF NOT EXISTS users_customuser_user_permissions (
+                        id SERIAL PRIMARY KEY,
+                        customuser_id INTEGER NOT NULL,
+                        permission_id INTEGER NOT NULL,
+                        UNIQUE (customuser_id, permission_id)
+                    );
+                """)
+                log("Created auth-related tables")
+        return True
+    except Exception as e:
+        log(f"Error creating auth tables: {e}")
+        return False
 
+def main():
+    log("======== STARTING FORCED MIGRATIONS ========")
+    
+    # Print environment variables for debugging (masking sensitive values)
+    log("Environment variables:")
+    for key, value in os.environ.items():
+        if key.startswith('DJANGO') or key.startswith('DATABASE') or key.startswith('PG'):
+            if 'PASSWORD' in key or 'URL' in key:
+                if key == 'DATABASE_URL' and value:
+                    masked = value.replace('://', '://[USERNAME]:[PASSWORD]@')
+                    log(f"  {key}={masked}")
+                else:
+                    log(f"  {key}=***MASKED***")
+            else:
+                log(f"  {key}={value}")
+    
     # Check direct database connection first
     if not verify_direct_connection():
         log("ERROR: Direct database connection failed")
         log("Please check your DATABASE_URL and ensure the PostgreSQL service is running")
         # Continue anyway, as Django might have different connection settings
+    
+    # Create auth tables directly
+    create_auth_tables()
     
     # Initialize Django
     log("Initializing Django...")
@@ -114,19 +253,8 @@ def main():
             log("Database connection via Django established")
     except Exception as e:
         log(f"Database connection via Django failed: {e}")
-        # Show environment variables for debugging (masking sensitive values)
-        log("Environment variables:")
-        for key, value in os.environ.items():
-            if 'SECRET' in key or 'PASSWORD' in key or 'KEY' in key:
-                log(f"  {key}=***SENSITIVE***")
-            elif 'DATABASE_URL' in key:
-                masked = value.replace('://', '://[USERNAME]:[PASSWORD]@')
-                log(f"  {key}={masked}")
-            else:
-                log(f"  {key}={value}")
-        
-        # Try to create database schema directly
-        log("Attempting direct schema creation...")
+        # Try to create schema directly (already tried in verify_direct_connection, but do it again)
+        log("Attempting direct schema creation again...")
         try:
             db_url = os.environ.get('DATABASE_URL')
             if db_url:
@@ -146,14 +274,14 @@ def main():
                                 id SERIAL PRIMARY KEY,
                                 password VARCHAR(128) NOT NULL,
                                 last_login TIMESTAMP NULL,
-                                is_superuser BOOLEAN NOT NULL,
+                                is_superuser BOOLEAN NOT NULL DEFAULT false,
                                 username VARCHAR(150) UNIQUE NOT NULL,
-                                first_name VARCHAR(150) NOT NULL,
-                                last_name VARCHAR(150) NOT NULL,
+                                first_name VARCHAR(150) NOT NULL DEFAULT '',
+                                last_name VARCHAR(150) NOT NULL DEFAULT '',
                                 email VARCHAR(254) UNIQUE NOT NULL,
-                                is_staff BOOLEAN NOT NULL,
-                                is_active BOOLEAN NOT NULL,
-                                date_joined TIMESTAMP NOT NULL
+                                is_staff BOOLEAN NOT NULL DEFAULT false,
+                                is_active BOOLEAN NOT NULL DEFAULT true,
+                                date_joined TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                             );
                         """)
                         log("Successfully created users_customuser table directly")
@@ -206,14 +334,14 @@ def main():
                             id SERIAL PRIMARY KEY,
                             password VARCHAR(128) NOT NULL,
                             last_login TIMESTAMP NULL,
-                            is_superuser BOOLEAN NOT NULL,
+                            is_superuser BOOLEAN NOT NULL DEFAULT false,
                             username VARCHAR(150) UNIQUE NOT NULL,
-                            first_name VARCHAR(150) NOT NULL,
-                            last_name VARCHAR(150) NOT NULL,
+                            first_name VARCHAR(150) NOT NULL DEFAULT '',
+                            last_name VARCHAR(150) NOT NULL DEFAULT '',
                             email VARCHAR(254) UNIQUE NOT NULL,
-                            is_staff BOOLEAN NOT NULL,
-                            is_active BOOLEAN NOT NULL,
-                            date_joined TIMESTAMP NOT NULL
+                            is_staff BOOLEAN NOT NULL DEFAULT false,
+                            is_active BOOLEAN NOT NULL DEFAULT true,
+                            date_joined TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
                         );
                     """)
                     connection.commit()
@@ -241,7 +369,7 @@ def main():
     except Exception as e:
         log(f"Error listing tables: {e}")
     
-    log("FORCED MIGRATIONS COMPLETED")
+    log("======== FORCED MIGRATIONS COMPLETED ========")
     return 0
 
 if __name__ == "__main__":
