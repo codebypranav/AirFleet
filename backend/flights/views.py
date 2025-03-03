@@ -90,23 +90,54 @@ def generate_narrative(request):
         Keep it concise (3-4 sentences) but informative and engaging.
         """
         
-        # Call the OpenAI API
-        client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",  # or "gpt-4" for better quality
-            messages=[
-                {"role": "system", "content": "You are a helpful assistant that creates engaging flight narratives based on flight data."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=250,
-            temperature=0.7,
-        )
-        
-        # Extract the narrative from the response
-        narrative = response.choices[0].message.content.strip()
-        
-        # Return the narrative
-        return Response({"narrative": narrative})
+        # Call the OpenAI API with proper error handling
+        logger.info("Initializing OpenAI client with API key")
+        try:
+            client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+            
+            logger.info("Sending request to OpenAI API")
+            response = client.chat.completions.create(
+                model="gpt-4o-mini",  # or "gpt-4" for better quality
+                messages=[
+                    {"role": "system", "content": "You are a helpful assistant that creates engaging flight narratives based on flight data."},
+                    {"role": "user", "content": prompt}
+                ],
+                max_tokens=250,
+                temperature=0.7,
+            )
+            
+            # Extract the narrative from the response
+            narrative = response.choices[0].message.content.strip()
+            
+            # Return the narrative
+            return Response({"narrative": narrative})
+        except TypeError as e:
+            logger.error(f"TypeError in OpenAI client initialization: {str(e)}")
+            if "unexpected keyword argument 'proxies'" in str(e):
+                # Handle the proxies issue
+                logger.info("Attempting to initialize OpenAI client without proxies")
+                import os
+                # Make sure no proxy environment variables are set
+                for env_var in ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy']:
+                    if env_var in os.environ:
+                        del os.environ[env_var]
+                
+                # Try again with clean initialization
+                client = openai.OpenAI(api_key=settings.OPENAI_API_KEY)
+                response = client.chat.completions.create(
+                    model="gpt-4o-mini",
+                    messages=[
+                        {"role": "system", "content": "You are a helpful assistant that creates engaging flight narratives based on flight data."},
+                        {"role": "user", "content": prompt}
+                    ],
+                    max_tokens=250,
+                    temperature=0.7,
+                )
+                narrative = response.choices[0].message.content.strip()
+                return Response({"narrative": narrative})
+            else:
+                raise
     
     except Exception as e:
+        logger.error(f"Error in generate_narrative: {str(e)}")
         return Response({"error": str(e)}, status=500)
