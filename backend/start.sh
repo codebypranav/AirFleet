@@ -17,13 +17,7 @@ fi
 
 echo "PORT: ${PORT:-8000}"
 
-# Test direct connection to PostgreSQL
-echo "Testing direct PostgreSQL connection..."
-python test_db_connection.py
-
-# Force run migrations to ensure database tables are created
-echo "Force running migrations..."
-python force_migrations.py
+# Note: migrations are now handled by entrypoint.sh
 
 # Collect static files
 echo "Collecting static files..."
