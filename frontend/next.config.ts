@@ -15,6 +15,12 @@ const nextConfig: NextConfig = {
                 port: '8000',
                 pathname: '/media/**',
             },
+            {
+                protocol: 'https',
+                hostname: '*.railway.app',
+                port: '',
+                pathname: '/media/**',
+            },
         ],
     },
 };
