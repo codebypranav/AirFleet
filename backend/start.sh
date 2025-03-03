@@ -11,7 +11,8 @@ if [ -n "$DATABASE_URL" ]; then
     MASKED_URL=$(echo $DATABASE_URL | sed -E 's/\/\/([^:]+):([^@]+)@/\/\/\1:******@/')
     echo "DATABASE_URL is set: $MASKED_URL"
 else
-    echo "DATABASE_URL is NOT SET!"
+    echo "WARNING: DATABASE_URL is NOT SET!"
+    echo "Please set DATABASE_URL to \${{ Postgres.DATABASE_URL }} in Railway dashboard"
 fi
 
 echo "PORT: ${PORT:-8000}"
@@ -20,21 +21,9 @@ echo "PORT: ${PORT:-8000}"
 echo "Testing direct PostgreSQL connection..."
 python test_db_connection.py
 
-# Wait for database to be ready
-echo "Waiting for PostgreSQL..."
-python manage.py wait_for_db || { echo "Database connection failed"; exit 1; }
-
-# Run diagnostic script
-echo "Running database diagnostics..."
-python diagnose_db.py
-
-# Run comprehensive database initialization
-echo "Running database initialization script..."
-python initialize_db.py || { echo "Database initialization failed"; exit 1; }
-
-# Run diagnostic script again to confirm success
-echo "Running post-initialization diagnostics..."
-python diagnose_db.py
+# Force run migrations to ensure database tables are created
+echo "Force running migrations..."
+python force_migrations.py
 
 # Collect static files
 echo "Collecting static files..."
