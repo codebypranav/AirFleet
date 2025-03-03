@@ -15,8 +15,12 @@ RUN pip install --upgrade pip && \
 
 COPY . /app/
 
-# Make sure the script is executable
-RUN chmod +x /app/start.sh
+# Make sure the scripts are executable
+RUN chmod +x /app/start.sh && \
+    chmod +x /app/diagnose_db.py
+
+# Set Python path for the application
+ENV PYTHONPATH=/app:$PYTHONPATH
 
 EXPOSE 8000
 
