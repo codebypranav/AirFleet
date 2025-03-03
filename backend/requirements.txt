@@ -17,7 +17,7 @@ Pillow==10.1.0
 djangorestframework-simplejwt==5.4.0
 
 # OpenAI
-OpenAI==0.28.1
+openai==1.17.0
 
 dj-database-url
 gunicorn
