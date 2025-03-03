@@ -5,7 +5,6 @@ import sys
 
 def main():
     """Run administrative tasks."""
-    # Make sure this is set to AirFleet_api.settings
     os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'AirFleet_api.settings')
     try:
         from django.core.management import execute_from_command_line

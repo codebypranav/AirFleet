@@ -50,4 +50,5 @@ python manage.py collectstatic --noinput
 
 # Start server with the correct WSGI application path
 echo "Starting server..."
-gunicorn AirFleet_api.wsgi:application --bind 0.0.0.0:$PORT
+export PYTHONPATH=/app:$PYTHONPATH
+gunicorn AirFleet_api.wsgi:application --bind 0.0.0.0:$PORT --chdir /app
