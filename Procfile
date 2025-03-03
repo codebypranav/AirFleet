@@ -1,1 +1,1 @@
-web: cd backend && gunicorn AirFleet_api.wsgi:application --bind 0.0.0.0:$PORT
+web: gunicorn AirFleet_api.wsgi:application
