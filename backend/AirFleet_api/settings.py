@@ -111,16 +111,10 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
- 
 # Database
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL', f"postgresql://{os.environ.get('DB_USER', 'airfleet')}:{os.environ.get('DB_PASSWORD', 'secure')}@{os.environ.get('DB_HOST', 'localhost')}:{os.environ.get('DB_PORT', '5432')}/{os.environ.get('DB_NAME', 'airfleet_db')}"),
-        conn_max_age=600,
-    )
-}
+# DATABASES configuration moved to the end of the file
 
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
