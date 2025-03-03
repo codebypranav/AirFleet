@@ -7,21 +7,39 @@ from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import UserSerializer
 from django.db.models import Sum, Count
 from flights.models import Flight
+import logging
+
+logger = logging.getLogger(__name__)
 
 class RegisterView(APIView):
     permission_classes = [AllowAny]
 
     def post(self, request):
-        serializer = UserSerializer(data=request.data)
-        if serializer.is_valid():
-            user = serializer.save()
-            refresh = RefreshToken.for_user(user)
+        try:
+            # Log the incoming request data
+            logger.info(f"Register attempt with data: {request.data}")
+            
+            serializer = UserSerializer(data=request.data)
+            if serializer.is_valid():
+                user = serializer.save()
+                refresh = RefreshToken.for_user(user)
+                return Response({
+                    'refresh': str(refresh),
+                    'access': str(refresh.access_token),
+                    'user': serializer.data
+                }, status=status.HTTP_201_CREATED)
+            
+            # Log validation errors
+            logger.error(f"Validation error: {serializer.errors}")
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+        
+        except Exception as e:
+            # Log any unexpected errors
+            logger.exception(f"Error in register view: {str(e)}")
             return Response({
-                'refresh': str(refresh),
-                'access': str(refresh.access_token),
-                'user': serializer.data
-            }, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                'error': 'An unexpected error occurred',
+                'detail': str(e)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class LoginView(APIView):
     permission_classes = [AllowAny]
