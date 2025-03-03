@@ -22,3 +22,4 @@ OpenAI==0.28.1
 dj-database-url
 gunicorn
 whitenoise
+python-dotenv
