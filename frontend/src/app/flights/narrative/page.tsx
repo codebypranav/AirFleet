@@ -9,6 +9,9 @@ interface NarrativeMap {
     [key: string]: string;
 }
 
+// Use environment variable with fallback
+const BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api`;
+
 export default function FlightNarrativePage() {
     const [flights, setFlights] = useState<Flight[]>([]);
     const [narratives, setNarratives] = useState<NarrativeMap>({});
@@ -22,7 +25,7 @@ export default function FlightNarrativePage() {
 
     const fetchFlights = async () => {
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/flights/', {
+            const response = await fetch(`${BASE_URL}/flights/`, {
                 headers: {
                     'Authorization': `Bearer ${document.cookie.match('accessToken=(.*?);')?.[1]}`
                 }
@@ -49,7 +52,7 @@ export default function FlightNarrativePage() {
     const generateNarratives = async (flightData: Flight[]) => {
         for (const flight of flightData) {
             try {
-                const response = await fetch('http://127.0.0.1:8000/api/generate-narrative/', {
+                const response = await fetch(`${BASE_URL}/generate-narrative/`, {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',

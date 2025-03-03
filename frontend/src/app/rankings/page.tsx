@@ -3,6 +3,9 @@
 import { useState, useEffect } from 'react';
 import Navbar from '@/components/Navbar';
 
+// Use environment variable with fallback
+const BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api`;
+
 interface Ranking {
     username: string;
     total_flights?: number;
@@ -23,7 +26,7 @@ export default function RankingsPage() {
     useEffect(() => {
         const fetchRankings = async () => {
             try {
-                const response = await fetch('http://127.0.0.1:8000/api/rankings/');
+                const response = await fetch(`${BASE_URL}/rankings/`);
                 if (!response.ok) throw new Error('Failed to fetch rankings');
                 const data = await response.json();
                 setRankings(data);

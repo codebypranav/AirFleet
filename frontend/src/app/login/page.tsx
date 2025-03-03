@@ -4,6 +4,10 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from 'next/link';
 import Cookies from 'js-cookie';
+import styles from './login.module.css';
+
+// Use environment variable with fallback
+const BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api`;
 
 export default function LoginPage() {
     const router = useRouter();
@@ -13,13 +17,13 @@ export default function LoginPage() {
         password: '',
     });
 
-    async function handleSubmit(e: FormEvent<HTMLFormElement>) {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
         console.log('Login attempt started');
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/login/', {
+            const response = await fetch(`${BASE_URL}/login/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

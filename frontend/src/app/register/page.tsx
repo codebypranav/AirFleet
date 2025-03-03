@@ -3,6 +3,10 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import styles from './register.module.css';
+
+// Use environment variable with fallback
+const BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api`;
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -19,7 +23,7 @@ export default function RegisterPage() {
         setError('');
 
         try {
-            const response = await fetch('http://127.0.0.1:8000/api/register/', {
+            const response = await fetch(`${BASE_URL}/register/`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
