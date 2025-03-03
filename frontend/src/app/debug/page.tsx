@@ -21,14 +21,21 @@ export default function DebugPage() {
         });
     }, []);
 
-    const testApiConnection = async () => {
+    const testUrls = [
+        { name: "Standard URL", url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/register/` },
+        { name: "URL without /api", url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/register/` },
+        { name: "URL with users app prefix", url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/users/register/` }
+    ];
+
+    const testApiConnection = async (url: string) => {
         try {
-            const response = await fetch(`${info.fullApiUrl}/register/`, {
+            console.log(`Testing URL: ${url}`);
+            const response = await fetch(url, {
                 method: 'HEAD'
             });
-            alert(`API connection test: ${response.status} ${response.statusText}`);
+            alert(`API test (${url}): ${response.status} ${response.statusText}`);
         } catch (error) {
-            alert(`API connection failed: ${error}`);
+            alert(`API test failed (${url}): ${error}`);
         }
     };
 
@@ -43,18 +50,29 @@ export default function DebugPage() {
                 </pre>
             </div>
             
-            <div className="flex space-x-4 mb-8">
-                <button
-                    onClick={testApiConnection}
-                    className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700"
-                >
-                    Test API Connection
-                </button>
-                
-                <Link href="/" className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700">
-                    Back to Home
-                </Link>
+            <div className="bg-gray-800 p-4 rounded-lg mb-8">
+                <h2 className="text-xl font-bold mb-4">Test Different URL Patterns</h2>
+                <div className="space-y-4">
+                    {testUrls.map((test, index) => (
+                        <div key={index} className="flex flex-col space-y-2">
+                            <div className="flex justify-between">
+                                <span>{test.name}</span>
+                                <span className="text-gray-400">{test.url}</span>
+                            </div>
+                            <button
+                                onClick={() => testApiConnection(test.url)}
+                                className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 text-sm"
+                            >
+                                Test This URL
+                            </button>
+                        </div>
+                    ))}
+                </div>
             </div>
+            
+            <Link href="/" className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700">
+                Back to Home
+            </Link>
         </div>
     );
 } 

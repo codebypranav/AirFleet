@@ -4,8 +4,10 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
-// Use environment variable with fallback
-const BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api`;
+// Use environment variable with fallback - don't add /api as it might already be in the URL
+const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Check if the URL already ends with /api to avoid duplication
+const BASE_URL = apiUrl.endsWith('/api') ? apiUrl : `${apiUrl}/api`;
 
 export default function RegisterPage() {
     const router = useRouter();
