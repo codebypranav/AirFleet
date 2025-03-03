@@ -32,7 +32,7 @@ gunicorn AirFleet_api.wsgi:application --bind 0.0.0.0:$PORT
 ```bash
 #!/bin/bash
 
-# Print environment variables for debugging (excluding sensitive ones)
+# Print environment variables for debugging
 echo "DJANGO_SETTINGS_MODULE: $DJANGO_SETTINGS_MODULE"
 echo "ALLOWED_HOSTS: $ALLOWED_HOSTS"
 echo "DEBUG: $DEBUG"
@@ -46,6 +46,8 @@ echo "Running migrations..."
 python manage.py migrate
 
 # Collect static files
+python manage.py collectstatic --noinput
+
+# Start server with the correct WSGI application path
 echo "Starting server..."
-# Change this line to use AirFleet_api.wsgi instead of airfleet.wsgi
 gunicorn AirFleet_api.wsgi:application --bind 0.0.0.0:$PORT
