@@ -18,9 +18,11 @@ RUN pip install --upgrade pip && \
 # Copy the rest of the code
 COPY . /app/
 
+# Make sure the Python path includes the current directory
+ENV PYTHONPATH=/app
+
 # Expose the port Django will run on
 EXPOSE 8000
 
 # Default command to run the server
-# Note: You can also run migrations here or do it in docker-compose
-CMD [ "python", "manage.py", "runserver", "0.0.0.0:8000" ]
+CMD ["python", "manage.py", "runserver", "0.0.0.0:8000"]
