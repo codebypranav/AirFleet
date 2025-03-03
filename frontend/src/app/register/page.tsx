@@ -20,6 +20,11 @@ export default function RegisterPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
+        
+        // Debug info
+        console.log('API URL:', process.env.NEXT_PUBLIC_API_URL);
+        console.log('BASE_URL:', BASE_URL);
+        console.log('Full request URL:', `${BASE_URL}/register/`);
 
         try {
             const response = await fetch(`${BASE_URL}/register/`, {
