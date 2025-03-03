@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import Navbar from '@/components/Navbar';
 import { Flight } from '@/types/flight';
@@ -19,11 +19,7 @@ export default function FlightNarrativePage() {
     const [error, setError] = useState('');
     const router = useRouter();
 
-    useEffect(() => {
-        fetchFlights();
-    }, []);
-
-    const fetchFlights = async () => {
+    const fetchFlights = useCallback(async () => {
         try {
             const response = await fetch(`${BASE_URL}/flights/`, {
                 headers: {
@@ -47,7 +43,11 @@ export default function FlightNarrativePage() {
         } finally {
             setLoading(false);
         }
-    };
+    }, [router]);
+
+    useEffect(() => {
+        fetchFlights();
+    }, [fetchFlights]);
 
     const generateNarratives = async (flightData: Flight[]) => {
         for (const flight of flightData) {
