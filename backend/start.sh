@@ -15,46 +15,12 @@ python manage.py wait_for_db || { echo "Database connection failed"; exit 1; }
 echo "Running database diagnostics..."
 python diagnose_db.py
 
-# Show current migration status
-echo "Current migration status:"
-python manage.py showmigrations
+# Run comprehensive database initialization
+echo "Running database initialization script..."
+python initialize_db.py || { echo "Database initialization failed"; exit 1; }
 
-# Make migrations (in case they haven't been created yet)
-echo "Creating migrations if needed..."
-python manage.py makemigrations users --verbosity 2
-
-# Run migrate with verbosity to see exactly what's happening
-echo "Running migrations with verbosity..."
-python manage.py migrate --noinput --verbosity 2 || { echo "Migrations failed"; exit 1; }
-
-# Explicitly migrate the users app
-echo "Explicitly migrating users app..."
-python manage.py migrate users --noinput --verbosity 2 || { echo "Users migrations failed"; exit 1; }
-
-# Verify users_customuser table was created
-echo "Verifying users_customuser table exists..."
-python -c "
-import os, django, sys
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'AirFleet_api.settings')
-django.setup()
-from django.db import connection
-with connection.cursor() as cursor:
-    cursor.execute(\"\"\"
-        SELECT EXISTS (
-            SELECT FROM information_schema.tables 
-            WHERE table_name = 'users_customuser'
-        );
-    \"\"\")
-    result = cursor.fetchone()[0]
-    if not result:
-        print('ERROR: users_customuser table does not exist!')
-        sys.exit(1)
-    else:
-        print('SUCCESS: users_customuser table exists')
-" || { echo "Table verification failed"; exit 1; }
-
-# Run diagnostic script again to confirm migrations worked
-echo "Running post-migration diagnostics..."
+# Run diagnostic script again to confirm success
+echo "Running post-initialization diagnostics..."
 python diagnose_db.py
 
 # Collect static files

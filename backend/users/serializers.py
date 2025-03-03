@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.password_validation import validate_password
-from django.db import IntegrityError
+from django.db import IntegrityError, ProgrammingError, OperationalError
 from .models import CustomUser
 import logging
 
@@ -15,15 +15,23 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ('username', 'password', 'password2', 'email')
 
     def validate_email(self, value):
-        # Check if email is already in use
-        if CustomUser.objects.filter(email=value).exists():
-            raise serializers.ValidationError("This email is already in use.")
+        # Check if email is already in use - safely
+        try:
+            if CustomUser.objects.filter(email=value).exists():
+                raise serializers.ValidationError("This email is already in use.")
+        except (ProgrammingError, OperationalError) as e:
+            # Table might not exist yet - log but don't fail validation
+            logger.error(f"Database error in email validation: {str(e)}")
         return value
 
     def validate_username(self, value):
-        # Check if username is already in use
-        if CustomUser.objects.filter(username=value).exists():
-            raise serializers.ValidationError("This username is already in use.")
+        # Check if username is already in use - safely
+        try:
+            if CustomUser.objects.filter(username=value).exists():
+                raise serializers.ValidationError("This username is already in use.")
+        except (ProgrammingError, OperationalError) as e:
+            # Table might not exist yet - log but don't fail validation
+            logger.error(f"Database error in username validation: {str(e)}")
         return value
 
     def validate(self, attrs):
@@ -46,6 +54,11 @@ class UserSerializer(serializers.ModelSerializer):
             logger.exception(f"IntegrityError creating user: {str(e)}")
             raise serializers.ValidationError({
                 "database_error": f"Database integrity error: {str(e)}"
+            })
+        except ProgrammingError as e:
+            logger.exception(f"ProgrammingError creating user (table might not exist): {str(e)}")
+            raise serializers.ValidationError({
+                "database_error": f"Database table error: {str(e)}. The users table may not exist yet."
             })
         except Exception as e:
             logger.exception(f"Unexpected error creating user: {str(e)}")
