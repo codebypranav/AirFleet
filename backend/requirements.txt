@@ -18,3 +18,7 @@ djangorestframework-simplejwt==5.4.0
 
 # OpenAI
 OpenAI==0.28.1
+
+dj-database-url
+gunicorn
+whitenoise

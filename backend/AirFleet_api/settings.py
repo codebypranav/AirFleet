@@ -10,6 +10,7 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/3.2/ref/settings/
 """
 
+import dj_database_url
 from pathlib import Path
 import os
 
@@ -84,6 +85,7 @@ WSGI_APPLICATION = 'AirFleet_api.wsgi.application'
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://airfleet.vercel.app",
 ]
 
 CORS_ALLOW_CREDENTIALS = True
@@ -114,14 +116,11 @@ CORS_ALLOW_HEADERS = [
 # https://docs.djangoproject.com/en/3.2/ref/settings/#databases
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.environ.get('POSTGRES_DB', 'airfleet_db'),
-        'USER': os.environ.get('POSTGRES_USER', 'airfleet_user'),
-        'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'postgres'),
-        'HOST': os.environ.get('POSTGRES_HOST', 'db'),
-        'PORT': os.environ.get('POSTGRES_PORT', '5432'),
-    }
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/airfleet'),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
 }
 
 # Password validation
@@ -186,3 +185,12 @@ SIMPLE_JWT = {
 }
 
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+
+# Update the DATABASES configuration
+DATABASES = {
+    'default': dj_database_url.config(
+        default=os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/airfleet'),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+}
