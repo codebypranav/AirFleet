@@ -23,18 +23,9 @@ RUN chmod +x /app/start.sh && \
     chmod +x /app/diagnose_db.py && \
     chmod +x /app/initialize_db.py && \
     chmod +x /app/test_db_connection.py && \
-    chmod +x /app/force_migrations.py
-
-# Create a direct launcher script that Railway can't bypass
-RUN echo '#!/bin/bash\n\
-echo "=== RUNNING DATABASE SETUP AND MIGRATIONS ==="\n\
-python /app/force_migrations.py\n\
-echo "=== COLLECTING STATIC FILES ==="\n\
-python /app/manage.py collectstatic --noinput\n\
-echo "=== STARTING SERVER ==="\n\
-gunicorn AirFleet_api.wsgi:application --bind 0.0.0.0:${PORT:-8080} --chdir /app --log-level debug\n\
-' > /app/launcher.sh && \
-chmod +x /app/launcher.sh
+    chmod +x /app/force_migrations.py && \
+    chmod +x /app/cleanup_test_data.py && \
+    chmod +x /app/launcher.sh
 
 EXPOSE 8000
 
