@@ -19,6 +19,9 @@ djangorestframework-simplejwt==5.4.0
 # OpenAI
 openai==1.17.0
 
+# HTTP Requests
+requests==2.31.0
+
 dj-database-url
 gunicorn
 whitenoise

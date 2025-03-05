@@ -49,7 +49,6 @@ def main():
                 cursor.execute("SELECT COUNT(*) FROM users_customuser")
                 user_count = cursor.fetchone()[0]
                 print(f"Number of users: {user_count}")
-            
             # List all tables
             cursor.execute("""
                 SELECT table_name 

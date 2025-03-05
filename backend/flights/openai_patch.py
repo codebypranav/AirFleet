@@ -6,6 +6,8 @@ This module provides a patch for the OpenAI client to prevent proxy-related issu
 import logging
 import inspect
 import importlib
+import os
+import sys
 
 logger = logging.getLogger(__name__)
 
@@ -85,29 +87,49 @@ def create_safe_openai_client(api_key=None):
     Returns:
         An instance of openai.OpenAI client that will work without proxy issues
     """
-    import openai
-    
-    # Apply patches first
-    apply_openai_patches()
-    
-    # Also clean environment as a precaution
+    # Clean environment variables first
     clean_openai_environment()
     
     try:
-        # Get valid parameters for the constructor
-        params = {'api_key': api_key} if api_key else {}
-        logger.info(f"Creating safe OpenAI client with parameters: {list(params.keys())}")
+        # We'll create our own clean OpenAI client bypassing the problematic initialization
+        logger.info("Creating a fresh OpenAI client with minimal parameters")
         
-        # Create the client with clean parameters
-        client = openai.OpenAI(**params)
-        logger.info("Successfully created OpenAI client")
+        # Import directly from the openai module using a different import style
+        # to avoid any potential issues
+        sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        import openai
+        
+        # Force a reload of the module
+        importlib.reload(openai)
+        
+        # Create a minimal, clean client with just the API key
+        if api_key:
+            # Use the most direct method
+            from openai import OpenAI
+            client = OpenAI(api_key=api_key)
+        else:
+            # Fall back to default API key
+            from openai import OpenAI
+            client = OpenAI()
+            
+        logger.info("Successfully created clean OpenAI client")
         return client
     except Exception as e:
         logger.error(f"Error creating OpenAI client: {str(e)}")
-        # Last resort: reload the module and try with minimal config
-        logger.info("Attempting to reload OpenAI module and create client")
-        importlib.reload(openai)
-        if api_key:
-            return openai.OpenAI(api_key=api_key)
-        else:
-            return openai.OpenAI() 
+        # Last resort approach - direct import and minimal parameters
+        try:
+            logger.info("Attempting last resort OpenAI client creation")
+            # Direct import
+            from openai import OpenAI
+            
+            # Create the client with just an API key
+            if api_key:
+                client = OpenAI(api_key=api_key)
+            else:
+                client = OpenAI()
+                
+            logger.info("Last resort client creation succeeded")
+            return client
+        except Exception as e2:
+            logger.error(f"Even last resort OpenAI client creation failed: {str(e2)}")
+            raise RuntimeError(f"Failed to create OpenAI client: {str(e)} and then {str(e2)}") 

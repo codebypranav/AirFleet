@@ -13,12 +13,16 @@ from django.conf import settings
 import openai
 import inspect
 from .openai_patch import create_safe_openai_client
+from .direct_openai import create_direct_client
 
 logger = logging.getLogger(__name__)
 
 # Apply our OpenAI patches early
 try:
-    from .openai_patch import apply_openai_patches
+    from .openai_patch import apply_openai_patches, clean_openai_environment
+    # First clean environment
+    clean_openai_environment()
+    # Then apply patches
     apply_openai_patches()
     logger.info("Applied OpenAI patches at module level")
 except Exception as e:
@@ -101,13 +105,18 @@ def generate_narrative(request):
         """
         
         # Call the OpenAI API with proper error handling
-        logger.info("Initializing OpenAI client with API key")
+        logger.info("Initializing OpenAI client")
+        
+        # Try approaches in order of preference:
+        
+        # 1. Try direct API access first (most reliable approach)
         try:
-            # Use our safe client creator that handles the proxies issue
-            client = create_safe_openai_client(api_key=settings.OPENAI_API_KEY)
+            logger.info("Attempting to use direct OpenAI client")
+            from .direct_openai import create_direct_client
+            client = create_direct_client(api_key=settings.OPENAI_API_KEY)
             
-            logger.info("Sending request to OpenAI API")
-            response = client.chat.completions.create(
+            logger.info("Sending request to OpenAI API via direct client")
+            response = client.chat.create(
                 model="gpt-4o-mini",  # or "gpt-4" for better quality
                 messages=[
                     {"role": "system", "content": "You are a helpful assistant that creates engaging flight narratives based on flight data."},
@@ -122,24 +131,18 @@ def generate_narrative(request):
             
             # Return the narrative
             return Response({"narrative": narrative})
-        except TypeError as e:
-            logger.error(f"TypeError in OpenAI client initialization: {str(e)}")
-            if "unexpected keyword argument" in str(e):
-                # Use the raw approach as a fallback
-                logger.error(f"Monkey patch didn't work, trying last resort approach")
+        except Exception as e1:
+            logger.error(f"Direct client approach failed: {str(e1)}")
+            
+            # 2. Try our safe client creator
+            try:
+                logger.info("Attempting to create OpenAI client with safe_client_creator")
+                from .openai_patch import create_safe_openai_client
+                client = create_safe_openai_client(api_key=settings.OPENAI_API_KEY)
                 
-                # Create a completely minimal client
-                import openai as openai_raw
-                # Reload the module to ensure clean state
-                import importlib
-                importlib.reload(openai_raw)
-                
-                # Last resort - try to work around it with an absolutely minimal client
-                from openai import OpenAI
-                client = OpenAI(api_key=settings.OPENAI_API_KEY)
-                
+                logger.info("Sending request to OpenAI API")
                 response = client.chat.completions.create(
-                    model="gpt-4o-mini",
+                    model="gpt-4o-mini",  # or "gpt-4" for better quality
                     messages=[
                         {"role": "system", "content": "You are a helpful assistant that creates engaging flight narratives based on flight data."},
                         {"role": "user", "content": prompt}
@@ -147,10 +150,72 @@ def generate_narrative(request):
                     max_tokens=250,
                     temperature=0.7,
                 )
+                
+                # Extract the narrative from the response
                 narrative = response.choices[0].message.content.strip()
+                
+                # Return the narrative
                 return Response({"narrative": narrative})
-            else:
-                raise
+            except Exception as e2:
+                logger.error(f"Safe client approach failed: {str(e2)}")
+                
+                # 3. Direct import approach
+                try:
+                    logger.info("Attempting direct import approach")
+                    # Import the module directly
+                    from openai import OpenAI
+                    # Create client with minimal parameters
+                    client = OpenAI(api_key=settings.OPENAI_API_KEY)
+                    
+                    response = client.chat.completions.create(
+                        model="gpt-4o-mini",
+                        messages=[
+                            {"role": "system", "content": "You are a helpful assistant that creates engaging flight narratives based on flight data."},
+                            {"role": "user", "content": prompt}
+                        ],
+                        max_tokens=250,
+                        temperature=0.7,
+                    )
+                    narrative = response.choices[0].message.content.strip()
+                    return Response({"narrative": narrative})
+                except Exception as e3:
+                    logger.error(f"Direct import approach failed: {str(e3)}")
+                    
+                    # 4. Last resort - no proxy approach
+                    try:
+                        logger.info("Attempting no-proxy approach")
+                        import os
+                        import importlib
+                        
+                        # Clear all proxy variables
+                        proxy_vars = ['HTTP_PROXY', 'HTTPS_PROXY', 'http_proxy', 'https_proxy', 
+                                     'ALL_PROXY', 'all_proxy', 'NO_PROXY', 'no_proxy']
+                        for var in proxy_vars:
+                            if var in os.environ:
+                                del os.environ[var]
+                        
+                        # Reload openai module
+                        import openai
+                        importlib.reload(openai)
+                        
+                        # Create client with absolute minimal approach
+                        from openai import OpenAI
+                        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+                        
+                        response = client.chat.completions.create(
+                            model="gpt-4o-mini",
+                            messages=[
+                                {"role": "system", "content": "You are a helpful assistant that creates engaging flight narratives based on flight data."},
+                                {"role": "user", "content": prompt}
+                            ],
+                            max_tokens=250,
+                            temperature=0.7,
+                        )
+                        narrative = response.choices[0].message.content.strip()
+                        return Response({"narrative": narrative})
+                    except Exception as e4:
+                        logger.error(f"All approaches failed. Errors: 1) {str(e1)}, 2) {str(e2)}, 3) {str(e3)}, 4) {str(e4)}")
+                        return Response({"error": "Failed to generate narrative after multiple attempts"}, status=500)
     
     except Exception as e:
         logger.error(f"Error in generate_narrative: {str(e)}")
