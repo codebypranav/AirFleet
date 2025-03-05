@@ -91,7 +91,7 @@ def generate_narrative(request):
         
         # Create a prompt for ChatGPT
         prompt = f"""
-        Generate a concise, engaging narrative about this flight:
+        Generate a concise, focused narrative about this flight:
         - Departure: {flight_data['departure_airport']} at {flight_data['departure_time']}
         - Arrival: {flight_data['arrival_airport']} at {flight_data['arrival_time']}
         - Duration: {flight_data['total_time']}
@@ -100,8 +100,8 @@ def generate_narrative(request):
         - Conditions: {flight_data['aircraft_condition']}
         - Weather: {flight_data.get('weather_conditions', 'Unknown')}
         
-        Create a human-friendly story that captures the highlights and any challenges of this flight.
-        Keep it concise (3-4 sentences) but informative and engaging.
+        Create a human-friendly summary that captures the highlights and any challenges of this flight.
+        Keep it concise (2-3 sentences) but informative.
         """
         
         # Call the OpenAI API with proper error handling
