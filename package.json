@@ -4,5 +4,10 @@
   },
   "devDependencies": {
     "@types/js-cookie": "^3.0.6"
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
   }
 }

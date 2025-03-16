@@ -1,1 +1,0 @@
-web: gunicorn AirFleet_api.wsgi:application

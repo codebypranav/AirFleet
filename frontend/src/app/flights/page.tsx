@@ -17,6 +17,7 @@ interface Flight {
     registration_number: string;
     aircraft_condition: string;
     distance: number;
+    notes?: string;
     photo?: string;
 }
 
@@ -78,6 +79,12 @@ export default function FlightsPage() {
                                     <p className="text-gray-400">
                                         Condition: {flight.aircraft_condition}
                                     </p>
+                                    {flight.notes && (
+                                        <div className="mt-2">
+                                            <p className="text-gray-300 font-medium">Notes:</p>
+                                            <p className="text-gray-400">{flight.notes}</p>
+                                        </div>
+                                    )}
                                 </div>
                                 {flight.photo && (
                                     <Image 

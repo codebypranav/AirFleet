@@ -26,6 +26,7 @@ class Flight(models.Model):
     arrival_gate = models.CharField(max_length=10, blank=True)
     flight_plan = models.TextField(blank=True)
     notes = models.TextField(blank=True)
+    generated_narrative = models.TextField(blank=True)
     photo = models.ImageField(upload_to='flight_photos/', null=True, blank=True)
     aircraft_condition = models.CharField(
         max_length=20,
