@@ -1,8 +1,7 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import dynamic from 'next/dynamic';
 
 // Use dynamic import for Three.js components to avoid SSR issues
@@ -45,7 +44,7 @@ export default function Home() {
           
           <div className="max-w-3xl mx-auto text-center">
             <p className="text-gray-300 mb-8">
-              AirFleet is your modern pilot's logbook, transforming traditional flight recording with intuitive 
+              AirFleet is your modern pilot&apos;s logbook, transforming traditional flight recording with intuitive 
               digital tools, AI-driven analytics, and seamless collaboration. Easily track flights, securely store 
               memorable flight photos, and gain insightful analytics to enhance your piloting skills and 
               experience.
@@ -83,7 +82,7 @@ export default function Home() {
             </div>
             <div className="md:w-3/4 md:pl-8">
               <p className="text-gray-300 mb-4">
-                As a passionate flight simmer, I've always wanted a comprehensive tool to merge my passion for 
+                As a passionate flight simmer, I&apos;ve always wanted a comprehensive tool to merge my passion for 
                 aviation with detailed analytics and modern design. AirFleet brings my enthusiasm for aviation 
                 simulation into real-world practicality, making it easy and enjoyable to document my virtual flight 
                 experiences and gain insights into my flying habits.
@@ -110,9 +109,9 @@ export default function Home() {
             </div>
             <div className="md:w-3/4 md:pr-8 order-2 md:order-1">
               <p className="text-gray-300 mb-4">
-                "AirFleet has completely transformed how I maintain my logbook. The ability to analyze trends in my 
+                &quot;AirFleet has completely transformed how I maintain my logbook. The ability to analyze trends in my 
                 flying hours and visualize routes has given me insights I never had before. The photo organization 
-                feature is a game-changer for documenting memorable flights."
+                feature is a game-changer for documenting memorable flights.&quot;
               </p>
               <p className="font-medium">— Captain John Smith, Commercial Pilot with 5,000+ hours</p>
             </div>
