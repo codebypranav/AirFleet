@@ -45,9 +45,79 @@ def verify_direct_connection():
     log("CHECKING DIRECT DATABASE CONNECTION")
     database_url = os.environ.get('DATABASE_URL')
     
+    # Check for Docker/compose environment variables
+    postgres_host = os.environ.get('POSTGRES_HOST')
+    postgres_port = os.environ.get('POSTGRES_PORT', '5432')
+    postgres_db = os.environ.get('POSTGRES_DB')
+    postgres_user = os.environ.get('POSTGRES_USER')
+    postgres_password = os.environ.get('POSTGRES_PASSWORD')
+    
+    # Try Docker environment variables first if available
+    if postgres_host and postgres_db and postgres_user and postgres_password:
+        log(f"Using Docker environment variables: Host={postgres_host}, Port={postgres_port}, DB={postgres_db}")
+        
+        try:
+            # Try direct connection
+            log("Attempting direct PostgreSQL connection using Docker environment variables...")
+            conn = psycopg2.connect(
+                host=postgres_host,
+                port=postgres_port,
+                user=postgres_user,
+                password=postgres_password,
+                dbname=postgres_db
+            )
+            
+            log("SUCCESS: Direct PostgreSQL connection established using Docker environment variables")
+            
+            # Check if we can create tables
+            cursor = conn.cursor()
+            cursor.execute("CREATE TABLE IF NOT EXISTS migration_test (id SERIAL PRIMARY KEY);")
+            conn.commit()
+            log("Successfully created test table")
+            
+            # List existing tables
+            cursor.execute("SELECT table_name FROM information_schema.tables WHERE table_schema = 'public';")
+            tables = cursor.fetchall()
+            log(f"Found {len(tables)} tables in database:")
+            for table in tables:
+                log(f"  - {table[0]}")
+            
+            # Directly create users_customuser table
+            log("DIRECTLY CREATING users_customuser TABLE IF NOT EXISTS...")
+            try:
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS users_customuser (
+                        id SERIAL PRIMARY KEY,
+                        password VARCHAR(128) NOT NULL,
+                        last_login TIMESTAMP NULL,
+                        is_superuser BOOLEAN NOT NULL DEFAULT false,
+                        username VARCHAR(150) UNIQUE NOT NULL,
+                        first_name VARCHAR(150) NOT NULL DEFAULT '',
+                        last_name VARCHAR(150) NOT NULL DEFAULT '',
+                        email VARCHAR(254) UNIQUE NOT NULL,
+                        is_staff BOOLEAN NOT NULL DEFAULT false,
+                        is_active BOOLEAN NOT NULL DEFAULT true,
+                        date_joined TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+                    );
+                """)
+                conn.commit()
+                log("Successfully created users_customuser table")
+            except Exception as e:
+                log(f"Error creating users_customuser table: {e}")
+                
+            cursor.close()
+            conn.close()
+            return True
+            
+        except Exception as e:
+            log(f"ERROR connecting to database using Docker environment variables: {e}")
+            # Continue to try DATABASE_URL if Docker environment variables failed
+    
+    # Fallback to DATABASE_URL
     if not database_url:
-        log("ERROR: DATABASE_URL environment variable is not set!")
-        log("Set DATABASE_URL to ${{ Postgres.DATABASE_URL }} in Railway dashboard")
+        log("ERROR: Neither Docker environment variables nor DATABASE_URL is properly set!")
+        log("For Docker: ensure POSTGRES_HOST, POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSWORD are set")
+        log("For Railway: set DATABASE_URL to ${{ Postgres.DATABASE_URL }} in Railway dashboard")
         return False
     
     # Print masked URL for debugging

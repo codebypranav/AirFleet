@@ -7,13 +7,23 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
     const accessToken = Cookies.get('accessToken');
     
     if (!accessToken) {
+        console.error('No access token found in cookies. User may need to log in again.');
         throw new Error('No access token found');
     }
 
+    console.log(`Making API request to: ${BASE_URL}${endpoint}`);
+    
     const headers = {
         ...options.headers,
         'Authorization': `Bearer ${accessToken}`,
     };
+
+    console.log('Request headers:', headers);
+    console.log('Request options:', { 
+        method: options.method || 'GET',
+        credentials: 'include',
+        body: options.body ? '(Request has body)' : undefined
+    });
 
     try {
         const response = await fetch(`${BASE_URL}${endpoint}`, {
@@ -22,13 +32,18 @@ export async function fetchWithAuth(endpoint: string, options: RequestInit = {})
             credentials: 'include',
         });
 
-        // Log the response status and details
         console.log('Response status:', response.status);
         console.log('Response headers:', response.headers);
 
         if (!response.ok) {
-            const errorData = await response.json();
-            console.error('Error response:', errorData);
+            let errorData;
+            try {
+                errorData = await response.json();
+                console.error('Error response data:', errorData);
+            } catch (parseError) {
+                console.error('Could not parse error response as JSON:', parseError);
+                errorData = { message: 'Unknown error occurred, could not parse response' };
+            }
             throw new Error(JSON.stringify(errorData));
         }
 
@@ -49,7 +64,6 @@ export async function addFlight(flightData: FormData) {
     const response = await fetchWithAuth('/flights/', {
         method: 'POST',
         body: flightData,
-        // Don't set Content-Type for FormData - browser will set it automatically with the correct boundary
         headers: {},
     });
     return response.json();

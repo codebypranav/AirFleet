@@ -112,11 +112,6 @@ CORS_ALLOW_HEADERS = [
     'x-requested-with',
 ]
 
-# Database
-# https://docs.djangoproject.com/en/3.2/ref/settings/#databases
-
-# DATABASES configuration moved to the end of the file
-
 # Password validation
 # https://docs.djangoproject.com/en/3.2/ref/settings/#auth-password-validators
 
@@ -178,15 +173,30 @@ SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
     'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
     'ROTATE_REFRESH_TOKENS': True,
+    'AUTH_HEADER_TYPES': ('Bearer',),
 }
 
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
 
 # Update the DATABASES configuration
-DATABASES = {
-    'default': dj_database_url.config(
-        default=os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/airfleet'),
-        conn_max_age=600,
-        conn_health_checks=True,
-    )
-}
+# First check if we have individual database environment variables (Docker setup)
+if os.environ.get('POSTGRES_HOST'):
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql',
+            'NAME': os.environ.get('POSTGRES_DB', 'airfleet_db'),
+            'USER': os.environ.get('POSTGRES_USER', 'airfleet_user'),
+            'PASSWORD': os.environ.get('POSTGRES_PASSWORD', 'postgres'),
+            'HOST': os.environ.get('POSTGRES_HOST', 'db'),  # 'db' is the service name in docker-compose
+            'PORT': os.environ.get('POSTGRES_PORT', '5432'),
+        }
+    }
+else:
+    # Fallback to DATABASE_URL or default local connection
+    DATABASES = {
+        'default': dj_database_url.config(
+            default=os.getenv('DATABASE_URL', 'postgresql://postgres:postgres@localhost:5432/airfleet'),
+            conn_max_age=600,
+            conn_health_checks=True,
+        )
+    }

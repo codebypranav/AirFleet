@@ -1,0 +1,11 @@
+# docker-compose.override.yml
+services:
+  backend:
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-airfleet_user}:${POSTGRES_PASSWORD:-postgres}@db:5432/${POSTGRES_DB:-airfleet_db}
+      # Add all individual postgres variables explicitly
+      - POSTGRES_HOST=db
+      - POSTGRES_PORT=5432
+      - POSTGRES_DB=airfleet_db
+      - POSTGRES_USER=airfleet_user
+      - POSTGRES_PASSWORD=postgres
