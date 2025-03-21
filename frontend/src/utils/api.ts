@@ -49,6 +49,8 @@ export async function addFlight(flightData: FormData) {
     const response = await fetchWithAuth('/flights/', {
         method: 'POST',
         body: flightData,
+        // Don't set Content-Type for FormData - browser will set it automatically with the correct boundary
+        headers: {},
     });
     return response.json();
-} 
+}
