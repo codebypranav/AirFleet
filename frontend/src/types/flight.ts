@@ -8,7 +8,5 @@ export interface Flight {
     registration_number: string;
     aircraft_condition: string;
     distance: number;
-    notes?: string;
-    generated_narrative?: string;
     photo?: string;
 }

@@ -88,23 +88,8 @@ def generate_narrative(request):
     try:
         # Extract flight data from request
         flight_data = request.data
-        flight_id = flight_data.get('flight_id')
-        
-        # Get the flight object
-        try:
-            flight = Flight.objects.get(id=flight_id, user=request.user)
-            
-            # Check if the flight already has a generated narrative
-            if flight.generated_narrative:
-                logger.info(f"Using existing narrative for flight {flight_id}")
-                return Response({"narrative": flight.generated_narrative})
-                
-        except Flight.DoesNotExist:
-            return Response({"error": "Flight not found"}, status=404)
         
         # Create a prompt for ChatGPT
-        notes_section = f"- Notes: {flight.notes}" if flight.notes else ""
-        
         prompt = f"""
         Generate a concise, focused narrative about this flight:
         - Departure: {flight_data['departure_airport']} at {flight_data['departure_time']}
@@ -114,7 +99,6 @@ def generate_narrative(request):
         - Aircraft: {flight_data['registration_number']}
         - Conditions: {flight_data['aircraft_condition']}
         - Weather: {flight_data.get('weather_conditions', 'Unknown')}
-        {notes_section}
         
         Create a human-friendly summary that captures the highlights and any challenges of this flight.
         Keep it concise (2-3 sentences) but informative.
@@ -145,10 +129,6 @@ def generate_narrative(request):
             # Extract the narrative from the response
             narrative = response.choices[0].message.content.strip()
             
-            # Save the narrative to the flight object
-            flight.generated_narrative = narrative
-            flight.save()
-            
             # Return the narrative
             return Response({"narrative": narrative})
         except Exception as e1:
@@ -174,10 +154,6 @@ def generate_narrative(request):
                 # Extract the narrative from the response
                 narrative = response.choices[0].message.content.strip()
                 
-                # Save the narrative to the flight object
-                flight.generated_narrative = narrative
-                flight.save()
-                
                 # Return the narrative
                 return Response({"narrative": narrative})
             except Exception as e2:
@@ -201,11 +177,6 @@ def generate_narrative(request):
                         temperature=0.7,
                     )
                     narrative = response.choices[0].message.content.strip()
-                    
-                    # Save the narrative to the flight object
-                    flight.generated_narrative = narrative
-                    flight.save()
-                    
                     return Response({"narrative": narrative})
                 except Exception as e3:
                     logger.error(f"Direct import approach failed: {str(e3)}")
@@ -241,11 +212,6 @@ def generate_narrative(request):
                             temperature=0.7,
                         )
                         narrative = response.choices[0].message.content.strip()
-                        
-                        # Save the narrative to the flight object
-                        flight.generated_narrative = narrative
-                        flight.save()
-                        
                         return Response({"narrative": narrative})
                     except Exception as e4:
                         logger.error(f"All approaches failed. Errors: 1) {str(e1)}, 2) {str(e2)}, 3) {str(e3)}, 4) {str(e4)}")

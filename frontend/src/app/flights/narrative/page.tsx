@@ -86,15 +86,6 @@ export default function FlightNarrativePage() {
         }
 
         for (const flight of flightData) {
-            // Check if the flight already has a stored narrative
-            if (flight.generated_narrative) {
-                setNarratives(prev => ({
-                    ...prev,
-                    [flight.id]: flight.generated_narrative
-                }));
-                continue;
-            }
-            
             setNarratives(prev => ({
                 ...prev,
                 [flight.id]: 'Generating narrative...'

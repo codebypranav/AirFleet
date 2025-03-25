@@ -15,12 +15,11 @@ export default function AddFlight() {
         registration_number: '',
         aircraft_condition: 'AIRWORTHY',
         distance: 0,
-        notes: '',
         photo: null as File | null,
     });
     const [error, setError] = useState('');
 
-    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({
             ...prev,
@@ -203,18 +202,6 @@ export default function AddFlight() {
                                 <option value="MAINTENANCE">Needs Maintenance</option>
                                 <option value="GROUNDED">Grounded</option>
                             </select>
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium mb-1">
-                                Notes
-                            </label>
-                            <textarea
-                                name="notes"
-                                value={formData.notes}
-                                onChange={handleChange}
-                                className="w-full p-2 rounded bg-gray-800 text-white"
-                            />
                         </div>
 
                         <div>

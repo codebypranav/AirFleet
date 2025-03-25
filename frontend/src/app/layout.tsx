@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
-import { IBM_Plex_Sans, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SessionProviderWrapper from "./SessionProviderWrapper";
 
-const ibmPlexSans = IBM_Plex_Sans({
-    weight: ['400', '500', '600', '700'],
-    variable: "--font-ibm-plex-sans",
+const geistSans = Geist({
+    variable: "--font-geist-sans",
     subsets: ["latin"],
 });
 
@@ -26,7 +25,7 @@ export default function RootLayout({
 }) {
     return (
         <html lang="en">
-            <body className={`${ibmPlexSans.variable} ${geistMono.variable} antialiased`}>
+            <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
                 <SessionProviderWrapper>{children}</SessionProviderWrapper>
             </body>
         </html>
