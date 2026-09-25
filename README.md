@@ -161,7 +161,6 @@ AirFleet brings together multiple engineering concerns:
 - secure env configuration
 - AI API integration in real-world app code
 
-It is a strong example of a full-stack project that blends data management with product UX and LLM-powered features.
 
 ## Notes
 
