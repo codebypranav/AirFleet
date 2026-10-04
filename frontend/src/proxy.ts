@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
     // Get the pathname of the request (e.g. /, /protected)
     const path = request.nextUrl.pathname
-    console.log('Middleware processing path:', path);
+    console.log('Proxy processing path:', path);
 
     // Public paths that don't require authentication
     const isPublicPath = path === '/login' || path === '/register' || path === '/' || path === '/home_bg.jpg'
@@ -26,7 +26,7 @@ export function middleware(request: NextRequest) {
     }
 }
 
-// Configure which paths the middleware should run on
+// Configure which paths the proxy should run on
 export const config = {
     matcher: [
         /*

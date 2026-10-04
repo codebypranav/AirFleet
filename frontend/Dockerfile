@@ -1,6 +1,6 @@
 # frontend/Dockerfile
 
-FROM node:18-alpine
+FROM node:22-alpine
 
 # Create and set working directory
 WORKDIR /app
