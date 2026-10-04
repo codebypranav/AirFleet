@@ -1,5 +1,5 @@
 # Core Django
-Django==5.2.17
+Django==6.0.8
 
 # Django REST Framework
 djangorestframework==3.18.1
