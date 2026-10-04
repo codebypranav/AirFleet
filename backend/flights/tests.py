@@ -106,3 +106,26 @@ class ApiFlowTests(APITestCase):
         self.authenticate()
         res = self.client.post('/api/generate-narrative/', FLIGHT, format='json')
         self.assertEqual(res.status_code, 503)
+
+
+class CorsTests(APITestCase):
+    def preflight(self, origin):
+        res = self.client.options('/api/login/', HTTP_ORIGIN=origin, HTTP_ACCESS_CONTROL_REQUEST_METHOD='POST')
+        return res.headers.get('Access-Control-Allow-Origin')
+
+    def test_allowed_origins(self):
+        for origin in [
+            'http://localhost:3000',
+            'https://airfleet.vercel.app',
+            'https://airfleet-git-main-codebypranav.vercel.app',
+            'https://airfleet-project-a1b2c3d4-codebypranav.vercel.app',
+        ]:
+            self.assertEqual(self.preflight(origin), origin, origin)
+
+    def test_rejected_origins(self):
+        for origin in [
+            'https://evil.vercel.app',
+            'https://airfleet.vercel.app.evil.com',
+            'http://airfleet-git-main-x.vercel.app',
+        ]:
+            self.assertIsNone(self.preflight(origin), origin)

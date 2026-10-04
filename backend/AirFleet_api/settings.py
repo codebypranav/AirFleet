@@ -84,7 +84,12 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "https://airfleet.vercel.app",
     "https://airfleet-project.vercel.app",
-    "https://*.vercel.app",
+]
+
+# Vercel preview deployments, e.g. airfleet-git-<branch>-<team>.vercel.app.
+# CORS_ALLOWED_ORIGINS only does exact matches, so wildcards need a regex.
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://airfleet(-project)?-[a-z0-9-]+\.vercel\.app$",
 ]
 
 # Additional CORS settings for Railway
