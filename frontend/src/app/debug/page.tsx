@@ -45,7 +45,7 @@ export default function DebugPage() {
             
             <div className="bg-gray-800 p-4 rounded-lg mb-8">
                 <h2 className="text-xl font-bold mb-4">Environment Variables</h2>
-                <pre className="bg-gray-900 p-4 rounded overflow-auto max-w-full">
+                <pre className="bg-gray-900 p-4 rounded-sm overflow-auto max-w-full">
                     {JSON.stringify(info, null, 2)}
                 </pre>
             </div>
@@ -61,7 +61,7 @@ export default function DebugPage() {
                             </div>
                             <button
                                 onClick={() => testApiConnection(test.url)}
-                                className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 text-sm"
+                                className="px-4 py-2 bg-blue-600 rounded-sm hover:bg-blue-700 text-sm"
                             >
                                 Test This URL
                             </button>
@@ -70,7 +70,7 @@ export default function DebugPage() {
                 </div>
             </div>
             
-            <Link href="/" className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700">
+            <Link href="/" className="px-4 py-2 bg-gray-600 rounded-sm hover:bg-gray-700">
                 Back to Home
             </Link>
         </div>
