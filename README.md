@@ -112,6 +112,8 @@ This starts:
 
 ### Option 2: Manual backend setup
 
+Requires Python 3.12+ (Django 6).
+
 ```bash
 cd backend
 python -m venv .venv
@@ -119,9 +121,12 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver 0.0.0.0:8000
+python manage.py test  # run the API test suite
 ```
 
 ### Option 3: Frontend setup
+
+Requires Node.js 20.9+ (Next.js 16).
 
 ```bash
 cd frontend
@@ -137,6 +142,7 @@ The application relies on values such as:
 SECRET_KEY=your-secret
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/airfleet
 OPENAI_API_KEY=your-openai-key
+OPENAI_MODEL=gpt-4o-mini  # optional, model used for flight narratives
 NEXTAUTH_SECRET=your-nextauth-secret
 NEXTAUTH_URL=http://localhost:3000
 ```

@@ -42,15 +42,7 @@ export default function LoginPage() {
             // Store tokens in cookies instead of localStorage
             Cookies.set('accessToken', data.access, { secure: true, sameSite: 'strict' });
             Cookies.set('refreshToken', data.refresh, { secure: true, sameSite: 'strict' });
-            console.log('Tokens stored in cookies, attempting navigation');
-
-            try {
-                await router.push('/flights');
-                console.log('Router.push completed');
-            } catch (navError) {
-                console.error('Navigation error:', navError);
-                window.location.href = '/flights';
-            }
+            router.push('/flights');
         } catch (err) {
             console.error('Login error:', err);
             setError(err instanceof Error ? err.message : 'Login failed');

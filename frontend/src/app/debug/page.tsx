@@ -1,26 +1,16 @@
 "use client";
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-export default function DebugPage() {
-    const [info, setInfo] = useState({
-        apiUrl: "",
-        fullApiUrl: "",
-        vercelUrl: "",
-        nextPublicApiUrl: ""
-    });
-    
-    useEffect(() => {
-        // Collect environment information
-        setInfo({
-            apiUrl: process.env.NEXT_PUBLIC_API_URL || 'Not set',
-            fullApiUrl: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api`,
-            vercelUrl: process.env.VERCEL_URL || 'Not set',
-            nextPublicApiUrl: process.env.NEXT_PUBLIC_API_URL || 'Not set'
-        });
-    }, []);
+// NEXT_PUBLIC_* values are inlined at build time, so they match on server and client.
+const info = {
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'Not set',
+    fullApiUrl: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api`,
+    vercelUrl: process.env.NEXT_PUBLIC_VERCEL_URL || 'Not set',
+    nextPublicApiUrl: process.env.NEXT_PUBLIC_API_URL || 'Not set'
+};
 
+export default function DebugPage() {
     const testUrls = [
         { name: "Standard URL", url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/register/` },
         { name: "URL without /api", url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/register/` },
