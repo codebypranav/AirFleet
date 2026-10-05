@@ -173,8 +173,8 @@ cython_debug/
 .env
 .env.*
 
-# Ignore backend/media/flight_photos
-./backend/media/flight_photos/
+# Photos uploaded in local development (production uses Neon Object Storage)
+backend/media/
 
 
 # Django collectstatic output
