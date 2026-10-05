@@ -1,0 +1,67 @@
+# Checks for the Django API. Render deploys the backend from main, so with its
+# auto-deploy set to "After CI checks pass" a red run here blocks the deploy.
+name: Backend
+
+on:
+  pull_request:
+    paths:
+      - backend/**
+      - render.yaml
+      - .github/workflows/backend.yml
+  push:
+    branches: [main]
+    paths:
+      - backend/**
+      - render.yaml
+      - .github/workflows/backend.yml
+
+concurrency:
+  group: backend-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: Tests
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: airfleet
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/airfleet
+      SECRET_KEY: ci-only-not-secret
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          # Matches the python:3.13-slim image Render builds from.
+          python-version: '3.13'
+          cache: pip
+          cache-dependency-path: backend/requirements.txt
+      - run: pip install -r requirements.txt
+      - name: Django system checks
+        run: python manage.py check
+      - name: No missing migrations
+        run: python manage.py makemigrations --check --dry-run
+      - name: Test suite
+        run: python manage.py test
+
+  docker:
+    name: Docker image builds
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      # Same Dockerfile and context as render.yaml, so a broken image fails here first.
+      - run: docker build --file backend/Dockerfile backend
