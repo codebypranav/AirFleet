@@ -175,6 +175,35 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
 
+# Uploaded photos go to Neon Object Storage when its S3 credentials are present
+# (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY, AWS_ENDPOINT_URL_S3, AWS_REGION, as
+# pulled by `neon link`). The bucket is private, so photo URLs are short-lived
+# presigned links. Without the credentials, files stay on local disk.
+AWS_ENDPOINT_URL_S3 = os.environ.get('AWS_ENDPOINT_URL_S3')
+STORAGES = {
+    'default': {
+        'BACKEND': 'django.core.files.storage.FileSystemStorage',
+    },
+    'staticfiles': {
+        'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage',
+    },
+}
+if AWS_ENDPOINT_URL_S3:
+    STORAGES['default'] = {
+        'BACKEND': 'storages.backends.s3.S3Storage',
+        'OPTIONS': {
+            'bucket_name': os.environ.get('PHOTOS_BUCKET', 'photos'),
+            'endpoint_url': AWS_ENDPOINT_URL_S3,
+            'region_name': os.environ.get('AWS_REGION'),
+            'addressing_style': 'path',  # Neon requires path-style addressing
+            'signature_version': 's3v4',
+            'default_acl': None,
+            'file_overwrite': False,
+            'querystring_auth': True,
+            'querystring_expire': 3600,
+        },
+    }
+
 AUTH_USER_MODEL = 'users.CustomUser'
 
 REST_FRAMEWORK = {
