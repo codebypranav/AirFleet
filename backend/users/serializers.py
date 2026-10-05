@@ -74,6 +74,23 @@ class ChangePasswordSerializer(serializers.Serializer):
         return value
 
 
+class DeleteAccountSerializer(serializers.Serializer):
+    """Deleting is permanent, so the pilot types their username, and their password if they have one."""
+    confirm = serializers.CharField()
+    password = serializers.CharField(write_only=True, required=False, allow_blank=True)
+
+    def validate_confirm(self, value):
+        if value.strip() != self.context['request'].user.username:
+            raise serializers.ValidationError("Type your username exactly to confirm.")
+        return value
+
+    def validate(self, attrs):
+        user = self.context['request'].user
+        if user.has_usable_password() and not user.check_password(attrs.get('password', '')):
+            raise serializers.ValidationError({'password': "Your password is incorrect."})
+        return attrs
+
+
 class PasswordResetConfirmSerializer(serializers.Serializer):
     uid = serializers.CharField()
     token = serializers.CharField()

@@ -540,6 +540,37 @@ class AccountTests(ApiTestCase):
     def test_google_login_unconfigured(self):
         self.assertEqual(self.client.post('/api/auth/google/', {'id_token': 'x'}, format='json').status_code, 503)
 
+    def test_delete_account(self):
+        self.authenticate('bob')
+        self.add_flight()
+        self.client.credentials()
+        self.authenticate()
+        self.add_flight()
+        self.client.post('/api/aircraft/', {'registration': 'N999AF'}, format='json')
+
+        wrong_name = self.client.delete('/api/me/', {'confirm': 'someone', 'password': PASSWORD}, format='json')
+        wrong_password = self.client.delete('/api/me/', {'confirm': 'pilot', 'password': 'nope'}, format='json')
+        self.assertEqual((wrong_name.status_code, wrong_password.status_code), (400, 400))
+
+        res = self.client.delete('/api/me/', {'confirm': 'pilot', 'password': PASSWORD}, format='json')
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(get_user_model().objects.filter(username='pilot').exists())
+        self.assertEqual(Flight.objects.filter(user__username='pilot').count(), 0)
+        self.assertEqual(Aircraft.objects.filter(user__username='pilot').count(), 0)
+        self.assertEqual(Flight.objects.filter(user__username='bob').count(), 1)
+        self.assertEqual(self.client.get('/api/me/').status_code, 401)
+        self.client.credentials()
+        self.assertEqual(self.client.post('/api/login/', {'username': 'pilot', 'password': PASSWORD}, format='json').status_code, 401)
+
+    @override_settings(GOOGLE_CLIENT_ID='client-id')
+    def test_delete_google_account_needs_no_password(self):
+        claims = {'email': 'jane@gmail.com', 'email_verified': True}
+        with mock.patch('google.oauth2.id_token.verify_oauth2_token', return_value=claims):
+            tokens = self.client.post('/api/auth/google/', {'id_token': 'tok'}, format='json').data
+        self.client.credentials(HTTP_AUTHORIZATION=f"Bearer {tokens['access']}")
+        self.assertEqual(self.client.delete('/api/me/', {'confirm': 'jane'}, format='json').status_code, 204)
+        self.assertFalse(get_user_model().objects.filter(email='jane@gmail.com').exists())
+
 
 class PublicProfileTests(ApiTestCase):
     def test_private_by_default(self):
@@ -603,6 +634,14 @@ class PhotoUploadTests(ApiTestCase):
         self.assertEqual(res.status_code, 201, res.data)
         self.assertIn('flight_photos/runway', res.data['photo'])
         self.assertTrue(Flight.objects.get().photo.storage.exists(Flight.objects.get().photo.name))
+
+    def test_deleting_account_removes_photos(self):
+        self.authenticate()
+        self.client.post('/api/flights/', {**FLIGHT, 'photo': self.image()}, format='multipart')
+        photo = Flight.objects.get().photo
+        res = self.client.delete('/api/me/', {'confirm': 'pilot', 'password': PASSWORD}, format='json')
+        self.assertEqual(res.status_code, 204)
+        self.assertFalse(photo.storage.exists(photo.name))
 
     def test_rejects_non_images_and_odd_formats(self):
         from django.core.files.uploadedfile import SimpleUploadedFile

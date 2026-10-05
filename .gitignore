@@ -173,8 +173,8 @@ cython_debug/
 .env
 .env.*
 
-# Ignore backend/media/flight_photos
-./backend/media/flight_photos/
+# Uploaded user photos (local media storage) never belong in git
+backend/media/
 
 
 # Django collectstatic output
