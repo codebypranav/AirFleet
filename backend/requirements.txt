@@ -23,6 +23,9 @@ djangorestframework-simplejwt==5.5.1
 # OpenAI
 openai==3.24.0
 
+# Google sign-in (verifies ID tokens)
+google-auth==2.59.1
+
 # HTTP Requests
 requests==2.34.2
 
