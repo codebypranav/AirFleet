@@ -20,7 +20,9 @@ from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from flights.models import Flight
-from .serializers import ChangePasswordSerializer, PasswordResetConfirmSerializer, ProfileSerializer, UserSerializer
+from .serializers import (
+    ChangePasswordSerializer, DeleteAccountSerializer, PasswordResetConfirmSerializer, ProfileSerializer, UserSerializer,
+)
 
 logger = logging.getLogger(__name__)
 User = get_user_model()
@@ -113,6 +115,21 @@ class ProfileView(APIView):
         serializer.is_valid(raise_exception=True)
         serializer.save()
         return Response(serializer.data)
+
+    def delete(self, request):
+        """Erase the account: profile, flights, aircraft (cascaded) and uploaded flight photos."""
+        serializer = DeleteAccountSerializer(data=request.data, context={'request': request})
+        serializer.is_valid(raise_exception=True)
+        user = request.user
+        for flight in Flight.objects.filter(user=user).exclude(photo__isnull=True).exclude(photo=''):
+            try:
+                flight.photo.delete(save=False)
+            except Exception:
+                logger.exception("Could not delete photo of flight %s", flight.pk)
+        user_id = user.pk
+        user.delete()
+        logger.info("Deleted user %s", user_id)
+        return Response(status=status.HTTP_204_NO_CONTENT)
 
 
 class ChangePasswordView(APIView):

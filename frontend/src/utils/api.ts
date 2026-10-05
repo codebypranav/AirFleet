@@ -178,6 +178,8 @@ export const getProfile = () => apiJson<Profile>('/me/');
 export const updateProfile = (data: Partial<Profile>) => apiJson<Profile>('/me/', { method: 'PATCH', json: data });
 export const changePassword = (current_password: string, new_password: string) =>
     apiJson<{ access: string; refresh: string }>('/me/password/', { method: 'POST', json: { current_password, new_password } });
+export const deleteAccount = (confirm: string, password: string) =>
+    apiJson<void>('/me/', { method: 'DELETE', json: { confirm, password } });
 export const requestPasswordReset = (email: string) =>
     apiJson<{ detail: string }>('/password-reset/', { method: 'POST', json: { email }, auth: false });
 export const confirmPasswordReset = (uid: string, token: string, password: string) =>

@@ -92,6 +92,11 @@ export default function RegisterPage() {
 
                 <GoogleButton />
 
+                <p className="text-center text-xs text-ash">
+                    See how we handle your logbook in the{' '}
+                    <Link href="/privacy" className="text-fern underline-offset-4 hover:underline">privacy notice</Link>.
+                </p>
+
                 <p className="text-center text-sm text-ash">
                     Already have an account?{' '}
                     <Link href="/login" className="text-fern underline-offset-4 hover:underline">

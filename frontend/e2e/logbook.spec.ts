@@ -121,3 +121,36 @@ test('signed-out visitors are sent to log in, and rankings stay public', async (
     await page.getByRole('button', { name: 'Send reset link' }).click();
     await expect(page.getByText(/If that email has an account/)).toBeVisible();
 });
+
+test('a pilot deletes their account', async ({ page }) => {
+    const username = `gone${Date.now()}`;
+    await register(page, username);
+    await logFlight(page, { from: 'KJFK', to: 'KBOS', reg: 'n172sp', day: '2026-01-05' });
+
+    await page.goto('/profile');
+    const button = page.getByRole('button', { name: 'Delete account' });
+    await expect(button).toBeDisabled();
+    await page.getByLabel(`Type ${username} to confirm`).fill(username);
+    await page.getByLabel('Password', { exact: true }).fill('wrong-password');
+    page.once('dialog', (dialog) => dialog.accept());
+    await button.click();
+    await expect(page.getByText('Your password is incorrect.')).toBeVisible();
+
+    await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
+    page.once('dialog', (dialog) => dialog.accept());
+    await button.click();
+    await expect(page).not.toHaveURL(/\/profile$/);
+
+    await page.goto('/login');
+    await page.getByLabel('Username').fill(username);
+    await page.getByLabel('Password').fill(PASSWORD);
+    await page.getByRole('button', { name: 'Sign in' }).click();
+    await expect(page.locator('p.alert-error')).toBeVisible();
+    await expect(page).toHaveURL(/\/login$/);
+});
+
+test('the privacy notice is public', async ({ page }) => {
+    await page.goto('/privacy');
+    await expect(page.getByRole('heading', { name: 'Your data in AirFleet' })).toBeVisible();
+    await expect(page.getByText(/only when you ask for a story/)).toBeVisible();
+});

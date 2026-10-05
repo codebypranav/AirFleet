@@ -35,6 +35,8 @@ The system is meant to function as a lightweight aviation workspace with:
   sign-in, and opt-in public pilot profiles and shareable flight pages.
 - **Rankings:** by flights, time, distance, longest flight and airports visited, for all
   time, this year or this month.
+- **Privacy:** a `/privacy` notice of what is stored and which services see it, and account
+  deletion from the profile page that erases the pilot's flights, aircraft and photos.
 
 This is a learning-oriented application rather than a certified aviation compliance system, and it should not be treated as an official flight-logging platform without additional validation.
 
@@ -213,6 +215,8 @@ NARRATIVE_RATE=30/hour                    # AI narrative limit per user
 GOOGLE_CLIENT_ID=...                      # with GOOGLE_CLIENT_SECRET, shows "Continue with Google"
 GOOGLE_CLIENT_SECRET=...
 API_URL=...                               # API origin for server-side calls, if it differs from NEXT_PUBLIC_API_URL
+NEXT_PUBLIC_ENABLE_DEBUG=true             # turns on the /debug connection page
+NEXT_PUBLIC_PRIVACY_CONTACT=you@example.com  # shown on /privacy for data requests
 ```
 
 For Google sign-in, create an OAuth client (Web application) in Google Cloud and add

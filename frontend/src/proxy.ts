@@ -4,7 +4,7 @@ import type { NextRequest } from 'next/server'
 // Signed-in pilots skip these and go straight to their logbook.
 const GUEST_ONLY = new Set(['/', '/login', '/register'])
 // Open to everyone, signed in or not.
-const PUBLIC_PREFIXES = ['/forgot-password', '/reset-password', '/auth/complete', '/pilots/', '/share/', '/home_bg.jpg']
+const PUBLIC_PREFIXES = ['/forgot-password', '/reset-password', '/auth/complete', '/pilots/', '/share/', '/privacy', '/home_bg.jpg']
 
 export function proxy(request: NextRequest) {
     const path = request.nextUrl.pathname
