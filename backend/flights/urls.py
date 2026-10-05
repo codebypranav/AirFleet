@@ -6,6 +6,7 @@ urlpatterns = [
     path('flights/', views.FlightListView.as_view(), name='flight-list'),
     path('flights/export/', views.export_flights, name='flight-export'),
     path('flights/import/', views.ImportFlightsView.as_view(), name='flight-import'),
+    path('flights/from-plan/', views.FlightPlanView.as_view(), name='flight-from-plan'),
     path('flights/<int:pk>/', views.FlightDetailView.as_view(), name='flight-detail'),
     path('generate-narrative/', views.generate_narrative, name='generate-narrative'),
     path('stats/', views.stats, name='stats'),

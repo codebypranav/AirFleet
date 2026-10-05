@@ -113,7 +113,7 @@ export default function FlightDetail({ params }: { params: Promise<{ id: string 
     return (
         <PageShell>
             <PageHeader
-                eyebrow={`${formatDate(flight.departure_time, 'long')}${flight.is_simulator ? ' · Simulator' : ''}`}
+                eyebrow={`${formatDate(flight.departure_time, 'long')}${flight.is_simulator ? ' · Simulator' : ''}${flight.is_draft ? ' · Draft' : ''}`}
                 title={`${flight.departure_airport} → ${flight.arrival_airport}`}
                 description={[flight.departure_info?.name, flight.arrival_info?.name].filter(Boolean).join(' to ')}
                 action={
@@ -149,6 +149,11 @@ export default function FlightDetail({ params }: { params: Promise<{ id: string 
                 <span className={`rounded-full border px-2.5 py-0.5 ${condition.className}`}>{condition.label}</span>
                 <SignatureBadge signature={flight.signature} />
                 {flight.cross_country && <span className="rounded-full border border-line px-2.5 py-0.5 text-stone">Cross-country</span>}
+                {flight.is_draft && (
+                    <Link href={`/flights/${flight.id}/edit`} className="rounded-full border border-clay/60 px-2.5 py-0.5 text-clay hover:border-clay">
+                        Draft · add the actual times to log it
+                    </Link>
+                )}
                 {flight.is_simulator && <span className="rounded-full border border-line px-2.5 py-0.5 text-stone">Simulator</span>}
                 {flight.aircraft && (
                     <Link href={`/aircraft/${flight.aircraft}`} className="rounded-full border border-line px-2.5 py-0.5 text-fern hover:border-ash">

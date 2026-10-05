@@ -38,6 +38,8 @@ export interface Flight {
     approaches: number;
     cross_country: boolean;
     is_simulator: boolean;
+    /** Started from a flight plan and not flown yet; left out of totals, currency and rankings. */
+    is_draft: boolean;
     weather_conditions: string;
     narrative: string;
     narrative_generated_at: string | null;
@@ -218,4 +220,12 @@ export interface ImportResult {
     duplicates: number;
     skipped: number;
     errors: { row: number; errors: unknown }[];
+}
+
+/** A flight plan PDF read into a draft entry; see flights/flight_plans.py. */
+export interface FlightPlanDraft {
+    source: 'simbrief' | 'icao';
+    callsign: string;
+    flight: Partial<Flight> & { aircraft_type?: string };
+    warnings: string[];
 }

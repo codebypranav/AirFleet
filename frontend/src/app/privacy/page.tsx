@@ -30,6 +30,7 @@ export default function PrivacyPage() {
                         <Item title="Flights">airports, dates and times, aircraft registrations, logbook times, weather, notes, flight plans, photos and generated stories. Together these are a record of where and when you flew.</Item>
                         <Item title="Aircraft">registrations, types, hours and maintenance dates you enter.</Item>
                         <Item title="Instruction">who your instructors and students are, and each sign-off: the instructor&apos;s name, certificate number and expiry, their remarks, and a copy of the flight&apos;s logbook fields as signed.</Item>
+                        <Item title="Flight plan PDFs">read once to fill in a draft flight, then discarded. The PDF isn&apos;t stored and isn&apos;t sent to anyone else; only the fields you save are kept.</Item>
                         <Item title="Cookies">only the sign-in tokens that keep you logged in. No advertising or tracking cookies.</Item>
                     </ul>
                 </Section>

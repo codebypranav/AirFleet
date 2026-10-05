@@ -210,11 +210,13 @@ class RankingsView(APIView):
         if period not in RANKING_PERIODS:
             period = 'all'
         now = timezone.now()
-        in_period = Q()
-        if period == 'year':
-            in_period = Q(flights__departure_time__year=now.year)
-        elif period == 'month':
-            in_period = Q(flights__departure_time__year=now.year, flights__departure_time__month=now.month)
+        # Drafts are planned flights, not flown ones.
+        criteria = {'flights__is_draft': False}
+        if period in ('year', 'month'):
+            criteria['flights__departure_time__year'] = now.year
+        if period == 'month':
+            criteria['flights__departure_time__month'] = now.month
+        in_period = Q(**criteria)
 
         users = User.objects.filter(is_active=True).annotate(
             total_flights=Count('flights', filter=in_period),
@@ -226,9 +228,7 @@ class RankingsView(APIView):
         def row(user, **extra):
             return {'username': user.username, 'is_public': user.is_public, **extra}
 
-        flights = Flight.objects.filter(user__is_active=True)
-        if period != 'all':
-            flights = flights.filter(**{k.removeprefix('flights__'): v for k, v in in_period.children})
+        flights = Flight.objects.filter(user__is_active=True, **{k.removeprefix('flights__'): v for k, v in criteria.items()})
         visited = {}
         for user_id, dep, arr in flights.values_list('user_id', 'departure_airport', 'arrival_airport'):
             visited.setdefault(user_id, set()).update((dep, arr))

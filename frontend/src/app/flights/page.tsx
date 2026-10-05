@@ -160,6 +160,7 @@ export default function FlightsPage() {
                                                     <p className="eyebrow">
                                                         {formatDate(flight.departure_time)} · {formatTime(flight.departure_time)}
                                                         {flight.is_simulator && ' · Sim'}
+                                                        {flight.is_draft && ' · Draft'}
                                                     </p>
                                                     <span className="flex flex-wrap gap-2">
                                                         <SignatureBadge signature={flight.signature} />

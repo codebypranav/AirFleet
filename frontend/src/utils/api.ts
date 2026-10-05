@@ -1,7 +1,7 @@
 import Cookies from 'js-cookie';
 import type {
-    Achievement, Aircraft, Airport, Currency, Flight, ImportResult, InstructorLink, Paginated, Profile, PublicFlight,
-    PublicPilot, RouteMapData, Signature, Stats, StudentFlight,
+    Achievement, Aircraft, Airport, Currency, Flight, FlightPlanDraft, ImportResult, InstructorLink, Paginated, Profile,
+    PublicFlight, PublicPilot, RouteMapData, Signature, Stats, StudentFlight,
 } from '@/types/flight';
 
 const ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/+$/, '').replace(/\/api$/, '');
@@ -127,7 +127,7 @@ const query = (params: Record<string, string | number | undefined>) => {
     return text ? `?${text}` : '';
 };
 
-export type FlightFilters = { from?: string; to?: string; airport?: string; aircraft?: string; q?: string; simulator?: string };
+export type FlightFilters = { from?: string; to?: string; airport?: string; aircraft?: string; q?: string; simulator?: string; draft?: string };
 
 export const getFlights = (params: FlightFilters & { page?: number; page_size?: number } = {}) =>
     apiJson<Paginated<Flight>>(`/flights/${query(params)}`);
@@ -152,6 +152,13 @@ export const importFlights = (file: File) => {
     const body = new FormData();
     body.append('file', file);
     return apiJson<ImportResult>('/flights/import/', { method: 'POST', body });
+};
+
+/** Reads a flight plan PDF (SimBrief OFP or ICAO flight plan) into a draft flight. The server doesn't keep the file. */
+export const readFlightPlan = (file: File) => {
+    const body = new FormData();
+    body.append('file', file);
+    return apiJson<FlightPlanDraft>('/flights/from-plan/', { method: 'POST', body });
 };
 
 export const getStats = (filters: FlightFilters = {}) => apiJson<Stats>(`/stats/${query(filters)}`);
@@ -194,6 +201,5 @@ export const getStudentFlights = (linkId: number | string, params: { unsigned?: 
     apiJson<Paginated<StudentFlight>>(`/instruction/links/${linkId}/flights/${query(params)}`);
 export const signFlight = (flightId: number, data: { remarks: string; agree: boolean; password: string }) =>
     apiJson<Signature>(`/instruction/flights/${flightId}/sign/`, { method: 'POST', json: data });
-
 export const getPublicPilot = (username: string) => apiJson<PublicPilot>(`/pilots/${encodeURIComponent(username)}/`, { auth: false });
 export const getPublicFlight = (id: number | string) => apiJson<PublicFlight>(`/public/flights/${id}/`, { auth: false });
