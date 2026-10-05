@@ -42,13 +42,21 @@ class Aircraft(models.Model):
         return self.registration
 
     def hours_since_maintenance(self):
-        flights = self.flights.all()
+        flights = self.flights.logged()
         if self.last_maintenance_at:
             flights = flights.filter(departure_time__gte=self.last_maintenance_at)
         return flights.aggregate(total=Sum('total_time'))['total'] or timedelta(0)
 
 
+class FlightQuerySet(models.QuerySet):
+    def logged(self):
+        """Flights in the logbook proper. Drafts (planned, not yet flown) don't count towards anything."""
+        return self.filter(is_draft=False)
+
+
 class Flight(models.Model):
+    objects = FlightQuerySet.as_manager()
+
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -97,6 +105,8 @@ class Flight(models.Model):
     approaches = models.PositiveSmallIntegerField(default=0)
     cross_country = models.BooleanField(default=False)
     is_simulator = models.BooleanField(default=False)
+    # Started from a flight plan before the flight; finalised once the actual times are in.
+    is_draft = models.BooleanField(default=False)
 
     weather_conditions = models.TextField(blank=True, help_text="Usually the departure METAR")
     narrative = models.TextField(blank=True)

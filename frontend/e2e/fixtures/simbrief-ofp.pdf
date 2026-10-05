@@ -1,0 +1,32 @@
+%PDF-1.4
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 1358 >>
+stream
+BT /F1 8 Tf 10 TL 20 800 Td () Tj T* (                            C-GXLR/03 OCT/TLS-YUL                               Page 1) Tj T* ( [ OFP ]) Tj T* ( C-GXLR    03OCT2026    LFBO-CYUL   A21N CGXLR   RELEASE 1629 03OCT26) Tj T* (   ATC C/S   CGXLR        LFBO/TLS   CYUL/YUL      CRZ SYS      CI 17) Tj T* ( 03OCT2026   CGXLR        1655/1715  0113/0121     GND DIST      3312) Tj T* (                                 TIMES) Tj T* (                ESTIMATED        SKED              ACTUAL) Tj T* ( OUT            1655Z/1855L      1655Z/1855L       ......Z) Tj T* ( OFF            1715Z/1915L      1715Z/1915L       ......Z) Tj T* ( ON             0113Z/2113L      0117Z/2117L       ......Z) Tj T* ( IN             0121Z/2121L      0125Z/2125L       ......Z) Tj T* ( BLOCK TIME     0826             0830              ......) Tj T* (                                  - Not for real world navigation -                    1) Tj T* ( \(FPL-CGXLR-IS) Tj T* ( -A21N/M-SDE3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1) Tj T* ( -LFBO1655) Tj T* ( -N0454F310 GAUDE7A GAUDE DCT LATEK DCT PPN DCT MIRPO DCT DGO N725) Tj T* (  RATAS/N0452F320 DCT NEDUS DCT NUBLO) Tj T* ( -CYUL0748 CYOW) Tj T* ( -PBN/A1B1C1D1L1O2S2T1 NAV/RNP2 DAT/1PDC SUR/260B RSP180 CANMANDATE) Tj T* (  DOF/261003 REG/CGXLR EET/LECM0021 LPPO0134 43N020W0215) Tj T* (  PER/C RALT/LPPR LPLA CYQX RMK/NRP TCAS\)) Tj T* ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>
+endobj
+xref
+0 6
+0000000000 65535 f 
+0000000009 00000 n 
+0000000058 00000 n 
+0000000115 00000 n 
+0000000241 00000 n 
+0000001651 00000 n 
+trailer
+<< /Size 6 /Root 1 0 R >>
+startxref
+1719
+%%EOF

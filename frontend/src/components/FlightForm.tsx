@@ -5,7 +5,7 @@ import Link from 'next/link';
 import AirportInput from '@/components/AirportInput';
 import { CameraIcon, CloudIcon, UploadIcon } from '@/components/Icons';
 import type { Airport, Flight } from '@/types/flight';
-import { getFleet, getMetar, getSimbrief } from '@/utils/api';
+import { getFleet, getMetar, getSimbrief, readFlightPlan } from '@/utils/api';
 import { CONDITIONS, distanceNm, durationInput, formatHours, fromLocalInput, parseDurationInput, toLocalInput } from '@/utils/format';
 
 const TIME_FIELDS = [
@@ -38,6 +38,7 @@ type FormState = {
     aircraft_condition: string;
     is_simulator: boolean;
     cross_country: boolean;
+    is_draft: boolean;
     weather_conditions: string;
     notes: string;
 } & Record<TimeField, string> & Record<CountField, string>;
@@ -69,6 +70,7 @@ function initialState(flight?: Flight): FormState {
         aircraft_condition: flight?.aircraft_condition ?? 'AIRWORTHY',
         is_simulator: flight?.is_simulator ?? false,
         cross_country: flight?.cross_country ?? false,
+        is_draft: flight?.is_draft ?? false,
         weather_conditions: flight?.weather_conditions ?? '',
         notes: flight?.notes ?? '',
         pic_time: durationInput(flight?.pic_time),
@@ -106,6 +108,7 @@ export default function FlightForm({
     const [simbriefInput, setSimbriefUser] = useState<string | null>(null);
     const simbriefUser = simbriefInput ?? savedSimbriefUser;
     const [simbriefStatus, setSimbriefStatus] = useState('');
+    const [planStatus, setPlanStatus] = useState('');
 
     useEffect(() => {
         getFleet().then((planes) => setFleet(planes.map((p) => p.registration))).catch(() => {});
@@ -175,6 +178,31 @@ export default function FlightForm({
         }
     };
 
+    const importPlan = async (file: File | undefined) => {
+        if (!file) return;
+        setPlanStatus(`Reading ${file.name}…`);
+        try {
+            const { flight: plan, callsign, warnings } = await readFlightPlan(file);
+            setForm((prev) => ({
+                ...prev,
+                departure_airport: plan.departure_airport || prev.departure_airport,
+                arrival_airport: plan.arrival_airport || prev.arrival_airport,
+                departure_time: toLocalInput(plan.departure_time) || prev.departure_time,
+                arrival_time: toLocalInput(plan.arrival_time) || prev.arrival_time,
+                registration_number: plan.registration_number || prev.registration_number,
+                flight_plan: plan.flight_plan || prev.flight_plan,
+                distance: plan.distance ? String(plan.distance) : prev.distance,
+                is_simulator: plan.is_simulator ?? prev.is_simulator,
+                notes: prev.notes || plan.notes || '',
+                // Planned, not flown: save it as a draft and finish it after the flight.
+                is_draft: true,
+            }));
+            setPlanStatus([`Loaded ${callsign}, ${plan.departure_airport} → ${plan.arrival_airport}. Times are the planned ones.`, ...warnings].join(' '));
+        } catch (e) {
+            setPlanStatus(e instanceof Error ? e.message : 'Could not read that flight plan');
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -192,6 +220,7 @@ export default function FlightForm({
         data.append('distance', form.distance.trim() || '0');
         data.append('is_simulator', String(form.is_simulator));
         data.append('cross_country', String(form.cross_country));
+        data.append('is_draft', String(form.is_draft));
         for (const [key, label] of TIME_FIELDS) {
             const parsed = parseDurationInput(form[key]);
             if (parsed === null) {
@@ -219,7 +248,7 @@ export default function FlightForm({
         </div>
     );
 
-    const toggle = (name: 'is_simulator' | 'cross_country', label: string, hint: string) => (
+    const toggle = (name: 'is_simulator' | 'cross_country' | 'is_draft', label: string, hint: string) => (
         <label htmlFor={name} className="flex cursor-pointer items-start gap-3 rounded-lg border border-line px-4 py-3 transition-colors hover:border-ash/60">
             <input type="checkbox" id={name} name={name} checked={form[name]} onChange={handleChange} className="mt-1 h-4 w-4 accent-[var(--color-moss)]" />
             <span>
@@ -251,6 +280,33 @@ export default function FlightForm({
                         Load latest flight plan
                     </button>
                 </div>
+            )}
+
+            {!flight && (
+                <label
+                    htmlFor="flight_plan_pdf"
+                    className="card flex cursor-pointer items-center gap-4 p-5 transition-colors hover:border-moss/60 focus-within:border-moss sm:p-6"
+                >
+                    <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-graphite text-moss">
+                        <UploadIcon className="h-5 w-5" />
+                    </span>
+                    <span className="min-w-0">
+                        <span className="block text-sm text-bone">Start from a flight plan PDF</span>
+                        <span className="block text-xs text-ash" aria-live="polite">
+                            {planStatus || 'A SimBrief OFP or any plan with an ICAO flight plan page. It’s saved as a draft for you to finish after the flight; the PDF isn’t kept.'}
+                        </span>
+                    </span>
+                    <input
+                        type="file"
+                        id="flight_plan_pdf"
+                        accept="application/pdf,.pdf"
+                        onChange={(e) => {
+                            importPlan(e.target.files?.[0]);
+                            e.target.value = '';
+                        }}
+                        className="sr-only"
+                    />
+                </label>
             )}
 
             <fieldset className="card p-5 sm:p-6">
@@ -339,6 +395,7 @@ export default function FlightForm({
                 <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
                     {toggle('is_simulator', 'Simulator session', 'Flown in a sim. Doesn’t count towards passenger currency.')}
                     {toggle('cross_country', 'Cross-country', 'Counts towards cross-country time.')}
+                    {(form.is_draft || flight?.is_draft) && toggle('is_draft', 'Draft', 'Planned, not flown yet. Left out of your totals until you untick this.')}
                 </div>
 
                 <label
@@ -439,7 +496,7 @@ export default function FlightForm({
             <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
                 <Link href={cancelHref} className="btn btn-ghost">Cancel</Link>
                 <button type="submit" className="btn btn-primary px-6" disabled={saving}>
-                    {saving ? 'Saving…' : submitLabel}
+                    {saving ? 'Saving…' : form.is_draft ? 'Save draft' : flight?.is_draft ? 'Save to logbook' : submitLabel}
                 </button>
             </div>
         </form>
