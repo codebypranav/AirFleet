@@ -166,8 +166,10 @@ The demo runs entirely on free tiers: Neon (Postgres), Render (Django API) and V
 To reset the demo data, use Neon's branch reset (or drop and recreate the database);
 the next Render start re-creates the schema.
 
-Uploaded flight photos are stored on the instance's local disk, so they don't persist
-across restarts yet.
+Flight photos go to the private `photos` bucket in Neon Object Storage (declared in
+`neon.ts`). Set `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_ENDPOINT_URL_S3` and
+`AWS_REGION` on Render (`neon link` writes them to `.env.local`); the API then returns
+short-lived signed photo URLs. Without them, photos fall back to local disk.
 
 ## Usage flow
 

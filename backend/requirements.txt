@@ -13,6 +13,10 @@ django-cors-headers==4.9.0
 # Image handling
 Pillow==12.3.0
 
+# Photo storage (Neon Object Storage, S3-compatible)
+django-storages[s3]==1.14.6
+boto3==1.43.108
+
 # JWT Authentication
 djangorestframework-simplejwt==5.5.1
 

@@ -26,3 +26,12 @@ services:
         generateValue: true
       - key: OPENAI_MODEL
         value: gpt-4o-mini
+      # Neon Object Storage for flight photos (from `neon link` / .env.local)
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_ENDPOINT_URL_S3
+        sync: false
+      - key: AWS_REGION
+        value: us-east-2

@@ -20,6 +20,11 @@ interface Flight {
     photo?: string;
 }
 
+// The API returns a full signed URL when photos live in object storage,
+// and a /media/... path when they're on the backend's local disk.
+const photoUrl = (photo: string) =>
+    /^https?:\/\//.test(photo) ? photo : `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}${photo}`;
+
 export default function FlightsPage() {
     const [flights, setFlights] = useState<Flight[]>([]);
     const router = useRouter();
@@ -80,11 +85,14 @@ export default function FlightsPage() {
                                     </p>
                                 </div>
                                 {flight.photo && (
-                                    <Image 
-                                        src={`${process.env.NEXT_PUBLIC_API_URL}${flight.photo}`}
-                                        alt="Flight photo" 
+                                    <Image
+                                        src={photoUrl(flight.photo)}
+                                        alt="Flight photo"
                                         width={128}
                                         height={128}
+                                        // Photos are short-lived signed links from Neon Object Storage,
+                                        // so the browser loads them directly instead of via the optimizer.
+                                        unoptimized
                                         className="object-cover rounded-sm"
                                     />
                                 )}

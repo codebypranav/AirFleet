@@ -129,3 +129,29 @@ class CorsTests(APITestCase):
             'http://airfleet-git-main-x.vercel.app',
         ]:
             self.assertIsNone(self.preflight(origin), origin)
+
+
+@override_settings(STORAGES={
+    'default': {'BACKEND': 'django.core.files.storage.InMemoryStorage'},
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+})
+class PhotoUploadTests(APITestCase):
+    def test_flight_with_photo(self):
+        import io
+        from PIL import Image
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        self.client.post('/api/register/', {
+            'username': 'pilot', 'email': 'pilot@example.com',
+            'password': 'Sup3r-secret-pw', 'password2': 'Sup3r-secret-pw',
+        }, format='json')
+        token = self.client.post('/api/login/', {'username': 'pilot', 'password': 'Sup3r-secret-pw'}, format='json').data['access']
+        self.client.credentials(HTTP_AUTHORIZATION=f'Bearer {token}')
+
+        buf = io.BytesIO()
+        Image.new('RGB', (4, 4), 'blue').save(buf, 'PNG')
+        photo = SimpleUploadedFile('runway.png', buf.getvalue(), content_type='image/png')
+        res = self.client.post('/api/flights/', {**FLIGHT, 'photo': photo}, format='multipart')
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertIn('flight_photos/runway', res.data['photo'])
+        self.assertTrue(Flight.objects.get().photo.storage.exists(Flight.objects.get().photo.name))
