@@ -6,6 +6,8 @@ services:
     name: airfleet-api
     runtime: docker
     plan: free
+    # Same area as the Neon database (AWS us-east-2). Only applies when the service is created.
+    region: ohio
     dockerfilePath: ./backend/Dockerfile
     dockerContext: ./backend
     healthCheckPath: /api/rankings/
