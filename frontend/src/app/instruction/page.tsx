@@ -4,9 +4,10 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { CheckIcon } from '@/components/Icons';
 import { EmptyState, ErrorState, PageHeader, PageShell, Section, Spinner } from '@/components/PageShell';
+import { ENDORSEMENT_NOTE, EndorsementCard } from '@/components/Endorsements';
 import { DISCLAIMER } from '@/components/Signature';
 import type { InstructorLink } from '@/types/flight';
-import { acceptLink, endLink, getInstructorLinks, getProfile, inviteToLink } from '@/utils/api';
+import { acceptLink, endLink, getInstructorLinks, getMyEndorsements, getProfile, inviteToLink } from '@/utils/api';
 import { formatDate } from '@/utils/format';
 import { useApi } from '@/utils/useApi';
 
@@ -127,6 +128,7 @@ function LinkRow({ link, onChange }: { link: InstructorLink; onChange: () => voi
 export default function InstructionPage() {
     const { data: links, error, reload } = useApi(getInstructorLinks);
     const { data: profile } = useApi(getProfile);
+    const { data: endorsements } = useApi(getMyEndorsements);
 
     const invitations = links?.filter((l) => l.awaiting_my_response) ?? [];
     const instructors = links?.filter((l) => l.role === 'student' && !l.awaiting_my_response) ?? [];
@@ -167,6 +169,15 @@ export default function InstructionPage() {
                     {group('My instructors', instructors)}
                     {group('My students', students)}
                 </>
+            )}
+
+            {endorsements && endorsements.length > 0 && (
+                <Section title="My endorsements">
+                    <ul className="space-y-3">
+                        {endorsements.map((e) => <EndorsementCard key={e.id} endorsement={e} />)}
+                    </ul>
+                    <p className="mt-3 text-xs text-ash">{ENDORSEMENT_NOTE}</p>
+                </Section>
             )}
 
             <p className="mt-12 text-xs text-ash">{DISCLAIMER}</p>

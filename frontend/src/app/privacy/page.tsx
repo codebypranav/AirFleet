@@ -29,7 +29,7 @@ export default function PrivacyPage() {
                         <Item title="Account">username, email, name, bio and home airport, plus a hashed password (never the password itself).</Item>
                         <Item title="Flights">airports, dates and times, aircraft registrations, logbook times, weather, notes, flight plans, photos and generated stories. Together these are a record of where and when you flew.</Item>
                         <Item title="Aircraft">registrations, types, hours and maintenance dates you enter.</Item>
-                        <Item title="Instruction">who your instructors and students are, and each sign-off: the instructor&apos;s name, certificate number and expiry, their remarks, and a copy of the flight&apos;s logbook fields as signed.</Item>
+                        <Item title="Instruction">who your instructors and students are; each sign-off, with the instructor&apos;s name, certificate number and expiry, their remarks and a copy of the flight&apos;s logbook fields as signed; and endorsements, with their wording, dates and the same instructor details. Withdrawn sign-offs and endorsements are kept, marked withdrawn, with the reason given.</Item>
                         <Item title="Flight plan PDFs">read once to fill in a draft flight, then discarded. The PDF isn&apos;t stored and isn&apos;t sent to anyone else; only the fields you save are kept.</Item>
                         <Item title="Cookies">only the sign-in tokens that keep you logged in. No advertising or tracking cookies.</Item>
                     </ul>
@@ -55,8 +55,9 @@ export default function PrivacyPage() {
                     <p className="text-stone">
                         An instructor you link with can see your flights that have dual received time: route, times, aircraft,
                         logbook columns, landings and approaches. Not your notes, photos, stories or other flights. Unlinking
-                        stops that straight away. A sign-off stays on your flight, with the instructor&apos;s name and
-                        certificate number, even if they later delete their account.
+                        stops that straight away. They also see the endorsements they have given you, and no one else&apos;s.
+                        Sign-offs and endorsements stay on your record, with the instructor&apos;s name and certificate
+                        number, even if they later delete their account. Your CSV export includes who signed each flight.
                     </p>
                 </Section>
 

@@ -12,9 +12,17 @@ EXPORT_FIELDS = [
     'pic_time', 'sic_time', 'dual_received_time', 'night_time', 'instrument_time', 'simulated_instrument_time',
     'day_landings', 'night_landings', 'approaches', 'cross_country', 'is_simulator',
     'departure_gate', 'arrival_gate', 'flight_plan', 'weather_conditions', 'notes', 'narrative',
+    'instructor_name', 'instructor_certificate', 'instructor_signed_at', 'signature_status',
 ]
-# Read back on import; aircraft_type and narrative are informational only.
-IMPORT_FIELDS = [f for f in EXPORT_FIELDS if f not in ('aircraft_type', 'narrative')]
+# From the flight's latest instructor signature. Informational: a signature can't be imported.
+SIGNATURE_FIELDS = {
+    'instructor_name': 'instructor_name',
+    'instructor_certificate': 'certificate_number',
+    'instructor_signed_at': 'signed_at',
+    'signature_status': 'status',
+}
+# Read back on import; aircraft_type, narrative and the signature columns are informational only.
+IMPORT_FIELDS = [f for f in EXPORT_FIELDS if f not in ('aircraft_type', 'narrative', *SIGNATURE_FIELDS)]
 
 FOREFLIGHT_CLASSES = {
     'airplane_single_engine_land': 'SEL',
@@ -30,8 +38,10 @@ def export_csv(flights):
     out = io.StringIO()
     writer = csv.DictWriter(out, fieldnames=EXPORT_FIELDS, extrasaction='ignore')
     writer.writeheader()
-    for flight in flights.select_related('aircraft'):
+    for flight in flights.select_related('aircraft').prefetch_related('signatures'):
         row = FlightSerializer(flight).data
+        signature = row.get('signature') or {}
+        row.update({column: signature.get(key, '') for column, key in SIGNATURE_FIELDS.items()})
         writer.writerow({field: row.get(field, '') for field in EXPORT_FIELDS})
     return out.getvalue()
 

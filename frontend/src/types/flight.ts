@@ -48,17 +48,47 @@ export interface Flight {
     updated_at: string;
 }
 
-/** An instructor's sign-off. "invalidated" once a signed field of the flight is edited. */
-export interface Signature {
+/** Fields shared by signatures and endorsements: who gave it, and whether they took it back. */
+interface InstructorRecord {
     id: number;
     instructor_name: string;
     certificate_number: string;
     certificate_expires: string | null;
+    signed_at: string;
+    withdrawn_at: string | null;
+    withdrawal_reason: string;
+    /** True for the instructor who gave it, until they withdraw it. */
+    withdrawable: boolean;
+}
+
+/** An instructor's sign-off. "invalidated" once a signed field of the flight is edited. */
+export interface Signature extends InstructorRecord {
     statement: string;
     remarks: string;
-    signed_at: string;
-    status: 'valid' | 'invalidated';
+    status: 'valid' | 'invalidated' | 'withdrawn';
     changed_fields: string[];
+}
+
+export interface Endorsement extends InstructorRecord {
+    kind: string;
+    title: string;
+    regulation: string;
+    text: string;
+    aircraft: string;
+    student: string;
+    given_on: string;
+    expires_on: string | null;
+    status: 'current' | 'expired' | 'withdrawn';
+}
+
+/** A kind of endorsement with a starting draft; {student} and {aircraft} are blanks to fill. */
+export interface EndorsementKind {
+    kind: string;
+    title: string;
+    regulation: string;
+    draft: string;
+    needs_aircraft: boolean;
+    validity: ['days' | 'calendar_months', number] | null;
 }
 
 export interface InstructorLink {

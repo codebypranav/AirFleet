@@ -2,10 +2,12 @@
 
 import { use, useState } from 'react';
 import Link from 'next/link';
-import { EmptyState, ErrorState, PageHeader, PageShell, Spinner } from '@/components/PageShell';
+import { ENDORSEMENT_NOTE, EndorsementCard, GiveEndorsementForm } from '@/components/Endorsements';
+import { PlusIcon } from '@/components/Icons';
+import { EmptyState, ErrorState, PageHeader, PageShell, Section, Spinner } from '@/components/PageShell';
 import { DISCLAIMER, SignatureDetails } from '@/components/Signature';
-import type { Signature, StudentFlight } from '@/types/flight';
-import { getInstructorLinks, getStudentFlights, signFlight } from '@/utils/api';
+import type { Endorsement, Signature, StudentFlight } from '@/types/flight';
+import { getInstructorLinks, getStudentEndorsements, getStudentFlights, signFlight } from '@/utils/api';
 import { durationToSeconds, formatDate, formatDuration, formatTime } from '@/utils/format';
 import { useApi } from '@/utils/useApi';
 
@@ -107,9 +109,54 @@ function LessonCard({ flight, onSigned }: { flight: StudentFlight; onSigned: (si
                     </div>
                 ))}
             </dl>
-            {flight.signature && <SignatureDetails signature={flight.signature} viewer="instructor" />}
+            {flight.signature && <SignatureDetails signature={flight.signature} viewer="instructor" onChange={onSigned} />}
             {needsSignature && <SignForm flight={flight} onSigned={onSigned} />}
         </li>
+    );
+}
+
+function StudentEndorsements({ linkId, student }: { linkId: string; student: string }) {
+    const { data: endorsements, error, reload, setData } = useApi(() => getStudentEndorsements(linkId), linkId);
+    const [giving, setGiving] = useState(false);
+    const replace = (updated: Endorsement) =>
+        setData((current) => current && current.map((e) => (e.id === updated.id ? updated : e)));
+
+    return (
+        <Section
+            title="Endorsements you've given"
+            action={!giving && (
+                <button onClick={() => setGiving(true)} className="btn btn-ghost px-3 py-1 text-xs">
+                    <PlusIcon className="h-3.5 w-3.5" />
+                    Endorse
+                </button>
+            )}
+        >
+            {giving && (
+                <div className="mb-6">
+                    <GiveEndorsementForm
+                        linkId={linkId}
+                        student={student}
+                        onCancel={() => setGiving(false)}
+                        onGiven={(endorsement) => {
+                            setData((current) => [endorsement, ...(current ?? [])]);
+                            setGiving(false);
+                        }}
+                    />
+                </div>
+            )}
+            {error ? (
+                <ErrorState message={error} onRetry={reload} />
+            ) : !endorsements ? (
+                <Spinner label="Finding endorsements" />
+            ) : endorsements.length === 0 ? (
+                !giving && <p className="text-sm text-ash">None yet. Solo, cross-country, checkride and other endorsements go here.</p>
+            ) : (
+                <ul className="space-y-3">
+                    {endorsements.map((e) => <EndorsementCard key={e.id} endorsement={e} onChange={replace} />)}
+                </ul>
+            )}
+            <p className="mt-3 text-xs text-ash">{ENDORSEMENT_NOTE}</p>
+        </Section>
     );
 }
 
@@ -136,50 +183,55 @@ export default function StudentLessonsPage({ params }: { params: Promise<{ id: s
             <PageHeader
                 eyebrow="Instruction · Student"
                 title={student ? student.name : 'Lessons'}
-                description="Flights where your student logged dual instruction received. Check each entry, then sign it."
+                description="Sign your student's lessons and give them endorsements."
                 action={<Link href="/instruction" className="btn btn-ghost">All students</Link>}
             />
-            <label htmlFor="unsigned_only" className="mb-6 flex cursor-pointer items-center gap-3 text-sm text-stone">
-                <input
-                    type="checkbox"
-                    id="unsigned_only"
-                    checked={unsignedOnly}
-                    onChange={(e) => {
-                        setUnsignedOnly(e.target.checked);
-                        setPage(1);
-                    }}
-                    className="h-4 w-4 accent-[var(--color-moss)]"
-                />
-                Only lessons waiting for a signature
-            </label>
+            {student && <StudentEndorsements linkId={id} student={student.name} />}
 
-            {flights.error ? (
-                <ErrorState message={flights.error} onRetry={flights.reload} />
-            ) : !flights.data ? (
-                <Spinner label="Opening the lessons" />
-            ) : flights.data.results.length === 0 ? (
-                <EmptyState title={unsignedOnly ? 'All signed' : 'No lessons yet'}>
-                    <p>
-                        {unsignedOnly
-                            ? 'Nothing is waiting for your signature.'
-                            : 'Flights your student logs with dual received time will show up here.'}
-                    </p>
-                </EmptyState>
-            ) : (
-                <ol className={`space-y-4 transition-opacity ${flights.loading ? 'opacity-60' : ''}`}>
-                    {flights.data.results.map((flight) => (
-                        <LessonCard key={flight.id} flight={flight} onSigned={(signature) => markSigned(flight.id, signature)} />
-                    ))}
-                </ol>
-            )}
+            <Section title="Lessons">
+                <p className="mb-4 text-sm text-stone">Flights where your student logged dual instruction received. Check each entry, then sign it.</p>
+                <label htmlFor="unsigned_only" className="mb-6 flex cursor-pointer items-center gap-3 text-sm text-stone">
+                    <input
+                        type="checkbox"
+                        id="unsigned_only"
+                        checked={unsignedOnly}
+                        onChange={(e) => {
+                            setUnsignedOnly(e.target.checked);
+                            setPage(1);
+                        }}
+                        className="h-4 w-4 accent-[var(--color-moss)]"
+                    />
+                    Only lessons waiting for a signature
+                </label>
 
-            {pages > 1 && (
-                <nav className="mt-8 flex items-center justify-between gap-4" aria-label="Lesson pages">
-                    <button onClick={() => setPage((p) => p - 1)} disabled={page <= 1} className="btn btn-ghost">← Newer</button>
-                    <span className="eyebrow">Page {page} of {pages}</span>
-                    <button onClick={() => setPage((p) => p + 1)} disabled={page >= pages} className="btn btn-ghost">Older →</button>
-                </nav>
-            )}
+                {flights.error ? (
+                    <ErrorState message={flights.error} onRetry={flights.reload} />
+                ) : !flights.data ? (
+                    <Spinner label="Opening the lessons" />
+                ) : flights.data.results.length === 0 ? (
+                    <EmptyState title={unsignedOnly ? 'All signed' : 'No lessons yet'}>
+                        <p>
+                            {unsignedOnly
+                                ? 'Nothing is waiting for your signature.'
+                                : 'Flights your student logs with dual received time will show up here.'}
+                        </p>
+                    </EmptyState>
+                ) : (
+                    <ol className={`space-y-4 transition-opacity ${flights.loading ? 'opacity-60' : ''}`}>
+                        {flights.data.results.map((flight) => (
+                            <LessonCard key={flight.id} flight={flight} onSigned={(signature) => markSigned(flight.id, signature)} />
+                        ))}
+                    </ol>
+                )}
+
+                {pages > 1 && (
+                    <nav className="mt-8 flex items-center justify-between gap-4" aria-label="Lesson pages">
+                        <button onClick={() => setPage((p) => p - 1)} disabled={page <= 1} className="btn btn-ghost">← Newer</button>
+                        <span className="eyebrow">Page {page} of {pages}</span>
+                        <button onClick={() => setPage((p) => p + 1)} disabled={page >= pages} className="btn btn-ghost">Older →</button>
+                    </nav>
+                )}
+            </Section>
 
             <p className="mt-12 text-xs text-ash">{DISCLAIMER}</p>
         </PageShell>

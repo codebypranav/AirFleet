@@ -17,10 +17,11 @@ from rest_framework.views import APIView
 
 from flights.models import Flight
 from flights.views import FlightPagination
-from .models import InstructorLink, Signature, attestation, flight_snapshot, snapshot_hash
+from . import endorsements
+from .models import Endorsement, InstructorLink, Signature, attestation, flight_snapshot, snapshot_hash
 from .serializers import (
-    InstructorLinkSerializer, InviteSerializer, SignatureSerializer, SignSerializer, StudentFlightSerializer,
-    display_name, latest_signature,
+    EndorsementSerializer, GiveEndorsementSerializer, InstructorLinkSerializer, InviteSerializer, SignatureSerializer,
+    SignSerializer, StudentFlightSerializer, WithdrawSerializer, display_name, latest_signature,
 )
 
 logger = logging.getLogger(__name__)
@@ -32,16 +33,26 @@ class InviteThrottle(UserRateThrottle):
 
 
 def dual_flights(student):
-    """The flights an instructor can see and sign: those with dual instruction received."""
+    """The flights an instructor can see and sign: logged (not draft) flights with dual instruction received."""
     return (
-        Flight.objects.filter(user=student, dual_received_time__gt=timedelta(0))
+        Flight.objects.logged().filter(user=student, dual_received_time__gt=timedelta(0))
         .select_related('aircraft', 'user').prefetch_related('signatures')
     )
 
 
 def needs_signature(flight):
     signature = latest_signature(flight)
-    return signature is None or not signature.is_valid(flight)
+    return signature is None or not signature.holds(flight)
+
+
+def certificate_problem(instructor, on_date):
+    """Why `instructor` can't sign or endorse today for something dated `on_date`, or None."""
+    if not instructor.instructor_certificate_number:
+        return "Add your instructor certificate number on your profile first."
+    expires = instructor.instructor_certificate_expires
+    if expires and expires < max(timezone.localdate(), on_date):
+        return f"Your instructor certificate on file expired on {expires:%Y-%m-%d}."
+    return None
 
 
 def my_links(user):
@@ -134,7 +145,9 @@ def end_link(request, pk):
 
 
 def student_of(request, pk):
-    link = get_object_or_404(InstructorLink, pk=pk, instructor=request.user, status=InstructorLink.ACTIVE)
+    link = get_object_or_404(
+        InstructorLink.objects.select_related('student'), pk=pk, instructor=request.user, status=InstructorLink.ACTIVE,
+    )
     return link.student
 
 
@@ -156,24 +169,21 @@ def sign_flight(request, pk):
     """Sign a student's dual flight. Records the entry as it stands and the instructor's certificate."""
     instructor = request.user
     students = InstructorLink.objects.filter(instructor=instructor, status=InstructorLink.ACTIVE).values('student')
-    flight = get_object_or_404(Flight.objects.select_related('user'), pk=pk, user__in=students)
+    flight = get_object_or_404(Flight.objects.logged().select_related('user'), pk=pk, user__in=students)
 
     serializer = SignSerializer(data=request.data, context={'request': request})
     serializer.is_valid(raise_exception=True)
 
     if not flight.dual_received_time:
         return Response({'error': "Only flights with dual instruction received can be signed."}, status=400)
-    if not instructor.instructor_certificate_number:
-        return Response({'error': "Add your instructor certificate number on your profile first."}, status=400)
-    expires = instructor.instructor_certificate_expires
-    if expires and expires < max(timezone.now().date(), flight.departure_time.date()):
-        return Response({'error': f"Your instructor certificate on file expired on {expires:%Y-%m-%d}."}, status=400)
+    if problem := certificate_problem(instructor, flight.departure_time.date()):
+        return Response({'error': problem}, status=400)
 
     with transaction.atomic():
         # Lock the flight so a concurrent edit can't slip between the snapshot and the save.
         flight = Flight.objects.select_for_update().select_related('user').get(pk=flight.pk)
         current = flight.signatures.first()
-        if current and current.is_valid(flight):
+        if current and current.holds(flight):
             return Response({'error': f"Already signed by {current.instructor_name}."}, status=409)
         snapshot = flight_snapshot(flight)
         signature = Signature.objects.create(
@@ -181,11 +191,91 @@ def sign_flight(request, pk):
             instructor=instructor,
             instructor_name=display_name(instructor),
             certificate_number=instructor.instructor_certificate_number,
-            certificate_expires=expires,
+            certificate_expires=instructor.instructor_certificate_expires,
             statement=attestation(flight, instructor),
             remarks=serializer.validated_data.get('remarks', ''),
             flight_snapshot=snapshot,
             flight_hash=snapshot_hash(snapshot),
         )
     logger.info("Instructor %s signed flight %s", instructor.pk, flight.pk)
-    return Response(SignatureSerializer(signature).data, status=201)
+    return Response(SignatureSerializer(signature, context={'request': request}).data, status=201)
+
+
+def withdraw(request, record):
+    """Mark a signature or endorsement withdrawn, or return an error response.
+
+    The record stays so both sides can see what was withdrawn and why.
+    """
+    serializer = WithdrawSerializer(data=request.data, context={'request': request})
+    serializer.is_valid(raise_exception=True)
+    if record.withdrawn_at:
+        return Response({'error': "Already withdrawn."}, status=409)
+    record.withdrawn_at = timezone.now()
+    record.withdrawal_reason = serializer.validated_data.get('reason', '').strip()
+    record.save(update_fields=['withdrawn_at', 'withdrawal_reason'])
+    logger.info("Instructor %s withdrew %s %s", request.user.pk, type(record).__name__, record.pk)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def withdraw_signature(request, pk):
+    """Only the instructor who signed can withdraw, whether or not they're still linked."""
+    signature = get_object_or_404(Signature.objects.select_related('flight'), pk=pk, instructor=request.user)
+    if error := withdraw(request, signature):
+        return error
+    return Response(SignatureSerializer(signature, context={'request': request}).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def endorsement_kinds(request):
+    return Response(endorsements.catalogue())
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_endorsements(request):
+    """Endorsements I've received, newest first, withdrawn ones included."""
+    received = Endorsement.objects.filter(student=request.user).select_related('student')
+    return Response(EndorsementSerializer(received, many=True, context={'request': request}).data)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def student_endorsements(request, pk):
+    """GET: the endorsements I've given this student. POST: give one."""
+    student = student_of(request, pk)
+    instructor = request.user
+    if request.method == 'GET':
+        given = Endorsement.objects.filter(student=student, instructor=instructor).select_related('student')
+        return Response(EndorsementSerializer(given, many=True, context={'request': request}).data)
+
+    serializer = GiveEndorsementSerializer(data=request.data, context={'request': request})
+    serializer.is_valid(raise_exception=True)
+    data = serializer.validated_data
+    if problem := certificate_problem(instructor, data['given_on']):
+        return Response({'error': problem}, status=400)
+    endorsement = Endorsement.objects.create(
+        student=student,
+        instructor=instructor,
+        instructor_name=display_name(instructor),
+        certificate_number=instructor.instructor_certificate_number,
+        certificate_expires=instructor.instructor_certificate_expires,
+        kind=data['kind'],
+        title=data['title'],
+        text=data['text'],
+        aircraft=data['aircraft'],
+        given_on=data['given_on'],
+        expires_on=endorsements.expiry(data['kind'], data['given_on']),
+    )
+    logger.info("Instructor %s endorsed user %s (%s)", instructor.pk, student.pk, endorsement.kind)
+    return Response(EndorsementSerializer(endorsement, context={'request': request}).data, status=201)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def withdraw_endorsement(request, pk):
+    endorsement = get_object_or_404(Endorsement.objects.select_related('student'), pk=pk, instructor=request.user)
+    if error := withdraw(request, endorsement):
+        return error
+    return Response(EndorsementSerializer(endorsement, context={'request': request}).data)

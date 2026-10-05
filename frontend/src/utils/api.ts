@@ -1,7 +1,7 @@
 import Cookies from 'js-cookie';
 import type {
-    Achievement, Aircraft, Airport, Currency, Flight, FlightPlanDraft, ImportResult, InstructorLink, Paginated, Profile,
-    PublicFlight, PublicPilot, RouteMapData, Signature, Stats, StudentFlight,
+    Achievement, Aircraft, Airport, Currency, Endorsement, EndorsementKind, Flight, FlightPlanDraft, ImportResult,
+    InstructorLink, Paginated, Profile, PublicFlight, PublicPilot, RouteMapData, Signature, Stats, StudentFlight,
 } from '@/types/flight';
 
 const ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/+$/, '').replace(/\/api$/, '');
@@ -201,5 +201,19 @@ export const getStudentFlights = (linkId: number | string, params: { unsigned?: 
     apiJson<Paginated<StudentFlight>>(`/instruction/links/${linkId}/flights/${query(params)}`);
 export const signFlight = (flightId: number, data: { remarks: string; agree: boolean; password: string }) =>
     apiJson<Signature>(`/instruction/flights/${flightId}/sign/`, { method: 'POST', json: data });
+export const withdrawSignature = (id: number, data: { reason: string; password: string }) =>
+    apiJson<Signature>(`/instruction/signatures/${id}/withdraw/`, { method: 'POST', json: data });
+
+export const getEndorsementKinds = () => apiJson<EndorsementKind[]>('/instruction/endorsements/kinds/');
+export const getMyEndorsements = () => apiJson<Endorsement[]>('/instruction/endorsements/');
+export const getStudentEndorsements = (linkId: number | string) => apiJson<Endorsement[]>(`/instruction/links/${linkId}/endorsements/`);
+export type EndorsementInput = {
+    kind: string; title: string; text: string; aircraft: string; given_on: string; agree: boolean; password: string;
+};
+export const giveEndorsement = (linkId: number | string, data: EndorsementInput) =>
+    apiJson<Endorsement>(`/instruction/links/${linkId}/endorsements/`, { method: 'POST', json: data });
+export const withdrawEndorsement = (id: number, data: { reason: string; password: string }) =>
+    apiJson<Endorsement>(`/instruction/endorsements/${id}/withdraw/`, { method: 'POST', json: data });
+
 export const getPublicPilot = (username: string) => apiJson<PublicPilot>(`/pilots/${encodeURIComponent(username)}/`, { auth: false });
 export const getPublicFlight = (id: number | string) => apiJson<PublicFlight>(`/public/flights/${id}/`, { auth: false });

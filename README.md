@@ -41,7 +41,8 @@ The system is meant to function as a lightweight aviation workspace with:
 - **Rankings:** by flights, time, distance, longest flight and airports visited, for all
   time, this year or this month.
 - **Instructor sign-off:** a pilot links with their instructor by invitation (either side
-  invites, the other accepts), and the instructor signs lessons with dual received time.
+  invites, the other accepts), and the instructor signs lessons with dual received time, gives
+  endorsements (solo, checkride, flight review and so on), and can withdraw either.
   Instructing is a capability, not an account type: anyone who adds an instructor certificate
   to their profile can be invited as one and still logs their own flights. See
   [Instructor sign-off](#instructor-sign-off).
@@ -135,10 +136,26 @@ signature shows as **invalidated**, with the fields that changed, until the inst
 the values are put back). Notes, photos, weather and stories aren't signed and can change freely. A
 signature stays on the student's flight if the instructor unlinks or deletes their account.
 
+The instructor who signed can **withdraw** a signature (`POST /api/instruction/signatures/<id>/withdraw/`)
+with an optional reason and their password, even after unlinking. Nothing is deleted: the signature
+is marked withdrawn, the student sees when and why, and the lesson can be signed again.
+
+**Endorsements** (`Endorsement`) are given by a linked instructor to their student
+(`POST /api/instruction/links/<id>/endorsements/`): pre-solo, solo, solo cross-country, knowledge test,
+practical test, flight review, IPC, complex, high-performance, tailwheel, or a custom one. Each kind
+has a plain-language starting draft (`instruction/endorsements.py`) that the instructor edits before
+signing; it is not the wording of AC 61-65. An endorsement records the same instructor details as a
+signature, the date given, and an expiry where the kind has one (solo: 90 days; practical test: 2
+calendar months; flight review: 24 calendar months). Students see theirs on the Instruction page, the
+instructor sees the ones they gave, and the instructor can withdraw one the same way as a signature.
+
+The **CSV export** adds `instructor_name`, `instructor_certificate`, `instructor_signed_at` and
+`signature_status` (`valid`, `invalidated` or `withdrawn`) from each flight's latest signature. They are
+ignored on import: a signature can't be imported.
+
 AirFleet calls this **instructor-verified**. It is not presented as a signature that satisfies
 14 CFR 61.51(h) or the FAA's guidance on electronic signatures (AC 120-78A), and the hash is change
-detection, not tamper-proofing against someone with database access. Endorsements (solo, checkride
-and so on) would be a natural next step on the same model.
+detection, not tamper-proofing against someone with database access.
 
 ## Repository structure
 
