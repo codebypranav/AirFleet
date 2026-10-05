@@ -1,27 +1,23 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+// Signed-in pilots skip these and go straight to their logbook.
+const GUEST_ONLY = new Set(['/', '/login', '/register'])
+// Open to everyone, signed in or not.
+const PUBLIC_PREFIXES = ['/forgot-password', '/reset-password', '/auth/complete', '/pilots/', '/share/', '/home_bg.jpg']
+
 export function proxy(request: NextRequest) {
-    // Get the pathname of the request (e.g. /, /protected)
     const path = request.nextUrl.pathname
-    console.log('Proxy processing path:', path);
+    // A refresh token is enough: the client swaps it for a fresh access token on its first request.
+    const signedIn = Boolean(request.cookies.get('accessToken')?.value || request.cookies.get('refreshToken')?.value)
 
-    // Public paths that don't require authentication
-    const isPublicPath = path === '/login' || path === '/register' || path === '/' || path === '/home_bg.jpg'
-
-    // Get the token from cookies
-    const token = request.cookies.get('accessToken')?.value
-    console.log('Token found:', !!token);
-
-    // If the path is public and user is logged in, redirect to /flights
-    if (isPublicPath && token && path !== '/home_bg.jpg') {
-        console.log('Redirecting to /flights');
-        return NextResponse.redirect(new URL('/flights', request.url))
+    if (GUEST_ONLY.has(path)) {
+        return signedIn ? NextResponse.redirect(new URL('/flights', request.url)) : undefined
     }
-
-    // If the path is protected and user is not logged in, redirect to /login
-    if (!isPublicPath && !token) {
-        console.log('Redirecting to /login');
+    if (PUBLIC_PREFIXES.some((prefix) => path.startsWith(prefix))) {
+        return undefined
+    }
+    if (!signedIn) {
         return NextResponse.redirect(new URL('/login', request.url))
     }
 }
@@ -38,4 +34,4 @@ export const config = {
          */
         '/((?!api|_next/static|_next/image|favicon.ico|icon.svg).*)',
     ],
-} 
+}

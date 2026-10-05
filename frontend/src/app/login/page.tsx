@@ -3,13 +3,9 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from 'next/link';
-import Cookies from 'js-cookie';
 import AuthLayout from '@/components/AuthLayout';
-
-// Use environment variable with fallback - don't add /api as it might already be in the URL
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-// Check if the URL already ends with /api to avoid duplication
-const BASE_URL = apiUrl.endsWith('/api') ? apiUrl : `${apiUrl}/api`;
+import GoogleButton from '@/components/GoogleButton';
+import { apiJson, saveTokens } from '@/utils/api';
 
 export default function LoginPage() {
     const router = useRouter();
@@ -22,30 +18,11 @@ export default function LoginPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError("");
-        console.log('Login attempt started');
 
         try {
-            const response = await fetch(`${BASE_URL}/login/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            });
-
-            const data = await response.json();
-            console.log('Login response:', data);
-
-            if (!response.ok) {
-                throw new Error(data.error || 'Login failed');
-            }
-
-            // Store tokens in cookies instead of localStorage
-            Cookies.set('accessToken', data.access, { secure: true, sameSite: 'strict' });
-            Cookies.set('refreshToken', data.refresh, { secure: true, sameSite: 'strict' });
+            saveTokens(await apiJson<{ access: string; refresh: string }>('/login/', { method: 'POST', json: formData, auth: false }));
             router.push('/flights');
         } catch (err) {
-            console.error('Login error:', err);
             setError(err instanceof Error ? err.message : 'Login failed');
         }
     }
@@ -69,7 +46,10 @@ export default function LoginPage() {
                 </div>
 
                 <div>
-                    <label htmlFor="password" className="field-label">Password</label>
+                    <div className="flex items-baseline justify-between">
+                        <label htmlFor="password" className="field-label">Password</label>
+                        <Link href="/forgot-password" className="text-xs text-fern underline-offset-4 hover:underline">Forgot it?</Link>
+                    </div>
                     <input
                         type="password"
                         id="password"
@@ -84,6 +64,8 @@ export default function LoginPage() {
                 <button type="submit" className="btn btn-primary mt-2 w-full py-3">
                     Sign in
                 </button>
+
+                <GoogleButton />
 
                 <p className="text-center text-sm text-ash">
                     Don&apos;t have an account?{' '}

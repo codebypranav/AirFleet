@@ -1,6 +1,7 @@
 "use client";
 
 import Link from 'next/link';
+import { notFound } from 'next/navigation';
 
 // NEXT_PUBLIC_* values are inlined at build time, so they match on server and client.
 const info = {
@@ -11,6 +12,9 @@ const info = {
 };
 
 export default function DebugPage() {
+    // Connection diagnostics for deploys; hidden unless explicitly switched on.
+    if (process.env.NEXT_PUBLIC_ENABLE_DEBUG !== 'true') notFound();
+
     const testUrls = [
         { name: "Standard URL", url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/register/` },
         { name: "URL without /api", url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/register/` },

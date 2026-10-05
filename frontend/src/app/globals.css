@@ -198,6 +198,40 @@
   }
 }
 
+/* Leaflet chrome in the logbook palette. Unlayered on purpose: leaflet.css is unlayered,
+   and layered rules always lose to unlayered ones. */
+.route-map.leaflet-container {
+  background: var(--color-char);
+  font-family: var(--font-sans);
+  z-index: 0;
+}
+.route-map.leaflet-container .leaflet-bar a {
+  background: var(--color-graphite);
+  color: var(--color-bone);
+  border-color: var(--color-line);
+}
+.route-map.leaflet-container .leaflet-bar a:hover {
+  background: var(--color-line);
+}
+.route-map.leaflet-container .leaflet-control-attribution {
+  background: color-mix(in oklab, var(--color-ink) 75%, transparent);
+  color: var(--color-ash);
+}
+.route-map.leaflet-container .leaflet-control-attribution a {
+  color: var(--color-stone);
+}
+.route-map.leaflet-container .leaflet-tooltip {
+  background: var(--color-graphite);
+  border: 1px solid var(--color-line);
+  color: var(--color-bone);
+  box-shadow: none;
+  font-size: 0.75rem;
+}
+.route-map.leaflet-container .leaflet-tooltip-top::before {
+  border-top-color: var(--color-line);
+}
+
+
 @keyframes rise {
   from {
     opacity: 0;

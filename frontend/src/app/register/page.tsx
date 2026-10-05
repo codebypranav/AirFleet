@@ -4,11 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import AuthLayout from '@/components/AuthLayout';
-
-// Use environment variable with fallback - don't add /api as it might already be in the URL
-const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
-// Check if the URL already ends with /api to avoid duplication
-const BASE_URL = apiUrl.endsWith('/api') ? apiUrl : `${apiUrl}/api`;
+import GoogleButton from '@/components/GoogleButton';
+import { apiJson, saveTokens } from '@/utils/api';
 
 export default function RegisterPage() {
     const router = useRouter();
@@ -23,34 +20,12 @@ export default function RegisterPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-        
-        // Debug info
-        console.log('API URL:', process.env.NEXT_PUBLIC_API_URL);
-        console.log('BASE_URL:', BASE_URL);
-        console.log('Full request URL:', `${BASE_URL}/register/`);
 
         try {
-            const response = await fetch(`${BASE_URL}/register/`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(formData),
-            });
-
-            const data = await response.json();
-
-            if (!response.ok) {
-                throw new Error(data.detail || 'Registration failed: Server Error');
-            }
-
-            // Store tokens
-            localStorage.setItem('accessToken', data.access);
-            localStorage.setItem('refreshToken', data.refresh);
-
-            router.push('/login');
+            saveTokens(await apiJson<{ access: string; refresh: string }>('/register/', { method: 'POST', json: formData, auth: false }));
+            router.push('/flights');
         } catch (err) {
-            setError(err instanceof Error ? err.message : 'Registration failed: This Username or Email is already in use');
+            setError(err instanceof Error ? err.message : 'Registration failed');
         }
     };
 
@@ -114,6 +89,8 @@ export default function RegisterPage() {
                 <button type="submit" className="btn btn-primary mt-2 w-full py-3">
                     Register
                 </button>
+
+                <GoogleButton />
 
                 <p className="text-center text-sm text-ash">
                     Already have an account?{' '}

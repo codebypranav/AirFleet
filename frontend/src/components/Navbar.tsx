@@ -2,29 +2,47 @@
 
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Cookies from 'js-cookie';
 import { Wordmark } from '@/components/Brand';
+import { clearTokens } from '@/utils/api';
 
 const LINKS = [
     { href: '/flights', label: 'Logbook' },
+    { href: '/aircraft', label: 'Fleet' },
+    { href: '/stats', label: 'Stats' },
     { href: '/flights/narrative', label: 'Stories' },
     { href: '/rankings', label: 'Rankings' },
+    { href: '/profile', label: 'Profile' },
 ];
 
-export default function Navbar() {
+export default function Navbar({ variant = 'app' }: { variant?: 'app' | 'public' }) {
     const router = useRouter();
     const pathname = usePathname();
 
     const handleLogout = () => {
-        Cookies.remove('accessToken');
-        Cookies.remove('refreshToken');
-
+        clearTokens();
         router.push('/login');
     };
 
-    // /flights/add belongs to the logbook; /flights/narrative has its own tab.
+    // Everything under /flights belongs to the logbook except the stories tab.
     const isActive = (href: string) =>
-        href === '/flights' ? pathname === '/flights' || pathname === '/flights/add' : pathname.startsWith(href);
+        href === '/flights'
+            ? pathname.startsWith('/flights') && !pathname.startsWith('/flights/narrative')
+            : pathname.startsWith(href);
+
+    if (variant === 'public') {
+        return (
+            <nav className="sticky top-0 z-40 border-b border-line/80 bg-ink/80 backdrop-blur-md">
+                <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-6 px-4 py-3 sm:px-6">
+                    <Link href="/" aria-label="AirFleet home">
+                        <Wordmark />
+                    </Link>
+                    <Link href="/flights" className="btn btn-ghost px-4 py-1.5 text-ash hover:text-bone">
+                        Open your logbook
+                    </Link>
+                </div>
+            </nav>
+        );
+    }
 
     return (
         <nav className="sticky top-0 z-40 border-b border-line/80 bg-ink/80 backdrop-blur-md">
@@ -32,13 +50,13 @@ export default function Navbar() {
                 <Link href="/flights" aria-label="AirFleet logbook">
                     <Wordmark />
                 </Link>
-                <div className="order-last -mx-1 flex w-full items-center gap-1 overflow-x-auto sm:order-none sm:mx-0 sm:w-auto">
+                <div className="order-last -mx-1 flex w-full items-center gap-1 overflow-x-auto md:order-none md:mx-0 md:w-auto">
                     {LINKS.map(({ href, label }) => (
                         <Link
                             key={href}
                             href={href}
                             aria-current={isActive(href) ? 'page' : undefined}
-                            className={`relative rounded-full px-3.5 py-1.5 text-sm transition-colors ${
+                            className={`relative shrink-0 rounded-full px-3.5 py-1.5 text-sm transition-colors ${
                                 isActive(href)
                                     ? 'bg-graphite text-paper'
                                     : 'text-ash hover:text-bone'

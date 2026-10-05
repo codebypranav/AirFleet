@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
-import SessionProviderWrapper from "./SessionProviderWrapper";
 
 const geistSans = Geist({
     variable: "--font-geist-sans",
@@ -33,7 +32,7 @@ export default function RootLayout({
         // Font variables live on <html> so the theme tokens in globals.css can resolve them at :root.
         <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable}`}>
             <body className="antialiased">
-                <SessionProviderWrapper>{children}</SessionProviderWrapper>
+                {children}
             </body>
         </html>
     );
