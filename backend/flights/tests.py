@@ -726,10 +726,9 @@ SIMBRIEF_OFP = """
   PER/C RALT/LPPR LPLA CYQX RMK/NRP TCAS)
 """
 
-# Synthetic: an ICAO flight plan as filed for a Delta flight, with no times table.
-DELTA_FPL = """
- DELTA AIR LINES  DL1234  KATL-KLAX
- (FPL-DAL1234-IS
+# Synthetic: an airline's ICAO flight plan with no times table.
+ICAO_FPL = """
+ (FPL-ABC1234-IS
  -B739/M-SDE2E3FGHIJ2J3J4J5M1RWXY/LB1D1
  -KATL2340
  -N0455F360 JCOXX4 SMKEY Q34 IZAAC J52 ABQ
@@ -772,10 +771,10 @@ class FlightPlanParserTests(SimpleTestCase):
         self.assertTrue(flight['is_simulator'])
         self.assertIn('Alternate: CYOW', flight['notes'])
 
-    def test_delta_without_times_table(self):
-        result = flight_plans.parse(DELTA_FPL)
+    def test_icao_plan_without_times_table(self):
+        result = flight_plans.parse(ICAO_FPL)
         flight = result['flight']
-        self.assertEqual((result['source'], result['callsign']), ('delta', 'DAL1234'))
+        self.assertEqual((result['source'], result['callsign']), ('icao', 'ABC1234'))
         self.assertEqual((flight['departure_airport'], flight['arrival_airport'], flight['registration_number']), ('KATL', 'KLAX', 'N801DZ'))
         self.assertEqual(flight['aircraft_type'], 'B739')
         self.assertFalse(flight['is_simulator'])
@@ -801,7 +800,7 @@ class DraftFlightTests(ApiTestCase):
 
     def test_upload_returns_a_draft_without_saving(self):
         self.authenticate()
-        res = self.upload(make_pdf(DELTA_FPL))
+        res = self.upload(make_pdf(ICAO_FPL))
         self.assertEqual(res.status_code, 200, res.data)
         self.assertEqual(res.data['flight']['arrival_airport'], 'KLAX')
         self.assertFalse(Flight.objects.exists())
@@ -809,7 +808,7 @@ class DraftFlightTests(ApiTestCase):
         self.assertEqual(self.upload(b'name,date\n', 'plan.csv').status_code, 400)
         self.assertEqual(self.upload(make_pdf('Nothing here')).status_code, 422)
         self.client.credentials()
-        self.assertEqual(self.upload(make_pdf(DELTA_FPL)).status_code, 401)
+        self.assertEqual(self.upload(make_pdf(ICAO_FPL)).status_code, 401)
 
     def test_drafts_stay_out_of_totals_until_finalised(self):
         self.authenticate()

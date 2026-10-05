@@ -1,4 +1,4 @@
-"""Read a flight plan PDF (a SimBrief or Delta OFP) into a draft logbook entry.
+"""Read a flight plan PDF (a SimBrief OFP or any plan with an ICAO flight plan) into a draft logbook entry.
 
 Every format is anchored on the ICAO ATC flight plan, "(FPL-...)", which airline and SimBrief OFPs both
 print: it gives the callsign, aircraft type, airports, off-block time, route, date (DOF/) and
@@ -150,8 +150,6 @@ def detect_source(text):
     upper = text.upper()
     if 'SIMBRIEF' in upper or 'NOT FOR REAL WORLD NAVIGATION' in upper:
         return 'simbrief'
-    if 'DELTA AIR LINES' in upper or re.search(r'\(FPL-DAL\d', upper):
-        return 'delta'
     return 'icao'
 
 
@@ -162,7 +160,7 @@ def parse(text):
     if not fpl or 'departure' not in fpl or 'destination' not in fpl:
         raise FlightPlanError(
             "Couldn't find the ATC flight plan, (FPL-...), in this PDF. "
-            "SimBrief and Delta OFPs are supported; make sure the ATC flight plan page is included."
+            "Upload a SimBrief OFP or a plan that includes the ICAO flight plan page."
         )
 
     warnings = []

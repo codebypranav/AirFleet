@@ -187,7 +187,7 @@ export interface ImportResult {
 
 /** A flight plan PDF read into a draft entry; see flights/flight_plans.py. */
 export interface FlightPlanDraft {
-    source: 'simbrief' | 'delta' | 'icao';
+    source: 'simbrief' | 'icao';
     callsign: string;
     flight: Partial<Flight> & { aircraft_type?: string };
     warnings: string[];

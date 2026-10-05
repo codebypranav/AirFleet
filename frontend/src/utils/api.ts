@@ -154,7 +154,7 @@ export const importFlights = (file: File) => {
     return apiJson<ImportResult>('/flights/import/', { method: 'POST', body });
 };
 
-/** Reads a SimBrief or Delta OFP PDF into a draft flight. The server doesn't keep the file. */
+/** Reads a flight plan PDF (SimBrief OFP or ICAO flight plan) into a draft flight. The server doesn't keep the file. */
 export const readFlightPlan = (file: File) => {
     const body = new FormData();
     body.append('file', file);

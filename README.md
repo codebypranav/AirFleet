@@ -30,9 +30,9 @@ The system is meant to function as a lightweight aviation workspace with:
   includes airport names, weather, night/instrument time and the pilot's notes.
 - **Weather and SimBrief:** fetch the departure METAR (aviationweather.gov, last ~15 days)
   or prefill a flight from your latest SimBrief flight plan.
-- **Flight plan PDFs:** upload a SimBrief or Delta OFP to start a draft entry: airports, planned
-  OUT/IN times, registration, type, route and distance are read from the PDF (anchored on the ICAO
-  `(FPL-...)` message). Drafts stay out of totals, currency, rankings and maintenance until you add
+- **Flight plan PDFs:** upload a SimBrief OFP, or any plan that includes an ICAO flight plan, to
+  start a draft entry: airports, planned OUT/IN times, registration, type, route and distance are
+  read from the PDF (anchored on the ICAO `(FPL-...)` message). Drafts stay out of totals, currency, rankings and maintenance until you add
   the actual times and untick *Draft*. The PDF itself isn't stored.
 - **Import/export:** CSV export of the logbook (or a filtered slice), and import of AirFleet
   CSVs or ForeFlight logbook exports. Duplicates are skipped and bad rows reported.

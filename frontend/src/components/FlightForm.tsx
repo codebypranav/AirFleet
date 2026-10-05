@@ -293,7 +293,7 @@ export default function FlightForm({
                     <span className="min-w-0">
                         <span className="block text-sm text-bone">Start from a flight plan PDF</span>
                         <span className="block text-xs text-ash" aria-live="polite">
-                            {planStatus || 'A SimBrief or Delta OFP. It’s saved as a draft for you to finish after the flight; the PDF isn’t kept.'}
+                            {planStatus || 'A SimBrief OFP or any plan with an ICAO flight plan page. It’s saved as a draft for you to finish after the flight; the PDF isn’t kept.'}
                         </span>
                     </span>
                     <input
