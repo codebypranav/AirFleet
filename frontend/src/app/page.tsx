@@ -1,35 +1,66 @@
+import Link from 'next/link';
+import Contours from '@/components/Contours';
+import { ArrowIcon, LeafMark } from '@/components/Icons';
+
+const FEATURES = [
+    { n: '01', title: 'Log', body: 'Times, route, tail number and the state of the airframe.' },
+    { n: '02', title: 'Photograph', body: 'Keep a picture from every leg, stored alongside the entry.' },
+    { n: '03', title: 'Narrate', body: 'AI turns each flight into a short story worth rereading.' },
+];
+
 export default function HomePage() {
     return (
-      <main className="relative min-h-screen flex flex-col px-4 bg-black">
-        <div 
-          className="absolute inset-0 z-0"
-          style={{
-            backgroundImage: 'url("/home_bg.jpg")',
-            backgroundSize: 'cover',
-            backgroundPosition: 'center',
-          }}
-        >
-          <div className="absolute inset-0 bg-black/50"></div>
-        </div>
+      <main className="relative flex min-h-screen flex-col overflow-hidden bg-ink">
+        <div
+          className="photo-duotone absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: 'url("/home_bg.jpg")' }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-r from-ink via-ink/85 to-ink/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-ink via-transparent to-ink/60" />
+        <div className="absolute inset-0 bg-moss-deep/20 mix-blend-multiply" />
+        <Contours className="absolute inset-0 h-full w-full text-sand/10" />
 
-        <div className="relative z-10 max-w-xl text-center mx-auto pt-24 md:pt-32">
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 tracking-tight text-white">
-            Welcome to AirFleet
+        <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
+          <span className="flex items-center gap-2.5">
+            <LeafMark className="h-7 w-7 text-moss" />
+            <span className="font-display text-xl font-medium tracking-tight text-paper">AirFleet</span>
+          </span>
+          <Link href="/register" className="text-sm text-stone transition-colors hover:text-paper">
+            Create an account
+          </Link>
+        </header>
+
+        <section className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-6 py-16">
+          <p className="eyebrow mb-6 animate-rise">Pilot&apos;s logbook · field notes from the air</p>
+          <h1 className="max-w-3xl font-display text-5xl font-light leading-[1.02] tracking-tight text-paper animate-rise [animation-delay:80ms] sm:text-7xl">
+            Every flight, <em className="font-normal text-fern">written down.</em>
           </h1>
-          <p className="text-lg md:text-xl mb-8 text-gray-200">
-            Your modern pilot&apos;s logbook — track flights, store photos, and explore
-            insightful AI-driven analytics.
+          <p className="mt-6 max-w-lg text-lg text-stone animate-rise [animation-delay:160ms]">
+            Track your flights, keep the photos, and read back the story of each one —
+            quiet tools for people who love the air.
           </p>
-          <div className="space-x-4">
-            <a
-              href="/login"
-              className="inline-block bg-white text-black px-6 py-3 rounded-md font-medium
-                         hover:bg-gray-100 transition-colors"
-            >
-              Log In
-            </a>
+          <div className="mt-10 flex flex-wrap gap-3 animate-rise [animation-delay:240ms]">
+            <Link href="/login" className="btn btn-primary px-6 py-3 text-base">
+              Log in
+              <ArrowIcon className="h-4 w-4" />
+            </Link>
+            <Link href="/register" className="btn btn-ghost bg-ink/40 px-6 py-3 text-base backdrop-blur-sm">
+              Start a logbook
+            </Link>
           </div>
-        </div>
+        </section>
+
+        <section className="relative z-10 border-t border-line/70 bg-ink/60 backdrop-blur-sm">
+          <div className="mx-auto grid w-full max-w-6xl gap-px sm:grid-cols-3">
+            {FEATURES.map((f) => (
+              <div key={f.n} className="px-6 py-7">
+                <p className="font-mono text-xs text-clay">{f.n}</p>
+                <p className="mt-2 font-display text-xl text-paper">{f.title}</p>
+                <p className="mt-1 text-sm text-ash">{f.body}</p>
+              </div>
+            ))}
+          </div>
+        </section>
       </main>
     );
 }

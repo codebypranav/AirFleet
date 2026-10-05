@@ -1,42 +1,222 @@
 @import 'tailwindcss';
 
+/*
+  AirFleet palette — a field logbook.
+  Neutrals are warm (slightly green/brown-shifted) so the monochrome
+  ink/ash/bone scale sits naturally next to the moss, bark and clay accents.
+*/
 @theme {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-ink: #11120f;
+  --color-char: #181915;
+  --color-graphite: #22231e;
+  --color-line: #34352d;
+  --color-ash: #8b897d;
+  --color-stone: #b7b3a5;
+  --color-bone: #ebe7da;
+  --color-paper: #f5f2e9;
+
+  --color-moss: #7d9459;
+  --color-moss-deep: #47563a;
+  --color-fern: #a8bb82;
+  --color-bark: #7a5a3e;
+  --color-clay: #c0915f;
+  --color-sand: #d8c79e;
+  --color-rust: #b5603f;
+
+  --color-background: var(--color-ink);
+  --color-foreground: var(--color-bone);
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+  --font-display: var(--font-fraunces), ui-serif, Georgia, serif;
 }
 
-/*
-  The default border color has changed to `currentcolor` in Tailwind CSS v4,
-  so we've added these compatibility styles to make sure everything still
-  looks the same as it did with Tailwind CSS v3.
-
-  If we ever want to remove these styles, we need to add an explicit border
-  color utility to any element that depends on these defaults.
-*/
 @layer base {
   *,
   ::after,
   ::before,
   ::backdrop,
   ::file-selector-button {
-    border-color: var(--color-gray-200, currentcolor);
+    border-color: var(--color-line);
+  }
+
+  html {
+    color-scheme: dark;
+  }
+
+  body {
+    min-height: 100vh;
+    color: var(--color-bone);
+    background-color: var(--color-ink);
+    font-family: var(--font-sans);
+  }
+
+  /* Paper grain over everything; fixed so it doesn't scroll with content. */
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: 60;
+    pointer-events: none;
+    opacity: 0.07;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='180' height='180'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/%3E%3CfeColorMatrix values='0 0 0 0 0.92 0 0 0 0 0.9 0 0 0 0 0.85 0 0 0 1 0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+  }
+
+  ::selection {
+    background: var(--color-moss);
+    color: var(--color-ink);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-fern);
+    outline-offset: 2px;
+  }
+
+  input[type='datetime-local']::-webkit-calendar-picker-indicator {
+    filter: invert(0.85) sepia(0.3);
+    cursor: pointer;
   }
 }
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+@layer components {
+  .eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--color-ash);
+  }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+  .card {
+    position: relative;
+    background-color: color-mix(in oklab, var(--color-char) 92%, transparent);
+    border: 1px solid var(--color-line);
+    border-radius: 0.875rem;
+  }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.65rem 1.15rem;
+    border-radius: 999px;
+    font-size: 0.875rem;
+    font-weight: 500;
+    line-height: 1.25rem;
+    transition: background-color 150ms, color 150ms, border-color 150ms, transform 150ms;
+    cursor: pointer;
+  }
+  .btn:active {
+    transform: translateY(1px);
+  }
+  .btn:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+
+  .btn-primary {
+    background-color: var(--color-moss);
+    color: var(--color-ink);
+  }
+  .btn-primary:hover {
+    background-color: var(--color-fern);
+  }
+
+  .btn-light {
+    background-color: var(--color-bone);
+    color: var(--color-ink);
+  }
+  .btn-light:hover {
+    background-color: var(--color-paper);
+  }
+
+  .btn-ghost {
+    border: 1px solid var(--color-line);
+    color: var(--color-bone);
+  }
+  .btn-ghost:hover {
+    border-color: var(--color-ash);
+    background-color: var(--color-graphite);
+  }
+
+  .field-label {
+    display: block;
+    margin-bottom: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--color-stone);
+  }
+
+  .field-input {
+    display: block;
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    border-radius: 0.6rem;
+    border: 1px solid var(--color-line);
+    background-color: var(--color-graphite);
+    color: var(--color-bone);
+    font-size: 0.95rem;
+    transition: border-color 150ms, background-color 150ms, box-shadow 150ms;
+  }
+  .field-input::placeholder {
+    color: color-mix(in oklab, var(--color-ash) 70%, transparent);
+  }
+  .field-input:hover {
+    border-color: color-mix(in oklab, var(--color-ash) 60%, var(--color-line));
+  }
+  .field-input:focus {
+    outline: none;
+    border-color: var(--color-moss);
+    background-color: var(--color-char);
+    box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-moss) 25%, transparent);
+  }
+
+  select.field-input {
+    appearance: none;
+    padding-right: 2.5rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%238b897d' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 0.85rem center;
+    background-size: 1rem;
+  }
+
+  .alert-error {
+    border: 1px solid color-mix(in oklab, var(--color-rust) 55%, transparent);
+    background-color: color-mix(in oklab, var(--color-rust) 14%, transparent);
+    color: #e7b6a1;
+    border-radius: 0.6rem;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.875rem;
+  }
+
+  /* Monochrome photo warmed toward the earth palette. */
+  .photo-duotone {
+    filter: grayscale(1) sepia(0.22) contrast(1.05) brightness(0.9);
   }
 }
 
-body {
-  color: var(--foreground);
-  background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@utility animate-rise {
+  animation: rise 600ms cubic-bezier(0.2, 0.7, 0.2, 1) both;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-rise,
+  .animate-pulse,
+  .animate-spin {
+    animation: none;
+  }
 }

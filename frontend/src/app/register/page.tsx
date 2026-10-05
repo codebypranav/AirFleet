@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import AuthLayout from '@/components/AuthLayout';
 
 // Use environment variable with fallback - don't add /api as it might already be in the URL
 const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
@@ -54,89 +55,73 @@ export default function RegisterPage() {
     };
 
     return (
-        <main className="relative min-h-screen flex flex-col px-4 bg-black">
-            <div 
-                className="absolute inset-0 z-0"
-                style={{
-                    backgroundImage: 'url("/home_bg.jpg")',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                }}
-            >
-                <div className="absolute inset-0 bg-black/50"></div>
-            </div>
+        <AuthLayout eyebrow="New logbook" title="Create an account" quote="Every hour in the air started as an entry on the ground.">
+            <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+                {error && <p className="alert-error" role="alert">{error}</p>}
 
-            <div className="relative z-10 flex items-center justify-center min-h-screen">
-                <form
-                    onSubmit={handleSubmit}
-                    className="flex flex-col gap-4 bg-black/80 p-8 rounded-lg shadow-xl backdrop-blur-xs w-full max-w-md"
-                >
-                    <h1 className="text-3xl font-bold text-white mb-2">Register</h1>
-                    {error && <p className="text-red-400">{error}</p>}
+                <div>
+                    <label htmlFor="username" className="field-label">Username</label>
+                    <input
+                        type="text"
+                        id="username"
+                        autoComplete="username"
+                        value={formData.username}
+                        onChange={(e) => setFormData({...formData, username: e.target.value})}
+                        className="field-input"
+                        required
+                    />
+                </div>
 
-                    <div>
-                        <label htmlFor="username" className="block text-sm font-medium text-gray-200">Username</label>
-                        <input
-                            type="text"
-                            id="username"
-                            value={formData.username}
-                            onChange={(e) => setFormData({...formData, username: e.target.value})}
-                            className="mt-1 block w-full rounded-md bg-gray-800 border-gray-700 text-white"
-                            required
-                        />
-                    </div>
+                <div>
+                    <label htmlFor="email" className="field-label">Email</label>
+                    <input
+                        type="email"
+                        id="email"
+                        autoComplete="email"
+                        value={formData.email}
+                        onChange={(e) => setFormData({...formData, email: e.target.value})}
+                        className="field-input"
+                        required
+                    />
+                </div>
 
-                    <div>
-                        <label htmlFor="email" className="block text-sm font-medium text-gray-200">Email</label>
-                        <input
-                            type="email"
-                            id="email"
-                            value={formData.email}
-                            onChange={(e) => setFormData({...formData, email: e.target.value})}
-                            className="mt-1 block w-full rounded-md bg-gray-800 border-gray-700 text-white"
-                            required
-                        />
-                    </div>
+                <div>
+                    <label htmlFor="password" className="field-label">Password</label>
+                    <input
+                        type="password"
+                        id="password"
+                        autoComplete="new-password"
+                        value={formData.password}
+                        onChange={(e) => setFormData({...formData, password: e.target.value})}
+                        className="field-input"
+                        required
+                    />
+                </div>
 
-                    <div>
-                        <label htmlFor="password" className="block text-sm font-medium text-gray-200">Password</label>
-                        <input
-                            type="password"
-                            id="password"
-                            value={formData.password}
-                            onChange={(e) => setFormData({...formData, password: e.target.value})}
-                            className="mt-1 block w-full rounded-md bg-gray-800 border-gray-700 text-white"
-                            required
-                        />
-                    </div>
+                <div>
+                    <label htmlFor="password2" className="field-label">Confirm password</label>
+                    <input
+                        type="password"
+                        id="password2"
+                        autoComplete="new-password"
+                        value={formData.password2}
+                        onChange={(e) => setFormData({...formData, password2: e.target.value})}
+                        className="field-input"
+                        required
+                    />
+                </div>
 
-                    <div>
-                        <label htmlFor="password2" className="block text-sm font-medium text-gray-200">Confirm Password</label>
-                        <input
-                            type="password"
-                            id="password2"
-                            value={formData.password2}
-                            onChange={(e) => setFormData({...formData, password2: e.target.value})}
-                            className="mt-1 block w-full rounded-md bg-gray-800 border-gray-700 text-white"
-                            required
-                        />
-                    </div>
+                <button type="submit" className="btn btn-primary mt-2 w-full py-3">
+                    Register
+                </button>
 
-                    <button
-                        type="submit"
-                        className="w-full py-2 px-4 border border-transparent rounded-md shadow-xs text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-black"
-                    >
-                        Register
-                    </button>
-
-                    <p className="text-center text-gray-300">
-                        Already have an account?{' '}
-                        <Link href="/login" className="text-white hover:underline">
-                            Sign in
-                        </Link>
-                    </p>
-                </form>
-            </div>
-        </main>
+                <p className="text-center text-sm text-ash">
+                    Already have an account?{' '}
+                    <Link href="/login" className="text-fern underline-offset-4 hover:underline">
+                        Sign in
+                    </Link>
+                </p>
+            </form>
+        </AuthLayout>
     );
 }
