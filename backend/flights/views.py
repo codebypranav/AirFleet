@@ -18,13 +18,14 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
-from . import airports, external, insights, logbook_io
+from . import airports, external, flight_plans, insights, logbook_io
 from .models import Aircraft, Flight
 from .serializers import AircraftSerializer, FlightSerializer, PublicFlightSerializer
 
 logger = logging.getLogger(__name__)
 
 MAX_IMPORT_BYTES = 5 * 1024 * 1024
+MAX_PLAN_BYTES = 10 * 1024 * 1024
 
 
 class NarrativeThrottle(UserRateThrottle):
@@ -42,7 +43,7 @@ class FlightPagination(PageNumberPagination):
 
 
 def filter_flights(queryset, params):
-    """Filters shared by the logbook list, CSV export and stats: ?from, ?to, ?airport, ?aircraft, ?q, ?simulator."""
+    """Filters shared by the logbook list, CSV export and stats: ?from, ?to, ?airport, ?aircraft, ?q, ?simulator, ?draft."""
     if date_from := parse_date(params.get('from', '')):
         queryset = queryset.filter(departure_time__date__gte=date_from)
     if date_to := parse_date(params.get('to', '')):
@@ -55,6 +56,8 @@ def filter_flights(queryset, params):
         queryset = queryset.filter(Q(notes__icontains=q) | Q(flight_plan__icontains=q) | Q(narrative__icontains=q))
     if params.get('simulator') in ('true', 'false'):
         queryset = queryset.filter(is_simulator=params['simulator'] == 'true')
+    if params.get('draft') in ('true', 'false'):
+        queryset = queryset.filter(is_draft=params['draft'] == 'true')
     return queryset
 
 
@@ -90,7 +93,7 @@ class FlightDetailView(UserFlightsMixin, generics.RetrieveUpdateDestroyAPIView):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def export_flights(request):
-    flights = filter_flights(Flight.objects.filter(user=request.user), request.query_params)
+    flights = filter_flights(Flight.objects.logged().filter(user=request.user), request.query_params)
     response = HttpResponse(logbook_io.export_csv(flights), content_type='text/csv; charset=utf-8')
     response['Content-Disposition'] = f'attachment; filename="airfleet-logbook-{timezone.now():%Y-%m-%d}.csv"'
     return response
@@ -116,6 +119,27 @@ class ImportFlightsView(APIView):
         except logbook_io.LogbookImportError as e:
             return Response({'error': str(e)}, status=400)
         return Response(result, status=201 if result['created'] else 200)
+
+
+class FlightPlanView(APIView):
+    """Read an uploaded flight plan PDF into a draft flight for the pilot to check. Nothing is saved, the PDF included."""
+    permission_classes = [IsAuthenticated]
+    parser_classes = [MultiPartParser]
+    throttle_classes = [LookupThrottle]
+
+    def post(self, request):
+        upload = request.FILES.get('file')
+        if not upload:
+            return Response({'error': 'Attach a flight plan PDF as "file".'}, status=400)
+        if upload.size > MAX_PLAN_BYTES:
+            return Response({'error': 'Flight plans are limited to 10 MB.'}, status=400)
+        data = upload.read()
+        if not data.startswith(b'%PDF'):
+            return Response({'error': 'Upload the flight plan as a PDF.'}, status=400)
+        try:
+            return Response(flight_plans.read(data))
+        except flight_plans.FlightPlanError as e:
+            return Response({'error': str(e)}, status=422)
 
 
 @api_view(['POST'])
@@ -181,33 +205,34 @@ def generate_narrative(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def stats(request):
-    flights = filter_flights(Flight.objects.filter(user=request.user), request.query_params)
+    flights = filter_flights(Flight.objects.logged().filter(user=request.user), request.query_params)
     return Response(insights.summary(flights))
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def routes(request):
-    flights = filter_flights(Flight.objects.filter(user=request.user), request.query_params)
+    flights = filter_flights(Flight.objects.logged().filter(user=request.user), request.query_params)
     return Response(insights.routes(flights))
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def currency(request):
-    return Response(insights.currency(Flight.objects.filter(user=request.user)))
+    return Response(insights.currency(Flight.objects.logged().filter(user=request.user)))
 
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def achievements(request):
-    return Response(insights.achievements(Flight.objects.filter(user=request.user)))
+    return Response(insights.achievements(Flight.objects.logged().filter(user=request.user)))
 
 
 def fleet(user):
-    recent = Q(flights__departure_time__gte=timezone.now() - timedelta(days=insights.FORECAST_WINDOW_DAYS))
+    logged = Q(flights__is_draft=False)
+    recent = logged & Q(flights__departure_time__gte=timezone.now() - timedelta(days=insights.FORECAST_WINDOW_DAYS))
     return Aircraft.objects.filter(user=user).annotate(
-        total_flights=Count('flights'), total_time=Sum('flights__total_time'),
+        total_flights=Count('flights', filter=logged), total_time=Sum('flights__total_time', filter=logged),
         recent_time=Sum('flights__total_time', filter=recent),
     )
 
@@ -300,7 +325,7 @@ def simbrief(request):
 def public_flight(request, pk):
     """A shareable flight page. Only flights of pilots who made their profile public."""
     flight = get_object_or_404(
-        Flight.objects.select_related('user', 'aircraft'), pk=pk, user__is_public=True, user__is_active=True,
+        Flight.objects.logged().select_related('user', 'aircraft'), pk=pk, user__is_public=True, user__is_active=True,
     )
     return Response(PublicFlightSerializer(flight, context={'request': request}).data)
 
@@ -309,7 +334,7 @@ def public_flight(request, pk):
 @permission_classes([AllowAny])
 def public_pilot(request, username):
     pilot = get_object_or_404(get_user_model(), username=username, is_public=True, is_active=True)
-    flights = Flight.objects.filter(user=pilot).select_related('aircraft')
+    flights = Flight.objects.logged().filter(user=pilot).select_related('aircraft')
     return Response({
         'username': pilot.username,
         'bio': pilot.bio,

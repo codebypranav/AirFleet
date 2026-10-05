@@ -112,6 +112,32 @@ test('a pilot logs, edits, shares, exports and deletes flights', async ({ page, 
     await expect(page.locator('ol > li')).toHaveCount(1);
 });
 
+test('a pilot starts a draft from a flight plan PDF and logs it after the flight', async ({ page }) => {
+    await register(page, `e2eplan${Date.now()}`);
+    await page.goto('/flights/add');
+    await page.locator('#flight_plan_pdf').setInputFiles('e2e/fixtures/simbrief-ofp.pdf');
+    await expect(page.getByText(/Loaded CGXLR, LFBO → CYUL/)).toBeVisible();
+    await expect(page.getByLabel('Registration')).toHaveValue('C-GXLR');
+    await expect(page.getByLabel('Distance (nm)')).toHaveValue('3312');
+    await expect(page.getByText('8h 30m')).toBeVisible();
+    await page.getByRole('button', { name: 'Save draft' }).click();
+
+    await expect(page).toHaveURL(/\/flights\/\d+$/);
+    await expect(page.getByRole('link', { name: /Draft · add the actual times/ })).toBeVisible();
+    await page.goto('/flights');
+    await expect(page.getByText(/· Draft/)).toBeVisible();
+    await expect(page.getByText('0 h', { exact: true })).toBeVisible();
+
+    // After the flight: untick Draft to put it in the logbook.
+    await page.locator('ol > li a').first().click();
+    await page.getByRole('link', { name: 'Edit' }).click();
+    await page.getByLabel(/^Draft/).uncheck();
+    await page.getByRole('button', { name: 'Save to logbook' }).click();
+    await expect(page.getByRole('link', { name: /Draft · add the actual times/ })).toHaveCount(0);
+    await page.goto('/flights');
+    await expect(page.getByText('8.5 h', { exact: true })).toBeVisible();
+});
+
 test('signed-out visitors are sent to log in, and rankings stay public', async ({ page }) => {
     await page.goto('/flights');
     await expect(page).toHaveURL(/\/login$/);

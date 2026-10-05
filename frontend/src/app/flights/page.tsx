@@ -159,6 +159,7 @@ export default function FlightsPage() {
                                                     <p className="eyebrow">
                                                         {formatDate(flight.departure_time)} · {formatTime(flight.departure_time)}
                                                         {flight.is_simulator && ' · Sim'}
+                                                        {flight.is_draft && ' · Draft'}
                                                     </p>
                                                     <span className={`rounded-full border px-2.5 py-0.5 text-xs ${condition.className}`}>
                                                         {condition.label}

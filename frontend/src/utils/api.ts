@@ -1,7 +1,7 @@
 import Cookies from 'js-cookie';
 import type {
-    Achievement, Aircraft, Airport, Currency, Flight, ImportResult, Paginated, Profile, PublicFlight, PublicPilot,
-    RouteMapData, Stats,
+    Achievement, Aircraft, Airport, Currency, Flight, FlightPlanDraft, ImportResult, Paginated, Profile, PublicFlight,
+    PublicPilot, RouteMapData, Stats,
 } from '@/types/flight';
 
 const ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/+$/, '').replace(/\/api$/, '');
@@ -127,7 +127,7 @@ const query = (params: Record<string, string | number | undefined>) => {
     return text ? `?${text}` : '';
 };
 
-export type FlightFilters = { from?: string; to?: string; airport?: string; aircraft?: string; q?: string; simulator?: string };
+export type FlightFilters = { from?: string; to?: string; airport?: string; aircraft?: string; q?: string; simulator?: string; draft?: string };
 
 export const getFlights = (params: FlightFilters & { page?: number; page_size?: number } = {}) =>
     apiJson<Paginated<Flight>>(`/flights/${query(params)}`);
@@ -152,6 +152,13 @@ export const importFlights = (file: File) => {
     const body = new FormData();
     body.append('file', file);
     return apiJson<ImportResult>('/flights/import/', { method: 'POST', body });
+};
+
+/** Reads a SimBrief or Delta OFP PDF into a draft flight. The server doesn't keep the file. */
+export const readFlightPlan = (file: File) => {
+    const body = new FormData();
+    body.append('file', file);
+    return apiJson<FlightPlanDraft>('/flights/from-plan/', { method: 'POST', body });
 };
 
 export const getStats = (filters: FlightFilters = {}) => apiJson<Stats>(`/stats/${query(filters)}`);

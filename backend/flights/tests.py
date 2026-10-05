@@ -8,7 +8,7 @@ from django.core.cache import cache
 from django.test import SimpleTestCase, override_settings
 from rest_framework.test import APITestCase
 
-from . import airports, external, insights
+from . import airports, external, flight_plans, insights
 from .models import Aircraft, Flight
 
 FLIGHT = {
@@ -698,3 +698,146 @@ class PhotoUploadTests(ApiTestCase):
             res = self.client.post('/api/flights/', {**FLIGHT, 'photo': self.image()}, format='multipart')
         self.assertEqual(res.status_code, 400)
         self.assertIn('10 MB', str(res.data['errors']['photo']))
+
+
+# Trimmed from the text of a real SimBrief OFP (LIDO layout).
+SIMBRIEF_OFP = """
+                            C-GXLR/03 OCT/TLS-YUL                               Page 1
+ [ OFP ]
+ C-GXLR    03OCT2026    LFBO-CYUL   A21N CGXLR   RELEASE 1629 03OCT26
+   ATC C/S   CGXLR        LFBO/TLS   CYUL/YUL      CRZ SYS      CI 17
+ 03OCT2026   CGXLR        1655/1715  0113/0121     GND DIST      3312
+                                 TIMES
+                ESTIMATED        SKED              ACTUAL
+ OUT            1655Z/1855L      1655Z/1855L       ......Z
+ OFF            1715Z/1915L      1715Z/1915L       ......Z
+ ON             0113Z/2113L      0117Z/2117L       ......Z
+ IN             0121Z/2121L      0125Z/2125L       ......Z
+ BLOCK TIME     0826             0830              ......
+                                  - Not for real world navigation -                    1
+ (FPL-CGXLR-IS
+ -A21N/M-SDE3FGHIJ1J4J5M1P2RWXYZ/LB1D1G1
+ -LFBO1655
+ -N0454F310 GAUDE7A GAUDE DCT LATEK DCT PPN DCT MIRPO DCT DGO N725
+  RATAS/N0452F320 DCT NEDUS DCT NUBLO
+ -CYUL0748 CYOW
+ -PBN/A1B1C1D1L1O2S2T1 NAV/RNP2 DAT/1PDC SUR/260B RSP180 CANMANDATE
+  DOF/261003 REG/CGXLR EET/LECM0021 LPPO0134 43N020W0215
+  PER/C RALT/LPPR LPLA CYQX RMK/NRP TCAS)
+"""
+
+# Synthetic: an ICAO flight plan as filed for a Delta flight, with no times table.
+DELTA_FPL = """
+ DELTA AIR LINES  DL1234  KATL-KLAX
+ (FPL-DAL1234-IS
+ -B739/M-SDE2E3FGHIJ2J3J4J5M1RWXY/LB1D1
+ -KATL2340
+ -N0455F360 JCOXX4 SMKEY Q34 IZAAC J52 ABQ
+ -KLAX0420 KONT
+ -PBN/A1B1C1D1O1S2 DOF/260214 REG/N801DZ RMK/TCAS)
+"""
+
+
+def make_pdf(text):
+    """A one-page PDF with the text in Courier, as an OFP prints."""
+    escape = lambda line: line.replace('\\', '\\\\').replace('(', '\\(').replace(')', '\\)')
+    stream = 'BT /F1 8 Tf 10 TL 20 800 Td ' + ' '.join(f'({escape(line)}) Tj T*' for line in text.splitlines()) + ' ET'
+    objects = [
+        '<< /Type /Catalog /Pages 2 0 R >>',
+        '<< /Type /Pages /Kids [3 0 R] /Count 1 >>',
+        '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>',
+        f'<< /Length {len(stream)} >>\nstream\n{stream}\nendstream',
+        '<< /Type /Font /Subtype /Type1 /BaseFont /Courier >>',
+    ]
+    out, offsets = '%PDF-1.4\n', []
+    for i, body in enumerate(objects, 1):
+        offsets.append(len(out))
+        out += f'{i} 0 obj\n{body}\nendobj\n'
+    xref = len(out)
+    out += f'xref\n0 {len(objects) + 1}\n0000000000 65535 f \n' + ''.join(f'{o:010d} 00000 n \n' for o in offsets)
+    out += f'trailer\n<< /Size {len(objects) + 1} /Root 1 0 R >>\nstartxref\n{xref}\n%%EOF\n'
+    return out.encode('latin-1')
+
+
+class FlightPlanParserTests(SimpleTestCase):
+    def test_simbrief(self):
+        result = flight_plans.parse(SIMBRIEF_OFP)
+        self.assertEqual((result['source'], result['callsign'], result['warnings']), ('simbrief', 'CGXLR', []))
+        flight = result['flight']
+        self.assertEqual((flight['departure_airport'], flight['arrival_airport']), ('LFBO', 'CYUL'))
+        # The scheduled column, with IN rolling over midnight.
+        self.assertEqual((flight['departure_time'], flight['arrival_time']), ('2026-10-03T16:55:00+00:00', '2026-10-04T01:25:00+00:00'))
+        self.assertEqual((flight['registration_number'], flight['aircraft_type'], flight['distance']), ('C-GXLR', 'A21N', 3312))
+        self.assertEqual(flight['flight_plan'], 'GAUDE7A GAUDE DCT LATEK DCT PPN DCT MIRPO DCT DGO N725 RATAS DCT NEDUS DCT NUBLO')
+        self.assertTrue(flight['is_simulator'])
+        self.assertIn('Alternate: CYOW', flight['notes'])
+
+    def test_delta_without_times_table(self):
+        result = flight_plans.parse(DELTA_FPL)
+        flight = result['flight']
+        self.assertEqual((result['source'], result['callsign']), ('delta', 'DAL1234'))
+        self.assertEqual((flight['departure_airport'], flight['arrival_airport'], flight['registration_number']), ('KATL', 'KLAX', 'N801DZ'))
+        self.assertEqual(flight['aircraft_type'], 'B739')
+        self.assertFalse(flight['is_simulator'])
+        # Off-block plus EET, across midnight UTC.
+        self.assertEqual((flight['departure_time'], flight['arrival_time']), ('2026-02-14T23:40:00+00:00', '2026-02-15T04:00:00+00:00'))
+        self.assertEqual(flight['distance'], 0)
+        self.assertTrue(any('taxi' in w for w in result['warnings']))
+
+    def test_no_flight_plan(self):
+        with self.assertRaisesMessage(flight_plans.FlightPlanError, 'ATC flight plan'):
+            flight_plans.parse('A dinner menu')
+
+    def test_pdf_text(self):
+        self.assertEqual(flight_plans.read(make_pdf(SIMBRIEF_OFP))['flight']['arrival_time'], '2026-10-04T01:25:00+00:00')
+        with self.assertRaises(flight_plans.FlightPlanError):
+            flight_plans.read(b'%PDF-1.4 not really')
+
+
+class DraftFlightTests(ApiTestCase):
+    def upload(self, data, name='ofp.pdf'):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        return self.client.post('/api/flights/from-plan/', {'file': SimpleUploadedFile(name, data, content_type='application/pdf')}, format='multipart')
+
+    def test_upload_returns_a_draft_without_saving(self):
+        self.authenticate()
+        res = self.upload(make_pdf(DELTA_FPL))
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(res.data['flight']['arrival_airport'], 'KLAX')
+        self.assertFalse(Flight.objects.exists())
+
+        self.assertEqual(self.upload(b'name,date\n', 'plan.csv').status_code, 400)
+        self.assertEqual(self.upload(make_pdf('Nothing here')).status_code, 422)
+        self.client.credentials()
+        self.assertEqual(self.upload(make_pdf(DELTA_FPL)).status_code, 401)
+
+    def test_drafts_stay_out_of_totals_until_finalised(self):
+        self.authenticate()
+        self.client.patch('/api/me/', {'is_public': True}, format='json')
+        self.add_flight()
+        draft = self.add_flight(is_draft=True, departure_time='2026-02-01T10:00:00Z', arrival_time='2026-02-01T12:00:00Z', total_time='02:00:00')
+
+        self.assertEqual(self.client.get('/api/stats/').data['totals']['flights'], 1)
+        self.assertEqual(self.client.get('/api/aircraft/').data[0]['total_flights'], 1)
+        self.assertEqual(self.client.get('/api/flights/').data['count'], 2)
+        self.assertEqual([f['id'] for f in self.client.get('/api/flights/?draft=true').data['results']], [draft['id']])
+        self.assertEqual(self.client.get('/api/flights/export/').content.decode().count('KJFK'), 1)
+        self.assertEqual(self.client.get(f"/api/public/flights/{draft['id']}/").status_code, 404)
+        self.assertEqual(self.client.get('/api/rankings/').data['flights'][0]['total_flights'], 1)
+
+        res = self.client.patch(f"/api/flights/{draft['id']}/", {'is_draft': False}, format='json')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(self.client.get('/api/stats/').data['totals']['flights'], 2)
+
+    def test_grounding_applies_when_a_flight_enters_the_logbook(self):
+        self.authenticate()
+        draft = self.add_flight(is_draft=True, aircraft_condition='GROUNDED')
+        self.assertFalse(Aircraft.objects.get().grounded)
+
+        self.add_flight(departure_time='2026-01-02T10:00:00Z', arrival_time='2026-01-02T15:30:00Z', aircraft_condition='GROUNDED')
+        # Planning in a grounded aircraft is fine; logging it isn't.
+        planned = self.add_flight(is_draft=True, departure_time='2026-01-03T10:00:00Z', arrival_time='2026-01-03T15:30:00Z')
+        res = self.client.patch(f"/api/flights/{planned['id']}/", {'is_draft': False}, format='json')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('grounded', str(res.data))
+        self.assertTrue(Flight.objects.get(pk=draft['id']).is_draft)

@@ -60,7 +60,7 @@ class AircraftSerializer(serializers.ModelSerializer):
             recent = obj.recent_time
         else:
             since = now - timedelta(days=insights.FORECAST_WINDOW_DAYS)
-            recent = obj.flights.filter(departure_time__gte=since).aggregate(total=Sum('total_time'))['total']
+            recent = obj.flights.logged().filter(departure_time__gte=since).aggregate(total=Sum('total_time'))['total']
         return insights.maintenance_forecast(
             self.get_hours_since_maintenance(obj), obj.maintenance_interval_hours,
             insights.hours(recent), obj.annual_due, now.date(),
@@ -147,7 +147,9 @@ class FlightSerializer(serializers.ModelSerializer):
             )
 
         registration = current('registration_number')
-        if self.instance is None and not self.context.get('historical'):
+        # A grounded aircraft can still be planned for; the block applies when a flight enters the logbook.
+        entering_logbook = not current('is_draft') and (self.instance is None or self.instance.is_draft)
+        if entering_logbook and not self.context.get('historical'):
             grounded = Aircraft.objects.filter(
                 user=self.context['request'].user, registration=registration, grounded=True
             ).exists()
@@ -162,7 +164,7 @@ class FlightSerializer(serializers.ModelSerializer):
         registration = self.validated_data.get('registration_number') or self.instance.registration_number
         aircraft, _ = Aircraft.objects.get_or_create(user=user, registration=registration)
         flight = super().save(aircraft=aircraft, **kwargs)
-        if flight.aircraft_condition == 'GROUNDED' and not self.context.get('historical'):
+        if flight.aircraft_condition == 'GROUNDED' and not flight.is_draft and not self.context.get('historical'):
             Aircraft.objects.filter(pk=aircraft.pk).update(grounded=True)
         return flight
 
