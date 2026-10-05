@@ -111,16 +111,18 @@ backend/
   AirFleet_api/
   flights/
   users/
+  flights/data/airports.csv.gz
   manage.py
+  launcher.sh        # container entrypoint: migrate, collectstatic, gunicorn
   requirements.txt
-  start.sh
-  initialize_db.py
-  force_migrations.py
 frontend/
-  app/
-  components/
-  lib/
+  e2e/               # Playwright end-to-end tests
+  src/app/           # pages (App Router)
+  src/components/
+  src/utils/         # API client and formatting helpers
 docker-compose.yml
+render.yaml
+neon.ts
 ```
 
 ## Local development
@@ -267,5 +269,4 @@ AirFleet brings together multiple engineering concerns:
 
 ## Notes
 
-- The application includes several debugging and migration helper scripts because the project was iterated through local setup and deployment issues.
 - The project is intended as a personal engineering exercise and should be hardened before any real-world operational deployment.

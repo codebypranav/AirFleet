@@ -174,6 +174,7 @@ cython_debug/
 .env.*
 
 # Uploaded user photos (local media storage) never belong in git
+# Photos uploaded in local development (production uses Neon Object Storage)
 backend/media/
 
 
