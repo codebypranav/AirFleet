@@ -35,3 +35,18 @@ services:
         sync: false
       - key: AWS_REGION
         value: us-east-2
+      # Base URL of the Vercel frontend, used in password-reset emails
+      - key: FRONTEND_URL
+        value: https://airfleet.vercel.app
+      # Same OAuth client ID as the frontend's GOOGLE_CLIENT_ID; leave unset to disable Google sign-in
+      - key: GOOGLE_CLIENT_ID
+        sync: false
+      # SMTP for password-reset emails; without EMAIL_HOST they're only written to the logs
+      - key: EMAIL_HOST
+        sync: false
+      - key: EMAIL_HOST_USER
+        sync: false
+      - key: EMAIL_HOST_PASSWORD
+        sync: false
+      - key: DEFAULT_FROM_EMAIL
+        sync: false

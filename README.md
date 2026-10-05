@@ -12,6 +12,30 @@ The system is meant to function as a lightweight aviation workspace with:
 - AI-generated narratives summarizing flight events
 - a dashboard and UI for reviewing flight data
 
+## Features
+
+- **Logbook:** add, view, edit and delete flights, with standard columns (PIC, SIC, dual
+  received, night, actual and simulated instrument time, day/night landings, approaches,
+  cross-country, simulator). Paginated and filterable by date, airport, aircraft and text.
+- **Airport data:** a bundled OurAirports extract (public domain) validates ICAO codes,
+  suggests airports as you type, and works out great-circle distance. Block time comes from
+  the departure and arrival times.
+- **Fleet:** an aircraft record per registration with type, class, hours, an inspection
+  counter and annual due date. A flight that reports the aircraft *Grounded* blocks new
+  flights in it until maintenance is logged.
+- **Stats:** totals, hours per month, most-flown routes and aircraft, a great-circle route
+  map (Leaflet), passenger/night/IFR currency, and achievements.
+- **Stories:** AI narratives are written on request and saved on the flight. The prompt
+  includes airport names, weather, night/instrument time and the pilot's notes.
+- **Weather and SimBrief:** fetch the departure METAR (aviationweather.gov, last ~15 days)
+  or prefill a flight from your latest SimBrief flight plan.
+- **Import/export:** CSV export of the logbook (or a filtered slice), and import of AirFleet
+  CSVs or ForeFlight logbook exports. Duplicates are skipped and bad rows reported.
+- **Accounts:** profile editing, password change, password reset by email, optional Google
+  sign-in, and opt-in public pilot profiles and shareable flight pages.
+- **Rankings:** by flights, time, distance, longest flight and airports visited, for all
+  time, this year or this month.
+
 This is a learning-oriented application rather than a certified aviation compliance system, and it should not be treated as an official flight-logging platform without additional validation.
 
 ## Technical architecture
@@ -64,7 +88,9 @@ The `flights` app contains the main API views:
 This is the main business logic for recording aviation events and summarizing them for the user.
 
 ### AI narrative generation
-The AI flow is particularly important. In `backend/flights/views.py`, the app tries multiple OpenAI client strategies in order to generate a narrative based on structured flight metadata such as:
+`POST /api/generate-narrative/` takes a `flight_id`, builds a prompt from the stored flight and saves the
+result on it (`narrative`, `narrative_generated_at`). It is rate limited per user (`NARRATIVE_RATE`,
+default `30/hour`). The prompt includes structured flight metadata such as:
 
 - departure airport and time
 - arrival airport and time
@@ -72,9 +98,9 @@ The AI flow is particularly important. In `backend/flights/views.py`, the app tr
 - distance
 - aircraft registration
 - aircraft condition
-- weather conditions
+- weather conditions, night and instrument time, and the pilot's notes
 
-The generated response is then returned to the frontend as a natural-language summary.
+The generated response is returned to the frontend and kept with the flight.
 
 ## Repository structure
 
@@ -124,6 +150,10 @@ python manage.py runserver 0.0.0.0:8000
 python manage.py test  # run the API test suite
 ```
 
+`flights/data/airports.csv.gz` is generated from
+[OurAirports](https://davidmegginson.github.io/ourairports-data/airports.csv): every open
+airport and seaplane base with a 4-character ICAO-style code.
+
 ### Option 3: Frontend setup
 
 Requires Node.js 20.9+ (Next.js 16).
@@ -133,6 +163,23 @@ cd frontend
 npm install
 npm run dev
 ```
+
+Checks: `npm run lint`, `npm run typecheck`, `npm run build`.
+
+### End-to-end tests
+
+Playwright drives the production build against the real API. With Postgres running and
+`DATABASE_URL`/`SECRET_KEY` set:
+
+```bash
+cd frontend
+npx playwright install chromium
+npm run build
+PYTHON=../backend/.venv/bin/python npm run test:e2e  # starts Django and Next itself
+```
+
+CI runs the backend suite (`.github/workflows/backend.yml`) and lint, typecheck, build and
+the end-to-end tests (`.github/workflows/frontend.yml`).
 
 ## Environment variables
 
@@ -146,6 +193,29 @@ OPENAI_MODEL=gpt-4o-mini  # optional, model used for flight narratives
 NEXTAUTH_SECRET=your-nextauth-secret
 NEXTAUTH_URL=http://localhost:3000
 ```
+
+Optional:
+
+```bash
+# Backend
+FRONTEND_URL=https://airfleet.vercel.app  # where password-reset links point
+EMAIL_HOST=smtp.example.com               # without it, reset emails are printed to the log
+EMAIL_PORT=587
+EMAIL_HOST_USER=...
+EMAIL_HOST_PASSWORD=...
+DEFAULT_FROM_EMAIL="AirFleet <no-reply@example.com>"
+GOOGLE_CLIENT_ID=...                      # enables Google sign-in (same ID as the frontend)
+NARRATIVE_RATE=30/hour                    # AI narrative limit per user
+
+# Frontend
+GOOGLE_CLIENT_ID=...                      # with GOOGLE_CLIENT_SECRET, shows "Continue with Google"
+GOOGLE_CLIENT_SECRET=...
+API_URL=...                               # API origin for server-side calls, if it differs from NEXT_PUBLIC_API_URL
+NEXT_PUBLIC_ENABLE_DEBUG=true             # turns on the /debug connection page
+```
+
+For Google sign-in, create an OAuth client (Web application) in Google Cloud and add
+`<frontend URL>/api/auth/callback/google` as an authorized redirect URI.
 
 ## Deployment
 
@@ -175,11 +245,11 @@ short-lived signed photo URLs. Without them, photos fall back to local disk.
 
 Typical usage looks like this:
 
-1. user signs in or registers
-2. flight entries are saved through the Django REST API
-3. the frontend displays the user’s flight history
-4. the AI endpoint converts flight metadata into a narrative summary
-5. the user can review and edit flights over time
+1. user signs in or registers (password or Google)
+2. flights are logged by hand, from SimBrief, or imported from ForeFlight/CSV
+3. the logbook, fleet and stats pages show history, totals, currency and maintenance
+4. the AI endpoint turns a flight into a short narrative that is saved with it
+5. the user can edit flights over time and optionally share a public profile
 
 ## Why this project matters technically
 
