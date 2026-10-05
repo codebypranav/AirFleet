@@ -1,4 +1,4 @@
-// AirFleet's mark: a heading indicator with a maple leaf as the aircraft symbol.
+// AirFleet's mark: a compass dial whose maple leaf midrib is the needle.
 
 const MAPLE_LEAF =
     'M50 6 55 17 61 14 58 36 70 24 73 30 85 27 81 40 87 43 70 57 73 64 53 61 52.5 80 47.5 80 47 61 27 64 30 57 13 43 19 40 15 27 27 30 30 24 42 36 39 14 45 17Z';
@@ -16,21 +16,33 @@ export function MapleLeaf({ className = '' }: { className?: string }) {
     );
 }
 
+// Leaf veins radiating from the petiole junction (50 61), in MAPLE_LEAF coordinates.
+const LEAF_VEINS =
+    'M50 61 80 31M50 61 20 31M63 48 81 42M37 48 19 42M61 50 67 29M39 50 33 29M50 45 57 25M50 45 43 25M50 61 66 59M50 61 34 59';
+
+// Scale the leaf so its vein junction sits on the dial's pivot at (24, 24).
+const LEAF_SCALE = 0.28;
+const LEAF_TRANSFORM = `translate(${24 - 50 * LEAF_SCALE} ${24 - 61 * LEAF_SCALE}) scale(${LEAF_SCALE})`;
+
 export function BrandMark({ className = '' }: { className?: string }) {
-    const ticks = Array.from({ length: 12 }, (_, i) => i * 30);
+    // No tick at north: the needle marks it.
+    const ticks = Array.from({ length: 11 }, (_, i) => (i + 1) * 30);
     return (
         <svg aria-hidden="true" viewBox="0 0 48 48" className={className} fill="none">
             <circle cx="24" cy="24" r="21" stroke="currentColor" strokeOpacity="0.45" strokeWidth="1.5" />
             {ticks.map((deg) => {
                 const [x1, y1] = polar(24, 24, 21, deg);
-                const [x2, y2] = polar(24, 24, deg % 90 === 0 ? 16.5 : 18.5, deg);
+                const [x2, y2] = polar(24, 24, deg % 90 === 0 ? 17.5 : 18.5, deg);
                 return <line key={deg} x1={x1} y1={y1} x2={x2} y2={y2} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />;
             })}
-            {/* Lubber line: the fixed heading index at the top of the instrument. */}
-            <path d="M24 0.5 27 5.5H21Z" className="fill-clay" />
-            <g transform="translate(11.5 11) scale(0.25)">
+            <g transform={LEAF_TRANSFORM}>
                 <path d={MAPLE_LEAF} fill="currentColor" stroke="currentColor" strokeWidth="4" strokeLinejoin="round" />
+                <path d={LEAF_VEINS} className="stroke-ink" strokeWidth="3.4" strokeLinecap="round" />
             </g>
+            {/* The midrib doubles as the compass needle: clay north end, the green stem as its tail. */}
+            <path d="M24 24V9.5" className="stroke-clay" strokeWidth="1.1" strokeLinecap="round" />
+            <path d="M24 4.6 25.8 9.8H22.2Z" className="fill-clay stroke-clay" strokeWidth="0.5" strokeLinejoin="round" />
+            <circle cx="24" cy="24" r="1.6" className="fill-clay stroke-ink" strokeWidth="0.7" />
         </svg>
     );
 }
