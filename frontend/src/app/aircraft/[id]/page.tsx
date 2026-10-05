@@ -3,12 +3,12 @@
 import { use, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import AircraftForm, { InspectionBar, maintenanceStatus } from '@/components/AircraftForm';
+import AircraftForm, { ForecastNote, InspectionBar, maintenanceStatus } from '@/components/AircraftForm';
 import { EditIcon, PlaneIcon, TrashIcon, WrenchIcon } from '@/components/Icons';
 import { ErrorState, PageHeader, PageShell, Section, Spinner, StatGrid } from '@/components/PageShell';
 import type { Aircraft } from '@/types/flight';
 import { deleteAircraft, getAircraft, getFlights, logMaintenance, updateAircraft } from '@/utils/api';
-import { AIRCRAFT_CLASSES, formatDate, formatDuration, fromLocalInput, toLocalInput } from '@/utils/format';
+import { AIRCRAFT_CLASSES, formatDate, formatDay, formatDuration, fromLocalInput, toLocalInput } from '@/utils/format';
 import { useApi } from '@/utils/useApi';
 
 function MaintenanceForm({ aircraft, onLogged }: { aircraft: Aircraft; onLogged: (a: Aircraft) => void }) {
@@ -115,7 +115,7 @@ export default function AircraftPage({ params }: { params: Promise<{ id: string 
                     { label: 'Flights', value: aircraft.total_flights.toLocaleString() },
                     { label: 'Total time', value: formatDuration(aircraft.total_time) },
                     { label: 'Last inspection', value: aircraft.last_maintenance_at ? formatDate(aircraft.last_maintenance_at) : '—' },
-                    { label: 'Annual due', value: aircraft.annual_due ? formatDate(aircraft.annual_due) : '—' },
+                    { label: 'Annual due', value: aircraft.annual_due ? formatDay(aircraft.annual_due) : '—' },
                 ]}
             />
 
@@ -125,8 +125,9 @@ export default function AircraftPage({ params }: { params: Promise<{ id: string 
                         A flight reported this aircraft as grounded. New flights in it are blocked until you log maintenance.
                     </p>
                 )}
-                <div className="mb-5">
+                <div className="mb-5 space-y-3">
                     <InspectionBar aircraft={aircraft} />
+                    <ForecastNote aircraft={aircraft} />
                 </div>
                 <MaintenanceForm key={aircraft.last_maintenance_at ?? 'never'} aircraft={aircraft} onLogged={(updated) => setData(() => updated)} />
             </Section>

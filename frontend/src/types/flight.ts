@@ -89,8 +89,18 @@ export interface Aircraft {
     grounded: boolean;
     hours_since_maintenance: number;
     maintenance_due: boolean;
+    maintenance_forecast: MaintenanceForecast;
     total_flights: number;
     total_time: string | null;
+}
+
+/** Hours left until the inspection divided by the recent flying rate; see insights.maintenance_forecast. */
+export interface MaintenanceForecast {
+    window_days: number;
+    hours_per_week: number;
+    hours_remaining: number;
+    inspection_due_on: string | null;
+    next_due: { kind: 'inspection' | 'annual'; date: string } | null;
 }
 
 export interface Totals {

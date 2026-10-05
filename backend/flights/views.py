@@ -1,4 +1,5 @@
 import logging
+from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
@@ -203,8 +204,10 @@ def achievements(request):
 
 
 def fleet(user):
+    recent = Q(flights__departure_time__gte=timezone.now() - timedelta(days=insights.FORECAST_WINDOW_DAYS))
     return Aircraft.objects.filter(user=user).annotate(
         total_flights=Count('flights'), total_time=Sum('flights__total_time'),
+        recent_time=Sum('flights__total_time', filter=recent),
     )
 
 

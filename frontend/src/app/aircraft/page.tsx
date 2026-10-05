@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import AircraftForm, { InspectionBar, maintenanceStatus } from '@/components/AircraftForm';
+import AircraftForm, { ForecastNote, InspectionBar, maintenanceStatus } from '@/components/AircraftForm';
 import { PlusIcon } from '@/components/Icons';
 import { EmptyState, ErrorState, PageHeader, PageShell, Spinner } from '@/components/PageShell';
 import { addAircraft, getFleet } from '@/utils/api';
@@ -77,7 +77,10 @@ export default function FleetPage() {
                                             <dd className="mt-1 text-bone">{formatDuration(plane.total_time)}</dd>
                                         </div>
                                     </dl>
-                                    <InspectionBar aircraft={plane} />
+                                    <div className="space-y-2">
+                                        <InspectionBar aircraft={plane} />
+                                        <ForecastNote aircraft={plane} compact />
+                                    </div>
                                 </Link>
                             </li>
                         );

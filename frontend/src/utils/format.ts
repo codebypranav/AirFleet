@@ -66,6 +66,10 @@ export const fromLocalInput = (value: string) => (value ? new Date(value).toISOS
 export const formatDate = (iso: string, month: 'short' | 'long' = 'short') =>
     new Date(iso).toLocaleDateString(undefined, { day: '2-digit', month, year: 'numeric' });
 
+// Date-only values ("2026-11-30") parse as UTC midnight, so format them in UTC to keep the day.
+export const formatDay = (day: string) =>
+    new Date(day).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric', timeZone: 'UTC' });
+
 export const formatTime = (iso: string) =>
     new Date(iso).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
 

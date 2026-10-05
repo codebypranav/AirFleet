@@ -1,5 +1,6 @@
-"""Read-only views over a pilot's logbook: totals, currency and achievements."""
+"""Read-only views over a pilot's logbook: totals, currency, maintenance forecasts and achievements."""
 import calendar
+import math
 from datetime import date, timedelta
 
 from django.db.models import Count, Q, Sum
@@ -167,6 +168,34 @@ def currency(flights, today=None):
                   ifr_events, 6, lambda d: _add_months(d, 6), _add_months(today, -7) + timedelta(days=1), today),
     ]
 
+
+FORECAST_WINDOW_DAYS = 90
+
+
+def maintenance_forecast(hours_since, interval, recent_hours, annual_due, today, window_days=FORECAST_WINDOW_DAYS):
+    """Project the hours-based inspection from how much the aircraft flew in the last `window_days`.
+
+    No model: hours remaining divided by the recent daily rate. With no recent flying there's no
+    date for the inspection. Whichever of it and the annual comes first is the next one due.
+    """
+    remaining = max(interval - hours_since, 0)
+    per_day = recent_hours / window_days
+    if remaining == 0:
+        inspection_due_on = today
+    elif per_day > 0:
+        inspection_due_on = today + timedelta(days=math.ceil(round(remaining / per_day, 6)))
+    else:
+        inspection_due_on = None
+
+    upcoming = [(d, kind) for d, kind in ((inspection_due_on, 'inspection'), (annual_due, 'annual')) if d]
+    next_due = min(upcoming) if upcoming else None
+    return {
+        'window_days': window_days,
+        'hours_per_week': round(per_day * 7, 1),
+        'hours_remaining': round(remaining, 1),
+        'inspection_due_on': inspection_due_on.isoformat() if inspection_due_on else None,
+        'next_due': {'kind': next_due[1], 'date': next_due[0].isoformat()} if next_due else None,
+    }
 
 ACHIEVEMENTS = [
     ('first_flight', 'First page', 'Log your first flight', lambda s, f: s['flights'] >= 1),

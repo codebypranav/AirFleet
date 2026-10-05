@@ -1,8 +1,10 @@
 from datetime import timedelta
 
+from django.db.models import Sum
+from django.utils import timezone
 from rest_framework import serializers
 
-from . import airports
+from . import airports, insights
 from .models import Aircraft, Flight
 
 MAX_PHOTO_BYTES = 10 * 1024 * 1024
@@ -18,6 +20,7 @@ def airport_info(code):
 class AircraftSerializer(serializers.ModelSerializer):
     hours_since_maintenance = serializers.SerializerMethodField()
     maintenance_due = serializers.SerializerMethodField()
+    maintenance_forecast = serializers.SerializerMethodField()
     total_flights = serializers.IntegerField(read_only=True, required=False)
     total_time = serializers.DurationField(read_only=True, required=False)
 
@@ -26,7 +29,7 @@ class AircraftSerializer(serializers.ModelSerializer):
         fields = (
             'id', 'registration', 'type_code', 'make_model', 'aircraft_class', 'notes',
             'maintenance_interval_hours', 'last_maintenance_at', 'annual_due', 'grounded',
-            'hours_since_maintenance', 'maintenance_due', 'total_flights', 'total_time',
+            'hours_since_maintenance', 'maintenance_due', 'maintenance_forecast', 'total_flights', 'total_time',
             'created_at', 'updated_at',
         )
         read_only_fields = ('grounded', 'created_at', 'updated_at')
@@ -49,6 +52,19 @@ class AircraftSerializer(serializers.ModelSerializer):
 
     def get_maintenance_due(self, obj):
         return obj.grounded or self.get_hours_since_maintenance(obj) >= obj.maintenance_interval_hours
+
+    def get_maintenance_forecast(self, obj):
+        now = timezone.now()
+        # The fleet queryset annotates recent_time; a freshly created aircraft doesn't have it.
+        if hasattr(obj, 'recent_time'):
+            recent = obj.recent_time
+        else:
+            since = now - timedelta(days=insights.FORECAST_WINDOW_DAYS)
+            recent = obj.flights.filter(departure_time__gte=since).aggregate(total=Sum('total_time'))['total']
+        return insights.maintenance_forecast(
+            self.get_hours_since_maintenance(obj), obj.maintenance_interval_hours,
+            insights.hours(recent), obj.annual_due, now.date(),
+        )
 
     def update(self, instance, validated_data):
         aircraft = super().update(instance, validated_data)

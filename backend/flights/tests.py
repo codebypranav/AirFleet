@@ -286,6 +286,23 @@ class AircraftTests(ApiTestCase):
         self.add_flight(registration_number='N1')
         self.assertTrue(self.client.get(f"/api/aircraft/{res.data['id']}/").data['maintenance_due'])
 
+    def test_maintenance_forecast(self):
+        self.authenticate()
+        plane = self.client.post('/api/aircraft/', {'registration': 'N1', 'annual_due': '2099-01-01'}, format='json').data
+        self.assertIsNone(plane['maintenance_forecast']['inspection_due_on'])  # no recent flying
+        self.assertEqual(plane['maintenance_forecast']['next_due'], {'kind': 'annual', 'date': '2099-01-01'})
+
+        # 9 h in the last 90 days is 0.7 h a week; 91 h left takes 910 days.
+        start = datetime.now(dt_timezone.utc).replace(microsecond=0) - timedelta(days=10)
+        self.add_flight(registration_number='N1', departure_time=start.isoformat(), arrival_time=(start + timedelta(hours=9)).isoformat(), total_time='09:00:00')
+        forecast = self.client.get(f"/api/aircraft/{plane['id']}/").data['maintenance_forecast']
+        self.assertEqual(forecast['hours_per_week'], 0.7)
+        self.assertEqual(forecast['hours_remaining'], 91)
+        expected = (start.date() + timedelta(days=10 + 910)).isoformat()
+        self.assertEqual(forecast['inspection_due_on'], expected)
+        self.assertEqual(forecast['next_due'], {'kind': 'inspection', 'date': expected})
+        self.assertEqual(self.client.get('/api/aircraft/').data[0]['maintenance_forecast'], forecast)
+
     def test_aircraft_are_private(self):
         self.authenticate('alice')
         plane = self.client.post('/api/aircraft/', {'registration': 'N1'}, format='json').data
@@ -352,6 +369,30 @@ class InsightTests(ApiTestCase):
         earned = {a['key']: a for a in self.client.get('/api/achievements/').data if a['earned']}
         self.assertEqual(set(earned), {'first_flight', 'long_haul', 'first_night', 'countries_3'})
         self.assertTrue(earned['first_flight']['earned_at'].startswith('2026-01-01'))
+
+
+class MaintenanceForecastTests(SimpleTestCase):
+    today = date(2026, 10, 1)
+
+    def test_projects_from_recent_rate(self):
+        # 30 h over 90 days, 20 h left: 60 days.
+        forecast = insights.maintenance_forecast(80, 100, 30, None, self.today)
+        self.assertEqual(forecast['hours_per_week'], 2.3)
+        self.assertEqual(forecast['inspection_due_on'], '2026-11-30')
+        self.assertEqual(forecast['next_due'], {'kind': 'inspection', 'date': '2026-11-30'})
+
+    def test_annual_first(self):
+        forecast = insights.maintenance_forecast(80, 100, 30, date(2026, 11, 1), self.today)
+        self.assertEqual(forecast['next_due'], {'kind': 'annual', 'date': '2026-11-01'})
+
+    def test_overdue_is_due_today(self):
+        forecast = insights.maintenance_forecast(120, 100, 0, None, self.today)
+        self.assertEqual((forecast['hours_remaining'], forecast['inspection_due_on']), (0, '2026-10-01'))
+
+    def test_idle_aircraft_has_no_date(self):
+        forecast = insights.maintenance_forecast(10, 100, 0, None, self.today)
+        self.assertIsNone(forecast['inspection_due_on'])
+        self.assertIsNone(forecast['next_due'])
 
 
 class ImportExportTests(ApiTestCase):
