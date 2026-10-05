@@ -16,13 +16,13 @@ export function MapleLeaf({ className = '' }: { className?: string }) {
     );
 }
 
-// Leaf veins radiating from the petiole junction (50 61), in MAPLE_LEAF coordinates.
+// Palmate veins fanning out from the leaf's centre (50 43), in MAPLE_LEAF coordinates.
 const LEAF_VEINS =
-    'M50 61 80 31M50 61 20 31M63 48 81 42M37 48 19 42M61 50 67 29M39 50 33 29M50 45 57 25M50 45 43 25M50 61 66 59M50 61 34 59';
+    'M50 43 77 31M50 43 23 31M50 43 66 55M50 43 34 55M50 43 50 62M64 37 67 28M36 37 33 28M68 35 80 41M32 35 20 41M50 33 56 22M50 33 44 22';
 
-// Scale the leaf so its vein junction sits on the dial's pivot at (24, 24).
-const LEAF_SCALE = 0.28;
-const LEAF_TRANSFORM = `translate(${24 - 50 * LEAF_SCALE} ${24 - 61 * LEAF_SCALE}) scale(${LEAF_SCALE})`;
+// Centre the leaf's bounding box (13–87 × 6–80) on the dial's pivot at (24, 24).
+const LEAF_SCALE = 0.42;
+const LEAF_TRANSFORM = `translate(${24 - 50 * LEAF_SCALE} ${24 - 43 * LEAF_SCALE}) scale(${LEAF_SCALE})`;
 
 export function BrandMark({ className = '' }: { className?: string }) {
     // No tick at north: the needle marks it.
@@ -36,13 +36,13 @@ export function BrandMark({ className = '' }: { className?: string }) {
                 return <line key={deg} x1={x1} y1={y1} x2={x2} y2={y2} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />;
             })}
             <g transform={LEAF_TRANSFORM}>
-                <path d={MAPLE_LEAF} fill="currentColor" stroke="currentColor" strokeWidth="4" strokeLinejoin="round" />
-                <path d={LEAF_VEINS} className="stroke-ink" strokeWidth="3.4" strokeLinecap="round" />
+                <path d={MAPLE_LEAF} fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" />
+                <path d={LEAF_VEINS} className="stroke-ink" strokeWidth="2.6" strokeLinecap="round" />
             </g>
-            {/* The midrib doubles as the compass needle: clay north end, the green stem as its tail. */}
-            <path d="M24 24V9.5" className="stroke-clay" strokeWidth="1.1" strokeLinecap="round" />
-            <path d="M24 4.6 25.8 9.8H22.2Z" className="fill-clay stroke-clay" strokeWidth="0.5" strokeLinejoin="round" />
-            <circle cx="24" cy="24" r="1.6" className="fill-clay stroke-ink" strokeWidth="0.7" />
+            {/* The midrib doubles as the compass needle, pivoting at the leaf's centre and pointing north. */}
+            <path d="M24 24V9.5" className="stroke-clay" strokeWidth="1.3" strokeLinecap="round" />
+            <path d="M24 4.4 26 10H22Z" className="fill-clay stroke-clay" strokeWidth="0.5" strokeLinejoin="round" />
+            <circle cx="24" cy="24" r="1.8" className="fill-clay stroke-ink" strokeWidth="0.7" />
         </svg>
     );
 }
