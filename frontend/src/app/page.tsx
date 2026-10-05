@@ -6,7 +6,7 @@ import { CompassCard, Wordmark } from '@/components/Brand';
 const FEATURES = [
     { n: '01', title: 'Log', body: 'Block time, route, tail number and the state of the airframe.' },
     { n: '02', title: 'Photograph', body: 'Keep a ramp shot from every leg, filed alongside the entry.' },
-    { n: '03', title: 'Debrief', body: 'AI writes each flight up as a short story worth rereading.' },
+    { n: '03', title: 'Debrief', body: 'AI turns each entry into a short write-up of the flight.' },
 ];
 
 export default function HomePage() {
@@ -33,13 +33,13 @@ export default function HomePage() {
         </header>
 
         <section className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-6 py-16">
-          <p className="eyebrow mb-6 animate-rise">Pilot&apos;s logbook · for the hours that count</p>
+          <p className="eyebrow mb-6 animate-rise">Pilot&apos;s logbook</p>
           <h1 className="max-w-3xl font-display text-5xl font-light leading-[1.02] tracking-tight text-paper animate-rise [animation-delay:80ms] sm:text-7xl">
-            Every flight, <em className="font-normal text-fern">written down.</em>
+            Your flights, <em className="font-normal text-fern">in one place.</em>
           </h1>
           <p className="mt-6 max-w-lg text-lg text-stone animate-rise [animation-delay:160ms]">
-            Log every leg, keep the ramp photos, and get a debrief of each flight —
-            a logbook built by and for people who fly.
+            Log each leg, keep a photo from the ramp, and get a short write-up
+            of how the flight went. That&apos;s about it.
           </p>
           <div className="mt-10 flex flex-wrap gap-3 animate-rise [animation-delay:240ms]">
             <Link href="/login" className="btn btn-primary px-6 py-3 text-base">
