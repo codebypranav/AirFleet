@@ -95,7 +95,7 @@ export default function FlightNarrativePage() {
             <PageHeader
                 eyebrow="Stories"
                 title="Flight narratives"
-                description="Each entry in your logbook, retold as a short story. Stories are saved once written."
+                description="A short write-up of each flight. Saved once written."
             />
 
             {error ? (

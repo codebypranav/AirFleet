@@ -151,9 +151,10 @@ def generate_narrative(request):
     if flight.notes:
         lines.append(f"- Pilot's notes: {flight.notes[:500]}")
     prompt = (
-        "Generate a concise, focused narrative about this flight:\n" + "\n".join(lines) +
-        "\n\nCreate a human-friendly summary that captures the highlights and any challenges of this flight. "
-        "Keep it concise (2-3 sentences) but informative."
+        "Write a short account of this flight:\n" + "\n".join(lines) +
+        "\n\nWrite 2-3 plain sentences in the voice of a pilot's own notes: where they went, how long it took, "
+        "and anything notable about the weather, the aircraft or the notes. Stick to the details above and don't "
+        "invent anything. No dramatic or flowery language, no exclamation marks."
     )
 
     client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -161,7 +162,7 @@ def generate_narrative(request):
         response = client.chat.completions.create(
             model=settings.OPENAI_MODEL,
             messages=[
-                {"role": "system", "content": "You are a helpful assistant that creates engaging flight narratives based on flight data."},
+                {"role": "system", "content": "You write brief, matter-of-fact summaries of flights for a pilot's logbook."},
                 {"role": "user", "content": prompt}
             ],
             max_tokens=250,
