@@ -179,3 +179,5 @@ cython_debug/
 
 # Django collectstatic output
 backend/staticfiles/
+.neon
+node_modules/

@@ -1,5 +1,7 @@
 {
   "dependencies": {
+    "@neon/config": "^1.8.3",
+    "@neon/env": "^1.5.0",
     "js-cookie": "^3.0.5"
   },
   "devDependencies": {
