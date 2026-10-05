@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import Contours from '@/components/Contours';
-import { LeafMark } from '@/components/Icons';
+import { Wordmark } from '@/components/Brand';
 
 export default function AuthLayout({
     eyebrow,
@@ -24,9 +24,8 @@ export default function AuthLayout({
                 <div className="absolute inset-0 bg-moss-deep/25 mix-blend-multiply" />
                 <Contours className="absolute inset-0 h-full w-full text-sand/10" />
                 <div className="relative flex h-full flex-col justify-between p-10">
-                    <Link href="/" className="flex items-center gap-2.5">
-                        <LeafMark className="h-7 w-7 text-moss" />
-                        <span className="font-display text-xl font-medium tracking-tight text-paper">AirFleet</span>
+                    <Link href="/" className="self-start">
+                        <Wordmark />
                     </Link>
                     <blockquote className="max-w-md font-display text-3xl font-light italic leading-snug text-paper">
                         “{quote}”
@@ -37,9 +36,8 @@ export default function AuthLayout({
             <section className="relative flex items-center justify-center overflow-hidden px-4 py-12 sm:px-8">
                 <Contours className="absolute inset-0 h-full w-full text-moss/[0.07]" />
                 <div className="relative w-full max-w-sm animate-rise">
-                    <Link href="/" className="mb-10 flex items-center gap-2.5 lg:hidden">
-                        <LeafMark className="h-7 w-7 text-moss" />
-                        <span className="font-display text-xl font-medium tracking-tight text-paper">AirFleet</span>
+                    <Link href="/" className="mb-10 inline-block lg:hidden">
+                        <Wordmark />
                     </Link>
                     <p className="eyebrow mb-3">{eyebrow}</p>
                     <h1 className="mb-8 font-display text-4xl font-medium tracking-tight text-paper">{title}</h1>

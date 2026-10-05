@@ -223,7 +223,7 @@ export default function FlightNarrativePage() {
                             </aside>
 
                             <div className="p-6 sm:p-8">
-                                <h2 className="eyebrow mb-4 text-clay">Flight story</h2>
+                                <h2 className="eyebrow mb-4 text-clay">Debrief</h2>
                                 {pending ? (
                                     <div className="space-y-3" role="status" aria-label="Generating narrative">
                                         <div className="h-3 w-11/12 animate-pulse rounded bg-graphite" />

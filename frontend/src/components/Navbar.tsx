@@ -3,7 +3,7 @@
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Cookies from 'js-cookie';
-import { LeafMark } from '@/components/Icons';
+import { Wordmark } from '@/components/Brand';
 
 const LINKS = [
     { href: '/flights', label: 'Logbook' },
@@ -29,9 +29,8 @@ export default function Navbar() {
     return (
         <nav className="sticky top-0 z-40 border-b border-line/80 bg-ink/80 backdrop-blur-md">
             <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
-                <Link href="/flights" className="group flex items-center gap-2.5">
-                    <LeafMark className="h-7 w-7 text-moss transition-colors group-hover:text-fern" />
-                    <span className="font-display text-xl font-medium tracking-tight text-paper">AirFleet</span>
+                <Link href="/flights" aria-label="AirFleet logbook">
+                    <Wordmark />
                 </Link>
                 <div className="order-last -mx-1 flex w-full items-center gap-1 overflow-x-auto sm:order-none sm:mx-0 sm:w-auto">
                     {LINKS.map(({ href, label }) => (

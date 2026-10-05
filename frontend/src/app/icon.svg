@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48">
+<rect width="48" height="48" rx="11" fill="#11120f"/>
+<g transform="translate(2.4 2.4) scale(0.9)">
+<circle cx="24" cy="24" r="21" fill="none" stroke="#7d9459" stroke-opacity="0.45" stroke-width="1.5"/>
+<g stroke="#7d9459" stroke-width="1.5" stroke-linecap="round"><line x1="24.00" y1="3.00" x2="24.00" y2="7.50"/><line x1="34.50" y1="5.81" x2="33.25" y2="7.98"/><line x1="42.19" y1="13.50" x2="40.02" y2="14.75"/><line x1="45.00" y1="24.00" x2="40.50" y2="24.00"/><line x1="42.19" y1="34.50" x2="40.02" y2="33.25"/><line x1="34.50" y1="42.19" x2="33.25" y2="40.02"/><line x1="24.00" y1="45.00" x2="24.00" y2="40.50"/><line x1="13.50" y1="42.19" x2="14.75" y2="40.02"/><line x1="5.81" y1="34.50" x2="7.98" y2="33.25"/><line x1="3.00" y1="24.00" x2="7.50" y2="24.00"/><line x1="5.81" y1="13.50" x2="7.98" y2="14.75"/><line x1="13.50" y1="5.81" x2="14.75" y2="7.98"/></g>
+<path d="M24 0.5 27 5.5H21Z" fill="#c0915f"/>
+<g transform="translate(11.5 11) scale(0.25)"><path d="M50 6 55 17 61 14 58 36 70 24 73 30 85 27 81 40 87 43 70 57 73 64 53 61 52.5 80 47.5 80 47 61 27 64 30 57 13 43 19 40 15 27 27 30 30 24 42 36 39 14 45 17Z" fill="#a8bb82" stroke="#a8bb82" stroke-width="4" stroke-linejoin="round"/></g>
+</g>
+</svg>

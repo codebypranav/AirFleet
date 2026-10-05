@@ -1,11 +1,12 @@
 import Link from 'next/link';
 import Contours from '@/components/Contours';
-import { ArrowIcon, LeafMark } from '@/components/Icons';
+import { ArrowIcon } from '@/components/Icons';
+import { CompassCard, Wordmark } from '@/components/Brand';
 
 const FEATURES = [
-    { n: '01', title: 'Log', body: 'Times, route, tail number and the state of the airframe.' },
-    { n: '02', title: 'Photograph', body: 'Keep a picture from every leg, stored alongside the entry.' },
-    { n: '03', title: 'Narrate', body: 'AI turns each flight into a short story worth rereading.' },
+    { n: '01', title: 'Log', body: 'Block time, route, tail number and the state of the airframe.' },
+    { n: '02', title: 'Photograph', body: 'Keep a ramp shot from every leg, filed alongside the entry.' },
+    { n: '03', title: 'Debrief', body: 'AI writes each flight up as a short story worth rereading.' },
 ];
 
 export default function HomePage() {
@@ -19,25 +20,26 @@ export default function HomePage() {
         <div className="absolute inset-0 bg-gradient-to-t from-ink via-transparent to-ink/60" />
         <div className="absolute inset-0 bg-moss-deep/20 mix-blend-multiply" />
         <Contours className="absolute inset-0 h-full w-full text-sand/10" />
+        <div className="pointer-events-none absolute -right-40 top-1/2 hidden aspect-square w-[720px] -translate-y-1/2 lg:block">
+          <CompassCard className="h-full w-full text-bone/15 animate-[spin_240s_linear_infinite]" />
+          <span className="absolute left-1/2 top-0 h-0 w-0 -translate-x-1/2 border-x-[9px] border-t-[16px] border-x-transparent border-t-clay/70" />
+        </div>
 
         <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
-          <span className="flex items-center gap-2.5">
-            <LeafMark className="h-7 w-7 text-moss" />
-            <span className="font-display text-xl font-medium tracking-tight text-paper">AirFleet</span>
-          </span>
+          <Wordmark />
           <Link href="/register" className="text-sm text-stone transition-colors hover:text-paper">
             Create an account
           </Link>
         </header>
 
         <section className="relative z-10 mx-auto flex w-full max-w-6xl flex-1 flex-col justify-center px-6 py-16">
-          <p className="eyebrow mb-6 animate-rise">Pilot&apos;s logbook · field notes from the air</p>
+          <p className="eyebrow mb-6 animate-rise">Pilot&apos;s logbook · for the hours that count</p>
           <h1 className="max-w-3xl font-display text-5xl font-light leading-[1.02] tracking-tight text-paper animate-rise [animation-delay:80ms] sm:text-7xl">
             Every flight, <em className="font-normal text-fern">written down.</em>
           </h1>
           <p className="mt-6 max-w-lg text-lg text-stone animate-rise [animation-delay:160ms]">
-            Track your flights, keep the photos, and read back the story of each one —
-            quiet tools for people who love the air.
+            Log every leg, keep the ramp photos, and get a debrief of each flight —
+            a logbook built by and for people who fly.
           </p>
           <div className="mt-10 flex flex-wrap gap-3 animate-rise [animation-delay:240ms]">
             <Link href="/login" className="btn btn-primary px-6 py-3 text-base">

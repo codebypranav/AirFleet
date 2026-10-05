@@ -50,8 +50,8 @@ export default function FlightsPage() {
     const totalDistance = flights.reduce((sum, f) => sum + (Number(f.distance) || 0), 0);
     const airframes = new Set(flights.map((f) => f.registration_number)).size;
     const stats = [
-        { label: 'Flights', value: flights.length.toLocaleString() },
-        { label: 'Hours', value: formatHours(totalSeconds) },
+        { label: 'Legs', value: flights.length.toLocaleString() },
+        { label: 'Total time', value: formatHours(totalSeconds) },
         { label: 'Distance', value: `${totalDistance.toLocaleString()} nm` },
         { label: 'Airframes', value: airframes.toLocaleString() },
     ];
@@ -71,7 +71,7 @@ export default function FlightsPage() {
             />
 
             {loading ? (
-                <Spinner label="Opening logbook" />
+                <Spinner label="Opening the logbook" />
             ) : flights.length === 0 ? (
                 <EmptyState title="A blank first page">
                     <p>Log your first flight and it will show up here, with time, distance and photos.</p>

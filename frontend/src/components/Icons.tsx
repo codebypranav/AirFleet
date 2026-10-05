@@ -1,23 +1,5 @@
 type IconProps = { className?: string };
 
-// Leaf whose midrib doubles as a climb-out line.
-export function LeafMark({ className = '' }: IconProps) {
-    return (
-        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none">
-            <path
-                d="M4 20C4 10.5 10 4 20 4c0 10-6.5 16-16 16Z"
-                fill="currentColor"
-                fillOpacity="0.18"
-                stroke="currentColor"
-                strokeWidth="1.5"
-                strokeLinejoin="round"
-            />
-            <path d="M4 20 15 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
-            <path d="M9 15h4.5M12 12V8.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" />
-        </svg>
-    );
-}
-
 export function PlaneIcon({ className = '' }: IconProps) {
     return (
         <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="currentColor">

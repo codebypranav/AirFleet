@@ -216,7 +216,8 @@
 @media (prefers-reduced-motion: reduce) {
   .animate-rise,
   .animate-pulse,
-  .animate-spin {
+  .animate-spin,
+  [class*='animate-[spin'] {
     animation: none;
   }
 }

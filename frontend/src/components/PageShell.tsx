@@ -1,5 +1,6 @@
 import Navbar from '@/components/Navbar';
 import Contours from '@/components/Contours';
+import { CompassCard } from '@/components/Brand';
 
 export function PageShell({ children }: { children: React.ReactNode }) {
     return (
@@ -38,6 +39,7 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
     return (
         <div className="card flex flex-col items-center overflow-hidden px-6 py-16 text-center">
             <Contours className="absolute inset-0 h-full w-full text-ash/10" />
+            <CompassCard className="relative mb-6 h-32 w-32 text-moss/80" />
             <p className="relative font-display text-2xl text-paper">{title}</p>
             <div className="relative mt-3 max-w-sm text-sm text-stone">{children}</div>
         </div>
@@ -47,7 +49,10 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
 export function Spinner({ label }: { label: string }) {
     return (
         <div className="flex flex-col items-center justify-center gap-4 py-24 text-ash" role="status">
-            <div className="h-10 w-10 animate-spin rounded-full border-2 border-line border-t-moss" />
+            <div className="relative h-14 w-14">
+                <CompassCard className="h-full w-full animate-[spin_6s_linear_infinite] text-moss" />
+                <span className="absolute left-1/2 top-0 h-0 w-0 -translate-x-1/2 border-x-[4px] border-t-[7px] border-x-transparent border-t-clay" />
+            </div>
             <span className="eyebrow">{label}</span>
         </div>
     );
