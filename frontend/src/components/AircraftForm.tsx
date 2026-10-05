@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import type { Aircraft } from '@/types/flight';
-import { AIRCRAFT_CLASSES } from '@/utils/format';
+import { AIRCRAFT_CLASSES, formatDay } from '@/utils/format';
 
 type Fields = Pick<Aircraft, 'registration' | 'type_code' | 'make_model' | 'aircraft_class' | 'notes' | 'maintenance_interval_hours' | 'annual_due'>;
 
@@ -127,5 +127,37 @@ export function InspectionBar({ aircraft }: { aircraft: Aircraft }) {
                 <div className={`h-full rounded-full ${share >= 1 ? 'bg-rust' : share >= 0.85 ? 'bg-clay' : 'bg-moss'}`} style={{ width: `${share * 100}%` }} />
             </div>
         </div>
+    );
+}
+
+/** One line on when the next inspection or annual falls due at the recent flying rate. */
+export function ForecastNote({ aircraft, compact = false }: { aircraft: Aircraft; compact?: boolean }) {
+    const forecast = aircraft.maintenance_forecast;
+    if (!forecast || aircraft.grounded || aircraft.maintenance_due) return null;
+    const inspection = `${aircraft.maintenance_interval_hours}-hour inspection`;
+    const next = forecast.next_due;
+
+    if (compact) {
+        if (!next) return null;
+        return (
+            <p className="text-xs text-stone">
+                Next: {next.kind === 'annual' ? 'annual' : inspection} ~{formatDay(next.date)}
+            </p>
+        );
+    }
+
+    if (!forecast.inspection_due_on) {
+        return (
+            <p className="text-sm text-stone">
+                Not flown in the last {forecast.window_days} days, so there&apos;s no date for the {inspection} yet. {forecast.hours_remaining} h left.
+            </p>
+        );
+    }
+    return (
+        <p className="text-sm text-stone">
+            At {forecast.hours_per_week} h a week (last {forecast.window_days} days), the {inspection} falls due around{' '}
+            <span className="text-bone">{formatDay(forecast.inspection_due_on)}</span>.
+            {next?.kind === 'annual' && <> The annual on <span className="text-bone">{formatDay(next.date)}</span> comes first.</>}
+        </p>
     );
 }

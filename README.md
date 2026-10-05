@@ -22,7 +22,8 @@ The system is meant to function as a lightweight aviation workspace with:
   the departure and arrival times.
 - **Fleet:** an aircraft record per registration with type, class, hours, an inspection
   counter and annual due date. A flight that reports the aircraft *Grounded* blocks new
-  flights in it until maintenance is logged.
+  flights in it until maintenance is logged. The next inspection is forecast from the last
+  90 days of flying (hours left ÷ recent rate), alongside the annual.
 - **Stats:** totals, hours per month, most-flown routes and aircraft, a great-circle route
   map (Leaflet), passenger/night/IFR currency, and achievements.
 - **Stories:** AI narratives are written on request and saved on the flight. The prompt
