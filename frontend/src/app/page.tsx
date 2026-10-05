@@ -39,7 +39,7 @@ export default function HomePage() {
           </h1>
           <p className="mt-6 max-w-lg text-lg text-stone animate-rise [animation-delay:160ms]">
             Log each leg, keep a photo from the ramp, and get a short write-up
-            of how the flight went. That&apos;s about it.
+            of how the flight went.
           </p>
           <div className="mt-10 flex flex-wrap gap-3 animate-rise [animation-delay:240ms]">
             <Link href="/login" className="btn btn-primary px-6 py-3 text-base">
