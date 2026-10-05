@@ -176,3 +176,6 @@ cython_debug/
 # Ignore backend/media/flight_photos
 ./backend/media/flight_photos/
 
+
+# Django collectstatic output
+backend/staticfiles/
