@@ -5,7 +5,7 @@ from rest_framework.permissions import AllowAny
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 from .serializers import UserSerializer
-from django.db.models import Sum, Count
+from django.db.models import Count, F, Sum
 from flights.models import Flight
 import logging
 
@@ -77,12 +77,12 @@ class RankingsView(APIView):
         # Get rankings by total time
         time_ranking = User.objects.annotate(
             total_time=Sum('flights__total_time')
-        ).order_by('-total_time')[:10]
+        ).order_by(F('total_time').desc(nulls_last=True))[:10]
 
         # Get rankings by total distance
         distance_ranking = User.objects.annotate(
             total_distance=Sum('flights__distance')
-        ).order_by('-total_distance')[:10]
+        ).order_by(F('total_distance').desc(nulls_last=True))[:10]
 
         # Format the response
         response = {

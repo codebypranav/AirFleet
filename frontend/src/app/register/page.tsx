@@ -69,7 +69,7 @@ export default function RegisterPage() {
             <div className="relative z-10 flex items-center justify-center min-h-screen">
                 <form
                     onSubmit={handleSubmit}
-                    className="flex flex-col gap-4 bg-black/80 p-8 rounded-lg shadow-xl backdrop-blur-sm w-full max-w-md"
+                    className="flex flex-col gap-4 bg-black/80 p-8 rounded-lg shadow-xl backdrop-blur-xs w-full max-w-md"
                 >
                     <h1 className="text-3xl font-bold text-white mb-2">Register</h1>
                     {error && <p className="text-red-400">{error}</p>}
@@ -124,7 +124,7 @@ export default function RegisterPage() {
 
                     <button
                         type="submit"
-                        className="w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-black"
+                        className="w-full py-2 px-4 border border-transparent rounded-md shadow-xs text-sm font-medium text-white bg-black hover:bg-gray-800 focus:outline-hidden focus:ring-2 focus:ring-offset-2 focus:ring-black"
                     >
                         Register
                     </button>

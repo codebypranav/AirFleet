@@ -1,6 +1,9 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+    turbopack: {
+        root: __dirname,
+    },
     images: {
         remotePatterns: [
             {
@@ -17,7 +20,7 @@ const nextConfig: NextConfig = {
             },
             {
                 protocol: 'https',
-                hostname: '*.railway.app',
+                hostname: '**.railway.app',
                 port: '',
                 pathname: '/media/**',
             },

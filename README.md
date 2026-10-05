@@ -112,6 +112,8 @@ This starts:
 
 ### Option 2: Manual backend setup
 
+Requires Python 3.12+ (Django 6).
+
 ```bash
 cd backend
 python -m venv .venv
@@ -119,9 +121,12 @@ source .venv/bin/activate
 pip install -r requirements.txt
 python manage.py migrate
 python manage.py runserver 0.0.0.0:8000
+python manage.py test  # run the API test suite
 ```
 
 ### Option 3: Frontend setup
+
+Requires Node.js 20.9+ (Next.js 16).
 
 ```bash
 cd frontend
@@ -137,9 +142,32 @@ The application relies on values such as:
 SECRET_KEY=your-secret
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/airfleet
 OPENAI_API_KEY=your-openai-key
+OPENAI_MODEL=gpt-4o-mini  # optional, model used for flight narratives
 NEXTAUTH_SECRET=your-nextauth-secret
 NEXTAUTH_URL=http://localhost:3000
 ```
+
+## Deployment
+
+The demo runs entirely on free tiers: Neon (Postgres), Render (Django API) and Vercel (Next.js).
+
+1. **Database (Neon):** create a project at neon.com and copy its connection string
+   (it ends in `?sslmode=require`).
+2. **Backend (Render):** New → Blueprint → select this repo. Render reads `render.yaml`
+   and asks for `DATABASE_URL` (the Neon string) and `OPENAI_API_KEY`; `SECRET_KEY` is generated.
+   Migrations run automatically on every start. The free instance sleeps after 15 minutes
+   idle, so the first request after a pause takes about a minute.
+3. **Frontend (Vercel):** import the repo with root directory `frontend` and Node 22, and set
+   `NEXT_PUBLIC_API_URL` to the Render URL (e.g. `https://airfleet-api.onrender.com`),
+   plus `NEXTAUTH_SECRET` and `NEXTAUTH_URL`. The backend accepts requests from
+   `airfleet.vercel.app`, `airfleet-project.vercel.app` and their preview URLs; add other
+   domains to `CORS_ALLOWED_ORIGINS` in `backend/AirFleet_api/settings.py`.
+
+To reset the demo data, use Neon's branch reset (or drop and recreate the database);
+the next Render start re-creates the schema.
+
+Uploaded flight photos are stored on the instance's local disk, so they don't persist
+across restarts yet.
 
 ## Usage flow
 

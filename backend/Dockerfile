@@ -1,6 +1,6 @@
 # backend/Dockerfile
 
-FROM python:3.9-slim
+FROM python:3.13-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
@@ -19,15 +19,8 @@ RUN pip install --upgrade pip && \
 COPY . /app/
 
 # Make scripts executable
-RUN chmod +x /app/start.sh && \
-    chmod +x /app/diagnose_db.py && \
-    chmod +x /app/initialize_db.py && \
-    chmod +x /app/test_db_connection.py && \
-    chmod +x /app/force_migrations.py && \
-    chmod +x /app/cleanup_test_data.py && \
-    chmod +x /app/launcher.sh
+RUN chmod +x /app/start.sh /app/launcher.sh
 
 EXPOSE 8000
 
-# Use the launcher script directly - Railway can't skip this
 CMD ["/app/launcher.sh"]

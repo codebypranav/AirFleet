@@ -49,7 +49,7 @@ export default function FlightsPage() {
                     <h1 className="text-3xl font-bold">My Flights</h1>
                     <Link 
                         href="/flights/add" 
-                        className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                        className="bg-blue-600 text-white px-4 py-2 rounded-sm hover:bg-blue-700"
                     >
                         Add Flight
                     </Link>
@@ -85,7 +85,7 @@ export default function FlightsPage() {
                                         alt="Flight photo" 
                                         width={128}
                                         height={128}
-                                        className="object-cover rounded"
+                                        className="object-cover rounded-sm"
                                     />
                                 )}
                             </div>

@@ -91,7 +91,7 @@ export default function AddFlight() {
                 
                 <form onSubmit={handleSubmit} className="space-y-4">
                     {error && (
-                        <div className="bg-red-500 text-white p-3 rounded">
+                        <div className="bg-red-500 text-white p-3 rounded-sm">
                             {error}
                         </div>
                     )}
@@ -107,7 +107,7 @@ export default function AddFlight() {
                                 value={formData.departure_time}
                                 onChange={handleChange}
                                 required
-                                className="w-full p-2 rounded bg-gray-800 text-white"
+                                className="w-full p-2 rounded-sm bg-gray-800 text-white"
                             />
                         </div>
 
@@ -121,7 +121,7 @@ export default function AddFlight() {
                                 value={formData.arrival_time}
                                 onChange={handleChange}
                                 required
-                                className="w-full p-2 rounded bg-gray-800 text-white"
+                                className="w-full p-2 rounded-sm bg-gray-800 text-white"
                             />
                         </div>
 
@@ -137,7 +137,7 @@ export default function AddFlight() {
                                 required
                                 minLength={3}
                                 maxLength={4}
-                                className="w-full p-2 rounded bg-gray-800 text-white"
+                                className="w-full p-2 rounded-sm bg-gray-800 text-white"
                             />
                         </div>
 
@@ -153,7 +153,7 @@ export default function AddFlight() {
                                 required
                                 minLength={3}
                                 maxLength={4}
-                                className="w-full p-2 rounded bg-gray-800 text-white"
+                                className="w-full p-2 rounded-sm bg-gray-800 text-white"
                             />
                         </div>
 
@@ -168,7 +168,7 @@ export default function AddFlight() {
                                 onChange={handleChange}
                                 required
                                 min="0"
-                                className="w-full p-2 rounded bg-gray-800 text-white"
+                                className="w-full p-2 rounded-sm bg-gray-800 text-white"
                             />
                         </div>
 
@@ -182,7 +182,7 @@ export default function AddFlight() {
                                 value={formData.registration_number}
                                 onChange={handleChange}
                                 required
-                                className="w-full p-2 rounded bg-gray-800 text-white"
+                                className="w-full p-2 rounded-sm bg-gray-800 text-white"
                             />
                         </div>
 
@@ -194,7 +194,7 @@ export default function AddFlight() {
                                 name="aircraft_condition"
                                 value={formData.aircraft_condition}
                                 onChange={handleChange}
-                                className="w-full p-2 rounded bg-gray-800 text-white"
+                                className="w-full p-2 rounded-sm bg-gray-800 text-white"
                             >
                                 <option value="AIRWORTHY">Airworthy</option>
                                 <option value="GOOD">Good Condition</option>
@@ -213,7 +213,7 @@ export default function AddFlight() {
                                 name="photo"
                                 onChange={handleFileChange}
                                 accept="image/*"
-                                className="w-full p-2 rounded bg-gray-800 text-white"
+                                className="w-full p-2 rounded-sm bg-gray-800 text-white"
                             />
                         </div>
                     </div>
@@ -221,7 +221,7 @@ export default function AddFlight() {
                     <div className="flex justify-end">
                         <button
                             type="submit"
-                            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                            className="bg-blue-600 text-white px-4 py-2 rounded-sm hover:bg-blue-700"
                         >
                             Add Flight
                         </button>

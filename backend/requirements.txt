@@ -1,28 +1,28 @@
 # Core Django
-Django==4.2
+Django==6.0.8
 
 # Django REST Framework
-djangorestframework==3.14.0
+djangorestframework==3.18.1
 
 # PostgreSQL driver
-psycopg2-binary==2.9.6
+psycopg2-binary==2.9.13
 
 # CORS handling
-django-cors-headers==3.14.0
+django-cors-headers==4.9.0
 
 # Image handling
-Pillow==10.1.0
+Pillow==12.3.0
 
 # JWT Authentication
-djangorestframework-simplejwt==5.4.0
+djangorestframework-simplejwt==5.5.1
 
 # OpenAI
-openai==1.17.0
+openai==3.24.0
 
 # HTTP Requests
-requests==2.31.0
+requests==2.34.2
 
-dj-database-url
-gunicorn
-whitenoise
-python-dotenv
+dj-database-url==3.1.2
+gunicorn==26.2.0
+whitenoise==6.12.0
+python-dotenv==1.2.4

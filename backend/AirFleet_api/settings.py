@@ -30,6 +30,11 @@ DEBUG = False
 
 ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 
+# Render sets this to the service's public hostname (e.g. airfleet-api.onrender.com)
+RENDER_EXTERNAL_HOSTNAME = os.environ.get('RENDER_EXTERNAL_HOSTNAME')
+if RENDER_EXTERNAL_HOSTNAME:
+    ALLOWED_HOSTS.append(RENDER_EXTERNAL_HOSTNAME)
+
 
 # Application definition
 
@@ -51,6 +56,7 @@ MIDDLEWARE = [
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -84,7 +90,12 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "https://airfleet.vercel.app",
     "https://airfleet-project.vercel.app",
-    "https://*.vercel.app",
+]
+
+# Vercel preview deployments, e.g. airfleet-git-<branch>-<team>.vercel.app.
+# CORS_ALLOWED_ORIGINS only does exact matches, so wildcards need a regex.
+CORS_ALLOWED_ORIGIN_REGEXES = [
+    r"^https://airfleet(-project)?-[a-z0-9-]+\.vercel\.app$",
 ]
 
 # Additional CORS settings for Railway
@@ -145,7 +156,6 @@ TIME_ZONE = 'UTC'
 
 USE_I18N = True
 
-USE_L10N = True
 
 USE_TZ = True
 
@@ -181,6 +191,7 @@ SIMPLE_JWT = {
 }
 
 OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
+OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
 
 # Update the DATABASES configuration
 DATABASES = {

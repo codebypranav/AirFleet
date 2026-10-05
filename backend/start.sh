@@ -6,28 +6,6 @@ set -e  # Exit immediately if a command exits with a non-zero status
 
 echo "Starting AirFleet API service..."
 
-# Function to clean proxy environment variables
-clean_proxies() {
-    echo "Cleaning proxy environment variables..."
-    unset HTTP_PROXY
-    unset HTTPS_PROXY
-    unset http_proxy
-    unset https_proxy
-    unset ALL_PROXY
-    unset all_proxy
-    unset NO_PROXY
-    unset no_proxy
-}
-
-# Clean proxy variables
-clean_proxies
-
-# Run diagnostic script if it exists
-if [ -f "diagnose_railway.py" ]; then
-    echo "Running Railway diagnostics..."
-    python diagnose_railway.py || echo "Diagnostics failed but continuing with startup"
-fi
-
 # Check if DATABASE_URL is set
 if [ -z "$DATABASE_URL" ]; then
     echo "ERROR: DATABASE_URL environment variable is not set!"

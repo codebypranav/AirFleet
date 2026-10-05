@@ -1,26 +1,16 @@
 "use client";
 
-import { useState, useEffect } from 'react';
 import Link from 'next/link';
 
-export default function DebugPage() {
-    const [info, setInfo] = useState({
-        apiUrl: "",
-        fullApiUrl: "",
-        vercelUrl: "",
-        nextPublicApiUrl: ""
-    });
-    
-    useEffect(() => {
-        // Collect environment information
-        setInfo({
-            apiUrl: process.env.NEXT_PUBLIC_API_URL || 'Not set',
-            fullApiUrl: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api`,
-            vercelUrl: process.env.VERCEL_URL || 'Not set',
-            nextPublicApiUrl: process.env.NEXT_PUBLIC_API_URL || 'Not set'
-        });
-    }, []);
+// NEXT_PUBLIC_* values are inlined at build time, so they match on server and client.
+const info = {
+    apiUrl: process.env.NEXT_PUBLIC_API_URL || 'Not set',
+    fullApiUrl: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api`,
+    vercelUrl: process.env.NEXT_PUBLIC_VERCEL_URL || 'Not set',
+    nextPublicApiUrl: process.env.NEXT_PUBLIC_API_URL || 'Not set'
+};
 
+export default function DebugPage() {
     const testUrls = [
         { name: "Standard URL", url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api/register/` },
         { name: "URL without /api", url: `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/register/` },
@@ -45,7 +35,7 @@ export default function DebugPage() {
             
             <div className="bg-gray-800 p-4 rounded-lg mb-8">
                 <h2 className="text-xl font-bold mb-4">Environment Variables</h2>
-                <pre className="bg-gray-900 p-4 rounded overflow-auto max-w-full">
+                <pre className="bg-gray-900 p-4 rounded-sm overflow-auto max-w-full">
                     {JSON.stringify(info, null, 2)}
                 </pre>
             </div>
@@ -61,7 +51,7 @@ export default function DebugPage() {
                             </div>
                             <button
                                 onClick={() => testApiConnection(test.url)}
-                                className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 text-sm"
+                                className="px-4 py-2 bg-blue-600 rounded-sm hover:bg-blue-700 text-sm"
                             >
                                 Test This URL
                             </button>
@@ -70,7 +60,7 @@ export default function DebugPage() {
                 </div>
             </div>
             
-            <Link href="/" className="px-4 py-2 bg-gray-600 rounded hover:bg-gray-700">
+            <Link href="/" className="px-4 py-2 bg-gray-600 rounded-sm hover:bg-gray-700">
                 Back to Home
             </Link>
         </div>

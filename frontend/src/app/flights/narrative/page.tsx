@@ -32,50 +32,7 @@ export default function FlightNarrativePage() {
         return cookieMatch ? cookieMatch[1] : null;
     };
 
-    const fetchFlights = useCallback(async () => {
-        try {
-            const token = getAuthToken();
-            
-            if (!token) {
-                console.error('No authentication token found');
-                setError('You must be logged in to view flights');
-                router.push('/login');
-                return;
-            }
-
-            const response = await fetch(`${BASE_URL}/flights/`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`
-                }
-            });
-            
-            if (response.status === 401) {
-                console.error('Authentication failed');
-                setError('Your session has expired. Please log in again.');
-                router.push('/login');
-                return;
-            }
-            
-            if (!response.ok) {
-                throw new Error(`Failed to fetch flights: ${response.status} ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            setFlights(data);
-            generateNarratives(data);
-        } catch (error) {
-            console.error('Error fetching flights:', error);
-            setError('Failed to fetch flights');
-        } finally {
-            setLoading(false);
-        }
-    }, [router]);
-
-    useEffect(() => {
-        fetchFlights();
-    }, [fetchFlights]);
-
-    const generateNarratives = async (flightData: Flight[]) => {
+    const generateNarratives = useCallback(async (flightData: Flight[]) => {
         const token = getAuthToken();
         
         if (!token) {
@@ -147,7 +104,53 @@ export default function FlightNarrativePage() {
                 }));
             }
         }
-    };
+    }, [router]);
+
+    useEffect(() => {
+        const token = getAuthToken();
+        if (!token) {
+            console.error('No authentication token found');
+            router.push('/login');
+            return;
+        }
+
+        let ignore = false;
+        fetch(`${BASE_URL}/flights/`, {
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        })
+            .then(async (response) => {
+                if (ignore) return;
+
+                if (response.status === 401) {
+                    console.error('Authentication failed');
+                    setError('Your session has expired. Please log in again.');
+                    router.push('/login');
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch flights: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                if (ignore) return;
+                setFlights(data);
+                generateNarratives(data);
+            })
+            .catch((error) => {
+                console.error('Error fetching flights:', error);
+                if (!ignore) setError('Failed to fetch flights');
+            })
+            .finally(() => {
+                if (!ignore) setLoading(false);
+            });
+
+        return () => {
+            ignore = true;
+        };
+    }, [router, generateNarratives]);
 
     if (loading) {
         return (
