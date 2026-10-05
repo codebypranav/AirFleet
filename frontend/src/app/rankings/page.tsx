@@ -90,7 +90,7 @@ export default function RankingsPage() {
 
         const data = rankings[activeTab];
         if (data.length === 0) {
-            return <EmptyState title="No pilots ranked yet">Log a flight to put your name on the board.</EmptyState>;
+            return <EmptyState title="No pilots ranked yet">Rankings appear once pilots have logged flights.</EmptyState>;
         }
         const max = Math.max(...data.map((r) => metric(activeTab, r)), 1);
 
