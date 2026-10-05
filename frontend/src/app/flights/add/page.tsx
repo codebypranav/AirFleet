@@ -2,7 +2,10 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Navbar from '@/components/Navbar';
+import Link from 'next/link';
+import { PageShell, PageHeader } from '@/components/PageShell';
+import { CameraIcon } from '@/components/Icons';
+import { CONDITIONS } from '@/utils/format';
 import { addFlight } from '@/utils/api';
 
 export default function AddFlight() {
@@ -83,151 +86,156 @@ export default function AddFlight() {
         }
     };
 
+    const blockTime = calculateTotalTime();
+    const blockTimeValid = !blockTime.startsWith('-') && blockTime !== '0:00:00';
+
+    const field = (name: 'departure_airport' | 'arrival_airport' | 'registration_number', label: string, placeholder: string, extra: React.InputHTMLAttributes<HTMLInputElement> = {}) => (
+        <div>
+            <label htmlFor={name} className="field-label">{label}</label>
+            <input
+                type="text"
+                id={name}
+                name={name}
+                value={formData[name]}
+                onChange={handleChange}
+                required
+                placeholder={placeholder}
+                className="field-input font-mono uppercase tracking-wider placeholder:normal-case placeholder:tracking-normal"
+                {...extra}
+            />
+        </div>
+    );
+
     return (
-        <div className="min-h-screen bg-black text-white">
-            <Navbar />
-            <div className="container mx-auto px-4 py-8">
-                <h1 className="text-3xl font-bold mb-8">Add New Flight</h1>
-                
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {error && (
-                        <div className="bg-red-500 text-white p-3 rounded-sm">
-                            {error}
-                        </div>
-                    )}
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <PageShell>
+            <PageHeader
+                eyebrow="Logbook · New entry"
+                title="Add a flight"
+                description="Fill in the leg as you'd write it in the paper log. Block time is worked out for you."
+            />
+
+            <form onSubmit={handleSubmit} className="space-y-6 animate-rise">
+                {error && (
+                    <div className="alert-error" role="alert">
+                        {error}
+                    </div>
+                )}
+
+                <fieldset className="card p-5 sm:p-6">
+                    <legend className="sr-only">Times</legend>
+                    <p className="eyebrow mb-5 text-clay">01 · Times</p>
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-[1fr_1fr_auto] md:items-end">
                         <div>
-                            <label className="block text-sm font-medium mb-1">
-                                Departure Time
-                            </label>
+                            <label htmlFor="departure_time" className="field-label">Departure</label>
                             <input
                                 type="datetime-local"
+                                id="departure_time"
                                 name="departure_time"
                                 value={formData.departure_time}
                                 onChange={handleChange}
                                 required
-                                className="w-full p-2 rounded-sm bg-gray-800 text-white"
+                                className="field-input"
                             />
                         </div>
-
                         <div>
-                            <label className="block text-sm font-medium mb-1">
-                                Arrival Time
-                            </label>
+                            <label htmlFor="arrival_time" className="field-label">Arrival</label>
                             <input
                                 type="datetime-local"
+                                id="arrival_time"
                                 name="arrival_time"
                                 value={formData.arrival_time}
                                 onChange={handleChange}
                                 required
-                                className="w-full p-2 rounded-sm bg-gray-800 text-white"
+                                className="field-input"
                             />
                         </div>
-
-                        <div>
-                            <label className="block text-sm font-medium mb-1">
-                                Departure Airport
-                            </label>
-                            <input
-                                type="text"
-                                name="departure_airport"
-                                value={formData.departure_airport}
-                                onChange={handleChange}
-                                required
-                                minLength={3}
-                                maxLength={4}
-                                className="w-full p-2 rounded-sm bg-gray-800 text-white"
-                            />
+                        <div className="rounded-lg border border-dashed border-line px-4 py-2.5 md:min-w-36">
+                            <p className="eyebrow">Block time</p>
+                            <p className={`font-mono text-lg ${blockTimeValid ? 'text-fern' : 'text-ash'}`} aria-live="polite">
+                                {blockTime.startsWith('-') ? 'Check times' : blockTime}
+                            </p>
                         </div>
+                    </div>
+                </fieldset>
 
+                <fieldset className="card p-5 sm:p-6">
+                    <legend className="sr-only">Route</legend>
+                    <p className="eyebrow mb-5 text-clay">02 · Route</p>
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-3">
+                        {field('departure_airport', 'From', 'e.g. KSFO', { minLength: 3, maxLength: 4 })}
+                        {field('arrival_airport', 'To', 'e.g. KLAX', { minLength: 3, maxLength: 4 })}
                         <div>
-                            <label className="block text-sm font-medium mb-1">
-                                Arrival Airport
-                            </label>
-                            <input
-                                type="text"
-                                name="arrival_airport"
-                                value={formData.arrival_airport}
-                                onChange={handleChange}
-                                required
-                                minLength={3}
-                                maxLength={4}
-                                className="w-full p-2 rounded-sm bg-gray-800 text-white"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium mb-1">
-                                Distance (nm)
-                            </label>
+                            <label htmlFor="distance" className="field-label">Distance (nm)</label>
                             <input
                                 type="number"
+                                id="distance"
                                 name="distance"
                                 value={formData.distance}
                                 onChange={handleChange}
                                 required
                                 min="0"
-                                className="w-full p-2 rounded-sm bg-gray-800 text-white"
+                                className="field-input font-mono"
                             />
                         </div>
+                    </div>
+                </fieldset>
 
+                <fieldset className="card p-5 sm:p-6">
+                    <legend className="sr-only">Aircraft</legend>
+                    <p className="eyebrow mb-5 text-clay">03 · Aircraft</p>
+                    <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                        {field('registration_number', 'Registration', 'e.g. N172SP')}
                         <div>
-                            <label className="block text-sm font-medium mb-1">
-                                Registration Number
-                            </label>
-                            <input
-                                type="text"
-                                name="registration_number"
-                                value={formData.registration_number}
-                                onChange={handleChange}
-                                required
-                                className="w-full p-2 rounded-sm bg-gray-800 text-white"
-                            />
-                        </div>
-
-                        <div>
-                            <label className="block text-sm font-medium mb-1">
-                                Aircraft Condition
-                            </label>
+                            <label htmlFor="aircraft_condition" className="field-label">Condition</label>
                             <select
+                                id="aircraft_condition"
                                 name="aircraft_condition"
                                 value={formData.aircraft_condition}
                                 onChange={handleChange}
-                                className="w-full p-2 rounded-sm bg-gray-800 text-white"
+                                className="field-input"
                             >
-                                <option value="AIRWORTHY">Airworthy</option>
-                                <option value="GOOD">Good Condition</option>
-                                <option value="MINOR_ISSUES">Minor Issues</option>
-                                <option value="MAINTENANCE">Needs Maintenance</option>
-                                <option value="GROUNDED">Grounded</option>
+                                {Object.entries(CONDITIONS).map(([value, { label }]) => (
+                                    <option key={value} value={value}>{label}</option>
+                                ))}
                             </select>
                         </div>
-
-                        <div>
-                            <label className="block text-sm font-medium mb-1">
-                                Photo
-                            </label>
-                            <input
-                                type="file"
-                                name="photo"
-                                onChange={handleFileChange}
-                                accept="image/*"
-                                className="w-full p-2 rounded-sm bg-gray-800 text-white"
-                            />
-                        </div>
                     </div>
 
-                    <div className="flex justify-end">
-                        <button
-                            type="submit"
-                            className="bg-blue-600 text-white px-4 py-2 rounded-sm hover:bg-blue-700"
-                        >
-                            Add Flight
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+                    <label
+                        htmlFor="photo"
+                        className="mt-5 flex cursor-pointer items-center gap-4 rounded-lg border border-dashed border-line px-4 py-4 transition-colors hover:border-moss/60 hover:bg-graphite/50 focus-within:border-moss"
+                    >
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-graphite text-moss">
+                            <CameraIcon className="h-5 w-5" />
+                        </span>
+                        <span className="min-w-0">
+                            <span className="block text-sm text-bone">
+                                {formData.photo ? formData.photo.name : 'Add a photo from this flight'}
+                            </span>
+                            <span className="block text-xs text-ash">
+                                {formData.photo ? 'Click to choose a different image' : 'Optional · any image file'}
+                            </span>
+                        </span>
+                        <input
+                            type="file"
+                            id="photo"
+                            name="photo"
+                            onChange={handleFileChange}
+                            accept="image/*"
+                            className="sr-only"
+                        />
+                    </label>
+                </fieldset>
+
+                <div className="flex flex-col-reverse gap-3 sm:flex-row sm:justify-end">
+                    <Link href="/flights" className="btn btn-ghost">
+                        Cancel
+                    </Link>
+                    <button type="submit" className="btn btn-primary px-6">
+                        Save to logbook
+                    </button>
+                </div>
+            </form>
+        </PageShell>
     );
 }

@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import Navbar from '@/components/Navbar';
+import { PageShell, PageHeader, EmptyState, Spinner } from '@/components/PageShell';
+import { PlaneIcon } from '@/components/Icons';
+import { formatDuration } from '@/utils/format';
 import { Flight } from '@/types/flight';
 import Cookies from 'js-cookie';
 
@@ -152,59 +154,93 @@ export default function FlightNarrativePage() {
         };
     }, [router, generateNarratives]);
 
+    const header = (
+        <PageHeader
+            eyebrow="Stories"
+            title="Flight narratives"
+            description="Each entry in your logbook, retold as a short story."
+        />
+    );
+
     if (loading) {
         return (
-            <div className="min-h-screen bg-black text-white">
-                <Navbar />
-                <div className="container mx-auto px-4 py-8">
-                    <div className="flex justify-center items-center h-64">
-                        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-blue-500"></div>
-                    </div>
-                </div>
-            </div>
+            <PageShell>
+                {header}
+                <Spinner label="Gathering your flights" />
+            </PageShell>
         );
     }
 
     return (
-        <div className="min-h-screen bg-black text-white">
-            <Navbar />
-            <div className="container mx-auto px-4 py-8">
-                <h1 className="text-3xl font-bold mb-8">Flight Narratives</h1>
-                {error && <p className="text-red-500 mb-4">{error}</p>}
-                
-                <div className="space-y-6">
-                    {flights.map((flight) => (
-                        <div key={flight.id} className="bg-gray-800 rounded-lg p-6">
-                            <div className="flex justify-between items-start mb-4">
-                                <h2 className="text-xl font-semibold">
-                                    {flight.departure_airport} → {flight.arrival_airport}
-                                </h2>
-                                <span className="text-gray-400">
-                                    {new Date(flight.departure_time).toLocaleDateString()}
-                                </span>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-4 mb-4 text-sm text-gray-300">
-                                <div>
-                                    <p>Departure: {new Date(flight.departure_time).toLocaleTimeString()}</p>
-                                    <p>Arrival: {new Date(flight.arrival_time).toLocaleTimeString()}</p>
-                                </div>
-                                <div>
-                                    <p>Duration: {flight.total_time}</p>
-                                    <p>Distance: {flight.distance} nm</p>
-                                </div>
-                            </div>
-                            
-                            <div className="mt-4">
-                                <h3 className="text-lg font-semibold mb-2">Flight Story</h3>
-                                <p className="text-gray-300">
-                                    {narratives[flight.id] || 'Generating narrative...'}
+        <PageShell>
+            {header}
+            {error && <p className="alert-error mb-6" role="alert">{error}</p>}
+
+            {!error && flights.length === 0 && (
+                <EmptyState title="No stories yet">
+                    <p>Once you log a flight, its story will be written here.</p>
+                </EmptyState>
+            )}
+
+            <div className="space-y-6">
+                {flights.map((flight, i) => {
+                    const narrative = narratives[flight.id] || 'Generating narrative...';
+                    const pending = narrative === 'Generating narrative...';
+                    const departed = new Date(flight.departure_time);
+                    return (
+                        <article
+                            key={flight.id}
+                            className="card grid overflow-hidden md:grid-cols-[13rem_1fr] animate-rise"
+                            style={{ animationDelay: `${Math.min(i, 8) * 60}ms` }}
+                        >
+                            <aside className="flex flex-col gap-4 border-b border-line bg-graphite/40 p-5 md:border-b-0 md:border-r">
+                                <p className="eyebrow">
+                                    {departed.toLocaleDateString(undefined, { day: '2-digit', month: 'long', year: 'numeric' })}
                                 </p>
+                                <p className="flex items-center gap-2 font-mono text-2xl font-medium tracking-wider text-paper">
+                                    {flight.departure_airport}
+                                    <PlaneIcon className="h-4 w-4 rotate-90 text-moss" />
+                                    {flight.arrival_airport}
+                                </p>
+                                <dl className="grid grid-cols-2 gap-x-4 gap-y-3 text-sm md:grid-cols-1">
+                                    <div>
+                                        <dt className="eyebrow">Off / On</dt>
+                                        <dd className="mt-0.5 font-mono text-bone">
+                                            {departed.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                                            {' – '}
+                                            {new Date(flight.arrival_time).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+                                        </dd>
+                                    </div>
+                                    <div>
+                                        <dt className="eyebrow">Duration</dt>
+                                        <dd className="mt-0.5 text-bone">{formatDuration(flight.total_time)}</dd>
+                                    </div>
+                                    <div>
+                                        <dt className="eyebrow">Distance</dt>
+                                        <dd className="mt-0.5 text-bone">{flight.distance} nm</dd>
+                                    </div>
+                                </dl>
+                            </aside>
+
+                            <div className="p-6 sm:p-8">
+                                <h2 className="eyebrow mb-4 text-clay">Debrief</h2>
+                                {pending ? (
+                                    <div className="space-y-3" role="status" aria-label="Generating narrative">
+                                        <div className="h-3 w-11/12 animate-pulse rounded bg-graphite" />
+                                        <div className="h-3 w-full animate-pulse rounded bg-graphite [animation-delay:150ms]" />
+                                        <div className="h-3 w-4/5 animate-pulse rounded bg-graphite [animation-delay:300ms]" />
+                                        <p className="pt-2 font-display text-sm italic text-ash">Writing it down…</p>
+                                    </div>
+                                ) : (
+                                    <p className="font-display text-lg font-light leading-relaxed text-bone first-letter:float-left first-letter:mr-2 first-letter:font-display first-letter:text-5xl first-letter:font-medium first-letter:leading-[0.9] first-letter:text-fern">
+                                        {narrative}
+                                    </p>
+                                )}
                             </div>
-                        </div>
-                    ))}
-                </div>
+                        </article>
+                    );
+                })}
             </div>
-        </div>
+        </PageShell>
     );
 }

@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect } from 'react';
-import Navbar from '@/components/Navbar';
+import { PageShell, PageHeader, EmptyState, Spinner } from '@/components/PageShell';
+import { durationToSeconds, formatDuration } from '@/utils/format';
 
 // Use environment variable with fallback
 const BASE_URL = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'}/api`;
@@ -18,6 +19,15 @@ interface RankingsData {
     time: Ranking[];
     distance: Ranking[];
 }
+
+const TABS = [
+    { id: 'flights', label: 'Total flights' },
+    { id: 'time', label: 'Flight time' },
+    { id: 'distance', label: 'Distance flown' },
+] as const;
+
+// Gold, silver and bronze, recast in the earth palette.
+const PODIUM = ['text-fern', 'text-sand', 'text-clay'];
 
 export default function RankingsPage() {
     const [rankings, setRankings] = useState<RankingsData | null>(null);
@@ -38,74 +48,83 @@ export default function RankingsPage() {
         fetchRankings();
     }, []);
 
+    const metric = (rank: Ranking) => {
+        if (activeTab === 'flights') return rank.total_flights ?? 0;
+        if (activeTab === 'time') return durationToSeconds(rank.total_time);
+        return Number(rank.total_distance) || 0;
+    };
+
+    const display = (rank: Ranking) => {
+        if (activeTab === 'flights') return `${rank.total_flights ?? 0}`;
+        if (activeTab === 'time') return formatDuration(rank.total_time);
+        return `${(Number(rank.total_distance) || 0).toLocaleString()} nm`;
+    };
+
     const renderRankings = () => {
-        if (!rankings) return <div>Loading...</div>;
+        if (!rankings) return <Spinner label="Tallying the field" />;
 
         const data = rankings[activeTab];
+        if (data.length === 0) {
+            return <EmptyState title="No pilots ranked yet">Log a flight to put your name on the board.</EmptyState>;
+        }
+        const max = Math.max(...data.map(metric), 1);
         
         return (
-            <div className="space-y-4">
+            <ol className="space-y-2.5">
                 {data.map((rank, index) => (
-                    <div 
+                    <li 
                         key={rank.username} 
-                        className="bg-gray-800 p-4 rounded-lg flex justify-between items-center"
+                        className="card flex items-center gap-4 overflow-hidden px-4 py-3.5 sm:gap-6 sm:px-6 animate-rise"
+                        style={{ animationDelay: `${Math.min(index, 10) * 40}ms` }}
                     >
-                        <div className="flex items-center space-x-4">
-                            <span className="text-2xl font-bold text-gray-400">#{index + 1}</span>
-                            <span className="text-xl">{rank.username}</span>
-                        </div>
-                        <span className="text-xl">
-                            {activeTab === 'flights' && rank.total_flights}
-                            {activeTab === 'time' && rank.total_time}
-                            {activeTab === 'distance' && `${rank.total_distance} nm`}
+                        <span className={`w-10 shrink-0 font-display text-3xl font-light tabular-nums ${PODIUM[index] ?? 'text-ash/60'}`}>
+                            {String(index + 1).padStart(2, '0')}
                         </span>
-                    </div>
+                        <div className="min-w-0 flex-1">
+                            <div className="flex items-baseline justify-between gap-4">
+                                <span className="truncate text-lg text-paper">{rank.username}</span>
+                                <span className="shrink-0 font-mono text-sm text-bone">{display(rank)}</span>
+                            </div>
+                            <div className="mt-2 h-1 overflow-hidden rounded-full bg-graphite">
+                                <div
+                                    className={`h-full rounded-full transition-[width] duration-700 ${index === 0 ? 'bg-moss' : 'bg-ash/50'}`}
+                                    style={{ width: `${(metric(rank) / max) * 100}%` }}
+                                />
+                            </div>
+                        </div>
+                    </li>
                 ))}
-            </div>
+            </ol>
         );
     };
 
     return (
-        <div className="min-h-screen bg-black text-white">
-            <Navbar />
-            <div className="container mx-auto px-4 py-8">
-                <h1 className="text-3xl font-bold mb-8">Pilot Rankings</h1>
-                
-                <div className="flex space-x-4 mb-8">
-                    <button
-                        onClick={() => setActiveTab('flights')}
-                        className={`px-4 py-2 rounded ${
-                            activeTab === 'flights' 
-                                ? 'bg-blue-600' 
-                                : 'bg-gray-700 hover:bg-gray-600'
-                        }`}
-                    >
-                        Total Flights
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('time')}
-                        className={`px-4 py-2 rounded ${
-                            activeTab === 'time' 
-                                ? 'bg-blue-600' 
-                                : 'bg-gray-700 hover:bg-gray-600'
-                        }`}
-                    >
-                        Flight Time
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('distance')}
-                        className={`px-4 py-2 rounded ${
-                            activeTab === 'distance' 
-                                ? 'bg-blue-600' 
-                                : 'bg-gray-700 hover:bg-gray-600'
-                        }`}
-                    >
-                        Distance Flown
-                    </button>
-                </div>
+        <PageShell>
+            <PageHeader
+                eyebrow="Rankings"
+                title="Pilot rankings"
+                description="Who has been up there the most."
+            />
 
-                {renderRankings()}
+            <div role="tablist" aria-label="Ranking metric" className="mb-8 inline-flex flex-wrap gap-1 rounded-full border border-line bg-char p-1">
+                {TABS.map((tab) => (
+                    <button
+                        key={tab.id}
+                        role="tab"
+                        aria-selected={activeTab === tab.id}
+                        onClick={() => setActiveTab(tab.id)}
+                        className={`rounded-full px-4 py-1.5 text-sm transition-colors ${
+                            activeTab === tab.id
+                                ? 'bg-bone text-ink'
+                                : 'text-ash hover:text-bone'
+                        }`}
+                    >
+                        {tab.label}
+                    </button>
+                ))}
             </div>
-        </div>
+
+            {renderRankings()}
+        </PageShell>
     );
-} 
+}

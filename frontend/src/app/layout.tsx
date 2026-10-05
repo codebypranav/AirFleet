@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Fraunces, Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import SessionProviderWrapper from "./SessionProviderWrapper";
 
@@ -13,6 +13,12 @@ const geistMono = Geist_Mono({
     subsets: ["latin"],
 });
 
+const fraunces = Fraunces({
+    variable: "--font-fraunces",
+    subsets: ["latin"],
+    axes: ["SOFT", "opsz"],
+});
+
 export const metadata: Metadata = {
     title: "AirFleet",
     description: "Your modern pilot's logbook — AI-driven insights and more.",
@@ -24,8 +30,9 @@ export default function RootLayout({
     children: React.ReactNode;
 }) {
     return (
-        <html lang="en">
-            <body className={`${geistSans.variable} ${geistMono.variable} antialiased`}>
+        // Font variables live on <html> so the theme tokens in globals.css can resolve them at :root.
+        <html lang="en" className={`${geistSans.variable} ${geistMono.variable} ${fraunces.variable}`}>
+            <body className="antialiased">
                 <SessionProviderWrapper>{children}</SessionProviderWrapper>
             </body>
         </html>
