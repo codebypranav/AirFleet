@@ -36,6 +36,11 @@ The system is meant to function as a lightweight aviation workspace with:
   sign-in, and opt-in public pilot profiles and shareable flight pages.
 - **Rankings:** by flights, time, distance, longest flight and airports visited, for all
   time, this year or this month.
+- **Instructor sign-off:** a pilot links with their instructor by invitation (either side
+  invites, the other accepts), and the instructor signs lessons with dual received time.
+  Instructing is a capability, not an account type: anyone who adds an instructor certificate
+  to their profile can be invited as one and still logs their own flights. See
+  [Instructor sign-off](#instructor-sign-off).
 - **Privacy:** a `/privacy` notice of what is stored and which services see it, and account
   deletion from the profile page that erases the pilot's flights, aircraft and photos.
 
@@ -56,6 +61,7 @@ The backend is organized around Django apps:
 - `backend/AirFleet_api/` — project configuration and settings
 - `backend/flights/` — flight models, serializers, and API logic
 - `backend/users/` — user auth and profile logic
+- `backend/instruction/` — instructor links and lesson sign-offs
 
 ### Frontend
 - Next.js
@@ -105,12 +111,38 @@ default `30/hour`). The prompt includes structured flight metadata such as:
 
 The generated response is returned to the frontend and kept with the flight.
 
+### Instructor sign-off
+`InstructorLink` joins a student and an instructor. Either pilot invites the other by username or
+email (`POST /api/instruction/links/`); the invitee gets an email and accepts on the Instruction page.
+Either side can decline or unlink. While linked, the instructor sees the student's flights that have
+dual received time, limited to the fields they would sign (`GET /api/instruction/links/<id>/flights/`).
+
+Signing (`POST /api/instruction/flights/<id>/sign/`) needs an active link, dual received time on the
+flight, a certificate number on the instructor's profile that hasn't expired, a ticked attestation and
+the instructor's password. Each `Signature` stores:
+
+- the instructor's name, certificate number and expiry at the time of signing
+- the attestation text they agreed to, and their remarks
+- a snapshot of the signed fields (route, times, aircraft, logbook columns, landings, approaches,
+  cross-country, simulator, plus the flight and pilot ids) and its SHA-256 hash
+
+The flight API recomputes the hash from the current entry. If the student edits a signed field, the
+signature shows as **invalidated**, with the fields that changed, until the instructor signs again (or
+the values are put back). Notes, photos, weather and stories aren't signed and can change freely. A
+signature stays on the student's flight if the instructor unlinks or deletes their account.
+
+AirFleet calls this **instructor-verified**. It is not presented as a signature that satisfies
+14 CFR 61.51(h) or the FAA's guidance on electronic signatures (AC 120-78A), and the hash is change
+detection, not tamper-proofing against someone with database access. Endorsements (solo, checkride
+and so on) would be a natural next step on the same model.
+
 ## Repository structure
 
 ```text
 backend/
   AirFleet_api/
   flights/
+  instruction/
   users/
   flights/data/airports.csv.gz
   manage.py

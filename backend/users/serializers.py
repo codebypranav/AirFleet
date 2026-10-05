@@ -40,7 +40,10 @@ class UserSerializer(serializers.ModelSerializer):
 class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
-        fields = ('username', 'email', 'first_name', 'last_name', 'bio', 'home_airport', 'is_public', 'date_joined')
+        fields = (
+            'username', 'email', 'first_name', 'last_name', 'bio', 'home_airport', 'is_public',
+            'instructor_certificate_number', 'instructor_certificate_expires', 'date_joined',
+        )
         read_only_fields = ('date_joined',)
 
     def validate_username(self, value):
@@ -52,6 +55,9 @@ class ProfileSerializer(serializers.ModelSerializer):
         if CustomUser.objects.filter(email__iexact=value).exclude(pk=self.instance.pk).exists():
             raise serializers.ValidationError("This email is already in use.")
         return value
+
+    def validate_instructor_certificate_number(self, value):
+        return value.strip().upper()
 
     def validate_home_airport(self, value):
         code = value.strip().upper()

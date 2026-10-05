@@ -1,7 +1,7 @@
 import Cookies from 'js-cookie';
 import type {
-    Achievement, Aircraft, Airport, Currency, Flight, ImportResult, Paginated, Profile, PublicFlight, PublicPilot,
-    RouteMapData, Stats,
+    Achievement, Aircraft, Airport, Currency, Flight, ImportResult, InstructorLink, Paginated, Profile, PublicFlight,
+    PublicPilot, RouteMapData, Signature, Stats, StudentFlight,
 } from '@/types/flight';
 
 const ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/+$/, '').replace(/\/api$/, '');
@@ -184,6 +184,16 @@ export const requestPasswordReset = (email: string) =>
     apiJson<{ detail: string }>('/password-reset/', { method: 'POST', json: { email }, auth: false });
 export const confirmPasswordReset = (uid: string, token: string, password: string) =>
     apiJson<{ detail: string }>('/password-reset/confirm/', { method: 'POST', json: { uid, token, password }, auth: false });
+
+export const getInstructorLinks = () => apiJson<InstructorLink[]>('/instruction/links/');
+export const inviteToLink = (invitee: string, invitee_role: 'instructor' | 'student') =>
+    apiJson<InstructorLink>('/instruction/links/', { method: 'POST', json: { invitee, invitee_role } });
+export const acceptLink = (id: number) => apiJson<InstructorLink>(`/instruction/links/${id}/accept/`, { method: 'POST' });
+export const endLink = (id: number) => apiJson<void>(`/instruction/links/${id}/`, { method: 'DELETE' });
+export const getStudentFlights = (linkId: number | string, params: { unsigned?: string; page?: number; page_size?: number } = {}) =>
+    apiJson<Paginated<StudentFlight>>(`/instruction/links/${linkId}/flights/${query(params)}`);
+export const signFlight = (flightId: number, data: { remarks: string; agree: boolean; password: string }) =>
+    apiJson<Signature>(`/instruction/flights/${flightId}/sign/`, { method: 'POST', json: data });
 
 export const getPublicPilot = (username: string) => apiJson<PublicPilot>(`/pilots/${encodeURIComponent(username)}/`, { auth: false });
 export const getPublicFlight = (id: number | string) => apiJson<PublicFlight>(`/public/flights/${id}/`, { auth: false });

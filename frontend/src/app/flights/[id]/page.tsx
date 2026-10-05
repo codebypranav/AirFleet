@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import RouteMap from '@/components/RouteMap';
 import { EditIcon, ShareIcon, TrashIcon } from '@/components/Icons';
 import { ErrorState, PageHeader, PageShell, Section, Spinner, StatGrid } from '@/components/PageShell';
+import { DISCLAIMER, SignatureBadge, SignatureDetails } from '@/components/Signature';
 import type { Flight } from '@/types/flight';
 import { deleteFlight, generateNarrative, getFlight, getProfile } from '@/utils/api';
 import { conditionFor, durationToSeconds, formatDate, formatDuration, formatTime, photoUrl } from '@/utils/format';
@@ -146,6 +147,7 @@ export default function FlightDetail({ params }: { params: Promise<{ id: string 
 
             <div className="mt-6 flex flex-wrap items-center gap-2 text-xs">
                 <span className={`rounded-full border px-2.5 py-0.5 ${condition.className}`}>{condition.label}</span>
+                <SignatureBadge signature={flight.signature} />
                 {flight.cross_country && <span className="rounded-full border border-line px-2.5 py-0.5 text-stone">Cross-country</span>}
                 {flight.is_simulator && <span className="rounded-full border border-line px-2.5 py-0.5 text-stone">Simulator</span>}
                 {flight.aircraft && (
@@ -200,6 +202,20 @@ export default function FlightDetail({ params }: { params: Promise<{ id: string 
                     </dl>
                 </Section>
             </div>
+
+            {(flight.signature || durationToSeconds(flight.dual_received_time) > 0) && (
+                <Section title="Instructor sign-off">
+                    {flight.signature ? (
+                        <SignatureDetails signature={flight.signature} viewer="student" />
+                    ) : (
+                        <p className="text-sm text-ash">
+                            Not signed yet. <Link href="/instruction" className="text-fern hover:underline">Link your instructor</Link> and
+                            they can sign this lesson from their account.
+                        </p>
+                    )}
+                    <p className="mt-3 text-xs text-ash">{DISCLAIMER}</p>
+                </Section>
+            )}
 
             {flight.weather_conditions && (
                 <Section title="Weather">

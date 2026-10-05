@@ -62,7 +62,7 @@ class UserFlightsMixin:
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        return Flight.objects.filter(user=self.request.user).select_related('aircraft')
+        return Flight.objects.filter(user=self.request.user).select_related('aircraft').prefetch_related('signatures')
 
 
 class FlightListView(UserFlightsMixin, generics.ListCreateAPIView):

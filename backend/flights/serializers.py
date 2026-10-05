@@ -82,6 +82,7 @@ class FlightSerializer(serializers.ModelSerializer):
     departure_info = serializers.SerializerMethodField()
     arrival_info = serializers.SerializerMethodField()
     aircraft_type = serializers.CharField(source='aircraft.type_code', read_only=True, default='')
+    signature = serializers.SerializerMethodField()
 
     class Meta:
         model = Flight
@@ -93,6 +94,12 @@ class FlightSerializer(serializers.ModelSerializer):
 
     def get_arrival_info(self, obj):
         return airport_info(obj.arrival_airport)
+
+    def get_signature(self, obj):
+        """The latest instructor sign-off, and whether edits since have invalidated it."""
+        from instruction.serializers import SignatureSerializer, latest_signature
+        signature = latest_signature(obj)
+        return SignatureSerializer(signature).data if signature else None
 
     def _validate_airport(self, value):
         code = value.strip().upper()

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { PageShell, PageHeader, EmptyState, ErrorState, Spinner, StatGrid } from '@/components/PageShell';
 import { CameraIcon, DownloadIcon, PlaneIcon, PlusIcon, UploadIcon } from '@/components/Icons';
+import { SignatureBadge } from '@/components/Signature';
 import { downloadExport, getFlights, getStats, type FlightFilters } from '@/utils/api';
 import { conditionFor, formatDate, formatDuration, formatTime, photoUrl } from '@/utils/format';
 import { useApi } from '@/utils/useApi';
@@ -160,8 +161,11 @@ export default function FlightsPage() {
                                                         {formatDate(flight.departure_time)} · {formatTime(flight.departure_time)}
                                                         {flight.is_simulator && ' · Sim'}
                                                     </p>
-                                                    <span className={`rounded-full border px-2.5 py-0.5 text-xs ${condition.className}`}>
-                                                        {condition.label}
+                                                    <span className="flex flex-wrap gap-2">
+                                                        <SignatureBadge signature={flight.signature} />
+                                                        <span className={`rounded-full border px-2.5 py-0.5 text-xs ${condition.className}`}>
+                                                            {condition.label}
+                                                        </span>
                                                     </span>
                                                 </div>
 

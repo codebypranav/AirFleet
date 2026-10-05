@@ -29,6 +29,7 @@ export default function PrivacyPage() {
                         <Item title="Account">username, email, name, bio and home airport, plus a hashed password (never the password itself).</Item>
                         <Item title="Flights">airports, dates and times, aircraft registrations, logbook times, weather, notes, flight plans, photos and generated stories. Together these are a record of where and when you flew.</Item>
                         <Item title="Aircraft">registrations, types, hours and maintenance dates you enter.</Item>
+                        <Item title="Instruction">who your instructors and students are, and each sign-off: the instructor&apos;s name, certificate number and expiry, their remarks, and a copy of the flight&apos;s logbook fields as signed.</Item>
                         <Item title="Cookies">only the sign-in tokens that keep you logged in. No advertising or tracking cookies.</Item>
                     </ul>
                 </Section>
@@ -47,6 +48,15 @@ export default function PrivacyPage() {
                         <Item title="aviationweather.gov and SimBrief">when you fetch weather (airport code and date) or import a flight plan (your SimBrief username).</Item>
                         <Item title="Hosting">the app, database, photo storage and email are run by our hosting providers, who store data on our behalf.</Item>
                     </ul>
+                </Section>
+
+                <Section title="Instructors">
+                    <p className="text-stone">
+                        An instructor you link with can see your flights that have dual received time: route, times, aircraft,
+                        logbook columns, landings and approaches. Not your notes, photos, stories or other flights. Unlinking
+                        stops that straight away. A sign-off stays on your flight, with the instructor&apos;s name and
+                        certificate number, even if they later delete their account.
+                    </p>
                 </Section>
 
                 <Section title="Public profiles">

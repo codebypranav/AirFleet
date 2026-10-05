@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'flights',
     'users',
+    'instruction',
     'rest_framework_simplejwt',
 ]
 
@@ -213,6 +214,7 @@ REST_FRAMEWORK = {
     'DEFAULT_THROTTLE_RATES': {
         'narrative': os.environ.get('NARRATIVE_RATE', '30/hour'),
         'lookup': '120/hour',
+        'invite': '30/hour',
         'auth': '30/minute',
     },
 }
