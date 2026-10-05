@@ -40,7 +40,6 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 
-./backend/media/flight_photos/
 # Playwright
 /test-results/
 /playwright-report/

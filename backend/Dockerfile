@@ -19,7 +19,7 @@ RUN pip install --upgrade pip && \
 COPY . /app/
 
 # Make scripts executable
-RUN chmod +x /app/start.sh /app/launcher.sh
+RUN chmod +x /app/launcher.sh
 
 EXPOSE 8000
 
