@@ -29,7 +29,7 @@ export function BrandMark({ className = '' }: { className?: string }) {
     const ticks = Array.from({ length: 11 }, (_, i) => (i + 1) * 30);
     return (
         <svg aria-hidden="true" viewBox="0 0 48 48" className={className} fill="none">
-            <circle cx="24" cy="24" r="21" stroke="currentColor" strokeOpacity="0.45" strokeWidth="1.5" />
+            <circle cx="24" cy="24" r="21" stroke="currentColor" strokeOpacity="0.7" strokeWidth="1.6" />
             {ticks.map((deg) => {
                 const [x1, y1] = polar(24, 24, 21, deg);
                 const [x2, y2] = polar(24, 24, deg % 90 === 0 ? 17.5 : 18.5, deg);
@@ -47,11 +47,18 @@ export function BrandMark({ className = '' }: { className?: string }) {
     );
 }
 
-export function Wordmark({ className = '' }: { className?: string }) {
+const WORDMARK_SIZES = {
+    md: { gap: 'gap-3', mark: 'h-11 w-11', text: 'text-2xl' },
+    lg: { gap: 'gap-3.5', mark: 'h-14 w-14', text: 'text-3xl' },
+    xl: { gap: 'gap-5', mark: 'h-24 w-24', text: 'text-6xl' },
+};
+
+export function Wordmark({ size = 'md', className = '' }: { size?: keyof typeof WORDMARK_SIZES; className?: string }) {
+    const s = WORDMARK_SIZES[size];
     return (
-        <span className={`group flex items-center gap-2.5 ${className}`}>
-            <BrandMark className="h-8 w-8 text-moss transition-colors group-hover:text-fern" />
-            <span className="font-display text-xl font-medium tracking-tight text-paper">AirFleet</span>
+        <span className={`group flex items-center ${s.gap} ${className}`}>
+            <BrandMark className={`${s.mark} shrink-0 text-fern transition-colors group-hover:text-sand`} />
+            <span className={`font-display ${s.text} font-medium tracking-tight text-paper`}>AirFleet</span>
         </span>
     );
 }

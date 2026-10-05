@@ -5,12 +5,10 @@ import { Wordmark } from '@/components/Brand';
 export default function AuthLayout({
     eyebrow,
     title,
-    quote,
     children,
 }: {
     eyebrow: string;
     title: string;
-    quote: string;
     children: React.ReactNode;
 }) {
     return (
@@ -23,13 +21,11 @@ export default function AuthLayout({
                 <div className="absolute inset-0 bg-gradient-to-t from-ink via-ink/30 to-ink/50" />
                 <div className="absolute inset-0 bg-moss-deep/25 mix-blend-multiply" />
                 <Contours className="absolute inset-0 h-full w-full text-sand/10" />
-                <div className="relative flex h-full flex-col justify-between p-10">
+                <div className="relative flex h-full flex-col justify-end p-12">
                     <Link href="/" className="self-start">
-                        <Wordmark />
+                        <Wordmark size="xl" />
                     </Link>
-                    <blockquote className="max-w-md font-display text-3xl font-light italic leading-snug text-paper">
-                        “{quote}”
-                    </blockquote>
+                    <p className="eyebrow mt-5 text-stone">Pilot&apos;s logbook</p>
                 </div>
             </aside>
 
@@ -37,7 +33,7 @@ export default function AuthLayout({
                 <Contours className="absolute inset-0 h-full w-full text-moss/[0.07]" />
                 <div className="relative w-full max-w-sm animate-rise">
                     <Link href="/" className="mb-10 inline-block lg:hidden">
-                        <Wordmark />
+                        <Wordmark size="lg" />
                     </Link>
                     <p className="eyebrow mb-3">{eyebrow}</p>
                     <h1 className="mb-8 font-display text-4xl font-medium tracking-tight text-paper">{title}</h1>
