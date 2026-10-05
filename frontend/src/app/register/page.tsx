@@ -55,7 +55,7 @@ export default function RegisterPage() {
     };
 
     return (
-        <AuthLayout eyebrow="New logbook" title="Create an account" quote="Every hour in the air started as an entry on the ground.">
+        <AuthLayout eyebrow="New logbook" title="Create an account">
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                 {error && <p className="alert-error" role="alert">{error}</p>}
 

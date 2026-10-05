@@ -26,7 +26,7 @@ export default function HomePage() {
         </div>
 
         <header className="relative z-10 mx-auto flex w-full max-w-6xl items-center justify-between px-6 py-6">
-          <Wordmark />
+          <Wordmark size="lg" />
           <Link href="/register" className="text-sm text-stone transition-colors hover:text-paper">
             Create an account
           </Link>

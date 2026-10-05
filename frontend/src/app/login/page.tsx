@@ -51,7 +51,7 @@ export default function LoginPage() {
     }
 
     return (
-        <AuthLayout eyebrow="Welcome back" title="Log in" quote="The logbook remembers what the pilot forgets.">
+        <AuthLayout eyebrow="Welcome back" title="Log in">
             <form onSubmit={handleSubmit} className="flex flex-col gap-5">
                 {error && <p className="alert-error" role="alert">{error}</p>}
 
