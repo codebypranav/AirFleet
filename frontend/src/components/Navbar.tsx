@@ -10,6 +10,7 @@ const LINKS = [
     { href: '/aircraft', label: 'Fleet' },
     { href: '/stats', label: 'Stats' },
     { href: '/flights/narrative', label: 'Stories' },
+    { href: '/instruction', label: 'Instruction' },
     { href: '/rankings', label: 'Rankings' },
     { href: '/profile', label: 'Profile' },
 ];

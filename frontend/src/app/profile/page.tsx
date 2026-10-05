@@ -33,6 +33,8 @@ function ProfileForm({ profile, onSaved }: { profile: Profile; onSaved: (p: Prof
                 bio: form.bio,
                 home_airport: form.home_airport.trim().toUpperCase(),
                 is_public: form.is_public,
+                instructor_certificate_number: form.instructor_certificate_number.trim(),
+                instructor_certificate_expires: form.instructor_certificate_expires || null,
             });
             setForm(saved);
             onSaved(saved);
@@ -65,6 +67,18 @@ function ProfileForm({ profile, onSaved }: { profile: Profile; onSaved: (p: Prof
                 <label htmlFor="bio" className="field-label">About you</label>
                 <textarea id="bio" name="bio" value={form.bio} onChange={change} rows={3} maxLength={500} className="field-input" placeholder="What you fly, where you're based, what you're working towards" />
             </div>
+            <fieldset className="rounded-lg border border-line px-4 pb-4 pt-2">
+                <legend className="px-1 text-sm text-bone">Flight instructor</legend>
+                <p className="mb-4 text-xs text-ash">
+                    If you instruct, add your certificate so students can link you on the{' '}
+                    <Link href="/instruction" className="text-fern hover:underline">Instruction</Link> page. It is recorded
+                    with every lesson you sign. Leave blank if you don&apos;t instruct.
+                </p>
+                <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+                    {input('instructor_certificate_number', 'Certificate number', { maxLength: 20, className: 'field-input font-mono uppercase' })}
+                    {input('instructor_certificate_expires', 'Expires (if it does)', { type: 'date' })}
+                </div>
+            </fieldset>
             <label htmlFor="is_public" className="flex cursor-pointer items-start gap-3 rounded-lg border border-line px-4 py-3 transition-colors hover:border-ash/60">
                 <input type="checkbox" id="is_public" name="is_public" checked={form.is_public} onChange={change} className="mt-1 h-4 w-4 accent-[var(--color-moss)]" />
                 <span>

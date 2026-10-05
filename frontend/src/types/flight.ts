@@ -43,8 +43,73 @@ export interface Flight {
     weather_conditions: string;
     narrative: string;
     narrative_generated_at: string | null;
+    signature: Signature | null;
     created_at: string;
     updated_at: string;
+}
+
+/** Fields shared by signatures and endorsements: who gave it, and whether they took it back. */
+interface InstructorRecord {
+    id: number;
+    instructor_name: string;
+    certificate_number: string;
+    certificate_expires: string | null;
+    signed_at: string;
+    withdrawn_at: string | null;
+    withdrawal_reason: string;
+    /** True for the instructor who gave it, until they withdraw it. */
+    withdrawable: boolean;
+}
+
+/** An instructor's sign-off. "invalidated" once a signed field of the flight is edited. */
+export interface Signature extends InstructorRecord {
+    statement: string;
+    remarks: string;
+    status: 'valid' | 'invalidated' | 'withdrawn';
+    changed_fields: string[];
+}
+
+export interface Endorsement extends InstructorRecord {
+    kind: string;
+    title: string;
+    regulation: string;
+    text: string;
+    aircraft: string;
+    student: string;
+    given_on: string;
+    expires_on: string | null;
+    status: 'current' | 'expired' | 'withdrawn';
+}
+
+/** A kind of endorsement with a starting draft; {student} and {aircraft} are blanks to fill. */
+export interface EndorsementKind {
+    kind: string;
+    title: string;
+    regulation: string;
+    draft: string;
+    needs_aircraft: boolean;
+    validity: ['days' | 'calendar_months', number] | null;
+}
+
+export interface InstructorLink {
+    id: number;
+    status: 'PENDING' | 'ACTIVE';
+    /** The requesting pilot's role in this link. */
+    role: 'student' | 'instructor';
+    other: { username: string; name: string; certificate_number?: string };
+    awaiting_my_response: boolean;
+    unsigned_flights: number | null;
+    created_at: string;
+    accepted_at: string | null;
+}
+
+/** A student's dual flight as their instructor sees it: only the fields that get signed. */
+export interface StudentFlight extends Pick<Flight,
+    'id' | 'departure_airport' | 'arrival_airport' | 'departure_info' | 'arrival_info' | 'departure_time' | 'arrival_time' |
+    'total_time' | 'registration_number' | 'aircraft_type' | 'pic_time' | 'sic_time' | 'dual_received_time' | 'night_time' |
+    'instrument_time' | 'simulated_instrument_time' | 'day_landings' | 'night_landings' | 'approaches' | 'cross_country' |
+    'is_simulator' | 'signature'> {
+    statement: string;
 }
 
 export interface PublicFlight {
@@ -163,6 +228,8 @@ export interface Profile {
     bio: string;
     home_airport: string;
     is_public: boolean;
+    instructor_certificate_number: string;
+    instructor_certificate_expires: string | null;
     date_joined: string;
 }
 
