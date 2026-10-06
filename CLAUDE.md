@@ -53,7 +53,7 @@ Full stack: `docker compose up --build` (Postgres, Django :8000, Next :3000).
 
 ## Frontend architecture
 
-- Auth is AirFleet's own JWT pair stored in `accessToken`/`refreshToken` cookies (`src/utils/api.ts`: `saveTokens`, auto-refresh on 401 with a single shared in-flight refresh, redirect to `/login` on failure).
+- Auth is AirFleet's own JWT pair stored in `accessToken`/`refreshToken` cookies (`src/utils/api.ts`: `saveTokens`, auto-refresh on 401 with a single shared in-flight refresh, redirect to `/login?next=…` on failure). A GET that can't reach the API at all (Render waking the free-plan service; its holding page has no CORS headers, so fetch fails) checks `/api/rankings/` and, if that's down too, sends the pilot to `/login?reason=waking&next=…` without clearing tokens; the login page polls and sends a still-signed-in pilot back once the API answers.
 - NextAuth (`src/app/api/auth/[...nextauth]/authOptions.ts`) is used only for Google sign-in: its `jwt` callback exchanges the Google ID token with the backend for AirFleet tokens, then `/auth/complete` copies them into cookies and signs out of NextAuth.
 - `src/proxy.ts` (Next 16's replacement for `middleware.ts`) gates routes by cookie presence: guest-only pages, public prefixes (`/pilots/`, `/share/`, `/privacy`, password reset…), everything else requires sign-in. Add new public pages to `PUBLIC_PREFIXES`.
 - All API calls go through typed functions in `src/utils/api.ts` (types in `src/types/flight.ts`); pages load data with the `useApi(load, key)` hook in `src/utils/useApi.ts`. Use `errorMessage()` to turn DRF error shapes into a sentence.

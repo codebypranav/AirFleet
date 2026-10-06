@@ -192,6 +192,15 @@
     font-size: 0.875rem;
   }
 
+  .alert-info {
+    border: 1px solid color-mix(in oklab, var(--color-sand) 45%, transparent);
+    background-color: color-mix(in oklab, var(--color-sand) 10%, transparent);
+    color: var(--color-sand);
+    border-radius: 0.6rem;
+    padding: 0.7rem 0.9rem;
+    font-size: 0.875rem;
+  }
+
   /* Monochrome photo warmed toward the earth palette. */
   .photo-duotone {
     filter: grayscale(1) sepia(0.22) contrast(1.05) brightness(0.9);

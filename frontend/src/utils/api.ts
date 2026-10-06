@@ -47,64 +47,116 @@ export class ApiError extends Error {
     }
 }
 
-let refreshing: Promise<boolean> | null = null;
+type Refresh = 'ok' | 'rejected' | 'waking';
 
-async function refreshAccessToken(): Promise<boolean> {
+// Render's free plan sleeps the API when idle. While it boots, its holding responses carry no CORS headers, so
+// fetch fails outright. Any response we can read came from Django itself (which sends its own 502/503s), so only a
+// failed fetch means "can't reach the server".
+const WAKING_MESSAGE = 'Can’t reach the AirFleet server. It may be waking up; give it a minute and try again.';
+
+let refreshing: Promise<Refresh> | null = null;
+
+async function refreshAccessToken(): Promise<Refresh> {
     const refresh = Cookies.get('refreshToken');
-    if (!refresh) return false;
+    if (!refresh) return 'rejected';
     refreshing ??= fetch(`${API_BASE}/token/refresh/`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ refresh }),
     })
-        .then(async (res) => {
-            if (!res.ok) return false;
+        .then(async (res): Promise<Refresh> => {
+            if (!res.ok) return 'rejected';
             const data = await res.json();
             saveTokens({ access: data.access, refresh: data.refresh ?? refresh });
-            return true;
+            return 'ok';
         })
-        .catch(() => false)
+        .catch((): Refresh => 'waking')
         .finally(() => {
             refreshing = null;
         });
     return refreshing;
 }
 
-function sendToLogin() {
-    clearTokens();
+/** Where to land after signing in: a same-site path only, so `?next=` can't send anyone off-site. */
+export function safeNext(next: string | null | undefined): string {
+    return next && next.startsWith('/') && !next.startsWith('//') && !next.startsWith('/login') ? next : '/flights';
+}
+
+function goToLogin(params: Record<string, string> = {}) {
     if (typeof window !== 'undefined' && !window.location.pathname.startsWith('/login')) {
+        const search = new URLSearchParams({ next: window.location.pathname + window.location.search, ...params });
         // Plain module code, so no router here; a full load also drops any stale client state.
         // eslint-disable-next-line @next/next/no-location-assign-relative-destination
-        window.location.assign('/login');
+        window.location.assign(`/login?${search}`);
+    }
+}
+
+function sendToLogin() {
+    clearTokens();
+    goToLogin();
+}
+
+/**
+ * A page couldn't load its data because the server didn't answer. Leaving a page cancels its fetches the same way,
+ * so check the server really is down first. The tokens stay: the login page waits for the server and sends a
+ * still-signed-in pilot straight back.
+ */
+async function sendToLoginWhileWaking() {
+    if (!(await apiIsUp())) goToLogin({ reason: 'waking' });
+}
+
+/** True once the API answers its public health check. */
+export async function apiIsUp(): Promise<boolean> {
+    try {
+        return (await fetch(`${API_BASE}/rankings/`, { cache: 'no-store' })).ok;
+    } catch {
+        return false;
     }
 }
 
 type Options = RequestInit & { auth?: boolean; json?: unknown };
 
-/** fetch against the API. Authenticated by default; retries once after refreshing an expired token. */
+/**
+ * fetch against the API. Authenticated by default; retries once after refreshing an expired token.
+ * An authenticated page load that can't reach the server sends the pilot to the login page, which waits for it.
+ */
 export async function apiFetch(endpoint: string, { auth = true, json, ...options }: Options = {}, retried = false): Promise<Response> {
     const headers = new Headers(options.headers);
     if (json !== undefined) headers.set('Content-Type', 'application/json');
+    // Only page loads bounce to the login page when the server is asleep; a failed save keeps its form.
+    const isLoad = !options.method || options.method.toUpperCase() === 'GET';
     if (auth) {
         const token = Cookies.get('accessToken');
-        if (!token && !(await refreshAccessToken())) {
+        const refreshed = token ? 'ok' : await refreshAccessToken();
+        if (refreshed === 'waking') {
+            if (isLoad) void sendToLoginWhileWaking();
+            throw new ApiError(0, { error: WAKING_MESSAGE });
+        }
+        if (refreshed === 'rejected') {
             sendToLogin();
             throw new ApiError(401, { error: 'Please log in again.' });
         }
         headers.set('Authorization', `Bearer ${Cookies.get('accessToken')}`);
     }
 
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-        ...options,
-        headers,
-        body: json !== undefined ? JSON.stringify(json) : options.body,
-    });
+    let response: Response;
+    try {
+        response = await fetch(`${API_BASE}${endpoint}`, {
+            ...options,
+            headers,
+            body: json !== undefined ? JSON.stringify(json) : options.body,
+        });
+    } catch (error) {
+        if (options.signal?.aborted) throw error;
+        if (auth && isLoad) void sendToLoginWhileWaking();
+        throw new ApiError(0, { error: WAKING_MESSAGE });
+    }
 
     if (response.status === 401 && auth) {
-        if (!retried && (await refreshAccessToken())) {
-            return apiFetch(endpoint, { auth, json, ...options }, true);
-        }
-        sendToLogin();
+        const refreshed = retried ? 'rejected' : await refreshAccessToken();
+        if (refreshed === 'ok') return apiFetch(endpoint, { auth, json, ...options }, true);
+        if (refreshed === 'rejected') sendToLogin();
+        else if (isLoad) void sendToLoginWhileWaking();
     }
     if (!response.ok) {
         const data = await response.json().catch(() => null);

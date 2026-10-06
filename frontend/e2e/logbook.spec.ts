@@ -152,13 +152,28 @@ test('a pilot fills the new-flight form with quick log', async ({ page }) => {
 });
 
 test('signed-out visitors are sent to log in, and rankings stay public', async ({ page }) => {
-    await page.goto('/flights');
-    await expect(page).toHaveURL(/\/login$/);
+    await page.goto('/flights?q=KJFK');
+    await expect(page).toHaveURL(/\/login\?next=%2Fflights%3Fq%3DKJFK$/);
     await expect(page.getByRole('link', { name: 'Forgot it?' })).toBeVisible();
     await page.goto('/forgot-password');
     await page.getByLabel('Email').fill('nobody@example.com');
     await page.getByRole('button', { name: 'Send reset link' }).click();
     await expect(page.getByText(/If that email has an account/)).toBeVisible();
+});
+
+test('a pilot whose server is asleep waits on the login page, then goes back', async ({ page }) => {
+    await register(page, `wake${Date.now()}`);
+
+    // Render's cold-start responses have no CORS headers, so the browser sees a failed fetch.
+    const asleep = '**/api/**';
+    await page.route(asleep, (route) => route.abort('failed'));
+    await page.goto('/stats');
+    await expect(page).toHaveURL(/\/login\?next=%2Fstats&reason=waking$/);
+    await expect(page.getByRole('status')).toHaveText(/waking up.*straight back/);
+
+    // Still signed in, so no password needed: the login page polls and returns once the server answers.
+    await page.unroute(asleep);
+    await expect(page).toHaveURL(/\/stats$/, { timeout: 15_000 });
 });
 
 test('a pilot deletes their account', async ({ page }) => {
