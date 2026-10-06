@@ -21,7 +21,7 @@ const LEAF_VEINS =
     'M50 43 77 31M50 43 23 31M50 43 66 55M50 43 34 55M50 43 50 62M64 37 67 28M36 37 33 28M68 35 80 41M32 35 20 41M50 33 56 22M50 33 44 22';
 
 // Centre the leaf's bounding box (13–87 × 6–80) on the dial's pivot at (24, 24).
-const LEAF_SCALE = 0.42;
+const LEAF_SCALE = 0.3;
 const LEAF_TRANSFORM = `translate(${24 - 50 * LEAF_SCALE} ${24 - 43 * LEAF_SCALE}) scale(${LEAF_SCALE})`;
 
 export function BrandMark({ className = '' }: { className?: string }) {
@@ -37,7 +37,7 @@ export function BrandMark({ className = '' }: { className?: string }) {
             })}
             <g transform={LEAF_TRANSFORM}>
                 <path d={MAPLE_LEAF} fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" />
-                <path d={LEAF_VEINS} className="stroke-ink" strokeWidth="2.6" strokeLinecap="round" />
+                <path d={LEAF_VEINS} className="stroke-ink" strokeWidth="3.4" strokeLinecap="round" />
             </g>
             {/* The midrib doubles as the compass needle, pivoting at the leaf's centre and pointing north. */}
             <path d="M24 24V9.5" className="stroke-clay" strokeWidth="1.3" strokeLinecap="round" />
