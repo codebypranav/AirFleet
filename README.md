@@ -1,16 +1,16 @@
 # AirFleet
 
-AirFleet is a personal aviation operations and flight logging project that combines a Django backend, a Next.js frontend, and AI-assisted flight entry. The application is designed to help pilots or sim pilots store flight entries, manage user accounts, and log a flight by describing it in plain words.
+**A pilot logbook for real and simulator flying, with AI quick entry and instructor sign-off.**
 
-## Product goal
+[Live demo](https://airfleet.vercel.app) · Django REST API + Next.js · GPL-3.0
 
-The system is meant to function as a lightweight aviation workspace with:
+AirFleet keeps a pilot's flights, aircraft and training records in one place. Log a flight by
+hand, describe it in plain words and let AI fill in the form, pull it from SimBrief or a flight
+plan PDF, or import a ForeFlight logbook. AirFleet then works out totals, currency, maintenance
+due dates and route maps, and lets an instructor sign lessons and give endorsements.
 
-- flight record storage
-- user-specific flight history
-- JWT-based authentication
-- AI quick log: describe a flight in plain words to fill in the logbook entry
-- a dashboard and UI for reviewing flight data
+> AirFleet is a personal project, not a certified logbook. It isn't meant to replace an official
+> logbook or satisfy regulatory recordkeeping requirements.
 
 ## Features
 
@@ -25,7 +25,9 @@ The system is meant to function as a lightweight aviation workspace with:
   flights in it until maintenance is logged. The next inspection is forecast from the last
   90 days of flying (hours left ÷ recent rate), alongside the annual.
 - **Stats:** totals, hours per month, most-flown routes and aircraft, a great-circle route
-  map (Leaflet), passenger/night/IFR currency, and achievements.
+  map (Leaflet, with a satellite view), passenger/night/IFR currency, and achievements.
+- **Photos:** attach a photo to a flight; stored privately in Neon Object Storage and served
+  through short-lived signed URLs.
 - **Quick log:** describe a flight in your own words ("KPAO to KSQL and back, 1.4, 3 landings,
   0.3 hood") and AI fills in the new-flight form for you to check before saving. Uses free-tier
   Gemini, with Groq as a fallback; hidden when neither is configured.
@@ -50,57 +52,46 @@ The system is meant to function as a lightweight aviation workspace with:
 - **Privacy:** a `/privacy` notice of what is stored and which services see it, and account
   deletion from the profile page that erases the pilot's flights, aircraft and photos.
 
-This is a learning-oriented application rather than a certified aviation compliance system, and it should not be treated as an official flight-logging platform without additional validation.
-
 ## Technical architecture
 
-### Backend
-- Python
-- Django
-- Django REST Framework
-- PostgreSQL
-- JWT authentication via `djangorestframework-simplejwt`
-- OpenAI-compatible LLM client (Gemini, Groq free tiers) for quick log
+### Backend (`backend/`)
+- Python 3.12+, Django 6, Django REST Framework
+- PostgreSQL via `DATABASE_URL`
+- JWT authentication (`djangorestframework-simplejwt`), plus Google sign-in
+- OpenAI-compatible LLM client (Gemini, then Groq, free tiers) for quick log
+- `pypdf` for flight plan PDFs, `django-storages` for S3-compatible photo storage
+- Gunicorn in a Docker container on Render
 
 The backend is organized around Django apps:
 
-- `backend/AirFleet_api/` — project configuration and settings
-- `backend/flights/` — flight models, serializers, and API logic
-- `backend/users/` — user auth and profile logic
-- `backend/instruction/` — instructor links and lesson sign-offs
+- `AirFleet_api/` — settings, URLs, throttle scopes
+- `flights/` — flights, aircraft, insights, imports/exports, airport data, quick log, weather and
+  SimBrief lookups, flight plan parsing
+- `users/` — accounts, profiles, password reset, public pilot pages
+- `instruction/` — instructor links, lesson signatures and endorsements
 
-### Frontend
-- Next.js
-- React
-- TypeScript
-- App Router architecture
-- API consumption for login, flight CRUD, and AI generation
+### Frontend (`frontend/`)
+- Next.js 16 (App Router), React 19, TypeScript
+- Tailwind CSS 4
+- Leaflet route maps
+- NextAuth only for Google sign-in; AirFleet's own JWTs live in cookies and are refreshed
+  automatically
+- Typed API client in `src/utils/api.ts`
 
-### Database and infrastructure
-- PostgreSQL is used as the primary persistence layer
-- Docker Compose orchestrates the stack for local development
-- CORS is enabled for the Next.js frontend on `localhost:3000`
+### Infrastructure
+- Neon: Postgres and object storage (photos)
+- Render: the Django API (`render.yaml`)
+- Vercel: the Next.js frontend
+- Docker Compose for local development; GitHub Actions for CI
 
 ## Core implementation details
 
-### Authentication and authorization
-The backend uses Django REST Framework with JWT authentication. This means the client obtains access and refresh tokens, then includes the access token on authenticated requests.
-
-The auth configuration is defined in `backend/AirFleet_api/settings.py`, which sets:
-
-- `AUTH_USER_MODEL = 'users.CustomUser'`
-- JWT token lifetime and refresh rotation
-- REST framework authentication classes
-- CORS headers for local frontend origin access
-
-### Flight API layer
-The `flights` app contains the main API views:
-
-- `FlightListView` handles listing and creating flight records
-- `FlightDetailView` handles get/update/delete for a single flight
-- `QuickLogView` reads a plain-text description of a flight into form fields with an LLM
-
-This is the main business logic for recording aviation events and making them quick to enter.
+### Authentication
+The client signs in with a password (or Google, whose ID token the backend exchanges for its own
+tokens) and gets an access/refresh token pair. The frontend stores them in cookies, sends the access
+token on each request, and refreshes it once on a 401 before sending the user back to `/login`.
+`AUTH_USER_MODEL` is `users.CustomUser`; token lifetimes, throttles and CORS origins are set in
+`backend/AirFleet_api/settings.py`.
 
 ### Quick log
 `POST /api/flights/quick-log/` takes `text` (a pilot's own description of a flight, up to 1,000
@@ -159,12 +150,14 @@ detection, not tamper-proofing against someone with database access.
 ## Repository structure
 
 ```text
+.github/workflows/  # backend and frontend CI
 backend/
   AirFleet_api/
   flights/
   instruction/
   users/
   flights/data/airports.csv.gz
+  Dockerfile
   manage.py
   launcher.sh        # container entrypoint: migrate, collectstatic, gunicorn
   requirements.txt
@@ -230,7 +223,7 @@ Playwright drives the production build against the real API. With Postgres runni
 
 ```bash
 cd frontend
-npx playwright install chromium
+npx playwright install chromium   # or set PLAYWRIGHT_CHROMIUM_PATH to an existing Chromium
 npm run build
 PYTHON=../backend/.venv/bin/python npm run test:e2e  # starts Django and Next itself
 ```
@@ -312,17 +305,6 @@ Typical usage looks like this:
 3. the logbook, fleet and stats pages show history, totals, currency and maintenance
 4. the user can edit flights over time and optionally share a public profile
 
-## Why this project matters technically
+## License
 
-AirFleet brings together multiple engineering concerns:
-
-- API design and authentication
-- relational database modeling
-- frontend-backend integration
-- secure env configuration
-- AI API integration in real-world app code
-
-
-## Notes
-
-- The project is intended as a personal engineering exercise and should be hardened before any real-world operational deployment.
+[GPL-3.0](LICENSE)
