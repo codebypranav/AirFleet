@@ -9,7 +9,7 @@ import { EditIcon, ShareIcon, TrashIcon } from '@/components/Icons';
 import { ErrorState, PageHeader, PageShell, Section, Spinner, StatGrid } from '@/components/PageShell';
 import { DISCLAIMER, SignatureBadge, SignatureDetails } from '@/components/Signature';
 import type { Flight } from '@/types/flight';
-import { deleteFlight, generateNarrative, getFlight, getProfile } from '@/utils/api';
+import { deleteFlight, getFlight, getProfile } from '@/utils/api';
 import { conditionFor, durationToSeconds, formatDate, formatDuration, formatTime, photoUrl } from '@/utils/format';
 import { useApi } from '@/utils/useApi';
 
@@ -22,51 +22,10 @@ const COLUMNS: [keyof Flight, string][] = [
     ['simulated_instrument_time', 'Simulated instrument'],
 ];
 
-function Narrative({ flight, onSaved }: { flight: Flight; onSaved: (narrative: string) => void }) {
-    const [state, setState] = useState<'idle' | 'writing' | 'error'>('idle');
-    const [message, setMessage] = useState('');
-
-    const write = async () => {
-        setState('writing');
-        try {
-            const result = await generateNarrative(flight.id);
-            onSaved(result.narrative);
-            setState('idle');
-        } catch (e) {
-            setMessage(e instanceof Error ? e.message : 'Failed to generate narrative');
-            setState('error');
-        }
-    };
-
-    return (
-        <Section
-            title="Debrief"
-            action={
-                <button onClick={write} disabled={state === 'writing'} className="btn btn-ghost px-3 py-1 text-xs">
-                    {state === 'writing' ? 'Writing…' : flight.narrative ? 'Rewrite' : 'Write the story'}
-                </button>
-            }
-        >
-            {state === 'error' && <p className="alert-error mb-4" role="alert">{message}</p>}
-            {state === 'writing' ? (
-                <div className="space-y-3" role="status" aria-label="Generating narrative">
-                    <div className="h-3 w-11/12 animate-pulse rounded bg-graphite" />
-                    <div className="h-3 w-full animate-pulse rounded bg-graphite" />
-                    <div className="h-3 w-4/5 animate-pulse rounded bg-graphite" />
-                </div>
-            ) : flight.narrative ? (
-                <p className="font-display text-lg font-light leading-relaxed text-bone">{flight.narrative}</p>
-            ) : (
-                <p className="text-sm text-ash">No story yet. AirFleet can write a short narrative from this flight&apos;s details.</p>
-            )}
-        </Section>
-    );
-}
-
 export default function FlightDetail({ params }: { params: Promise<{ id: string }> }) {
     const { id } = use(params);
     const router = useRouter();
-    const { data: flight, error, reload, setData } = useApi(() => getFlight(id), id);
+    const { data: flight, error, reload } = useApi(() => getFlight(id), id);
     const { data: profile } = useApi(getProfile);
     const [deleting, setDeleting] = useState(false);
     const [copied, setCopied] = useState(false);
@@ -248,11 +207,6 @@ export default function FlightDetail({ params }: { params: Promise<{ id: string 
                     </div>
                 </Section>
             )}
-
-            <Narrative
-                flight={flight}
-                onSaved={(narrative) => setData((current) => (current ? { ...current, narrative } : current))}
-            />
         </PageShell>
     );
 }

@@ -20,7 +20,7 @@ boto3==1.43.108
 # JWT Authentication
 djangorestframework-simplejwt==5.5.1
 
-# OpenAI
+# OpenAI-compatible client for quick log (Gemini, Groq)
 openai==3.24.0
 
 # Google sign-in (verifies ID tokens)

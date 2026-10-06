@@ -32,7 +32,7 @@ Full stack: `docker compose up --build` (Postgres, Django :8000, Next :3000).
 
 ## Backend architecture
 
-- `AirFleet_api/settings.py`: `AUTH_USER_MODEL = 'users.CustomUser'`, JWT-only auth (simplejwt), `DEBUG = False` hard-coded, DB from `DATABASE_URL` via dj-database-url. Throttle scopes (`narrative`, `lookup`, `invite`, `auth`) are defined here and applied per view. Photos go to S3-compatible Neon Object Storage when `AWS_*` env vars are set, otherwise local disk. New frontend origins must be added to `CORS_ALLOWED_ORIGINS`/`CORS_ALLOWED_ORIGIN_REGEXES`.
+- `AirFleet_api/settings.py`: `AUTH_USER_MODEL = 'users.CustomUser'`, JWT-only auth (simplejwt), `DEBUG = False` hard-coded, DB from `DATABASE_URL` via dj-database-url. Throttle scopes (`quick_log`, `lookup`, `invite`, `auth`) are defined here and applied per view. Photos go to S3-compatible Neon Object Storage when `AWS_*` env vars are set, otherwise local disk. New frontend origins must be added to `CORS_ALLOWED_ORIGINS`/`CORS_ALLOWED_ORIGIN_REGEXES`.
 - URLs: `users` and `flights` both mount at `/api/`; `instruction` at `/api/instruction/`. `GET /api/rankings/` is public and used as the health check (Render, Playwright).
 - `flights/` is the core app; logic is split into plain modules beside the views:
   - `airports.py` — loads the bundled OurAirports extract `data/airports.csv.gz` (ICAO validation, search, great-circle distance).
@@ -40,7 +40,7 @@ Full stack: `docker compose up --build` (Postgres, Django :8000, Next :3000).
   - `flight_plans.py` — parses uploaded OFP PDFs (pypdf) anchored on the ICAO `(FPL-...)` message to create draft flights; the PDF isn't stored.
   - `logbook_io.py` — CSV export and AirFleet/ForeFlight CSV import (dedupe, per-row errors).
   - `insights.py` — stats, currency, achievements, maintenance forecast.
-  - Narratives are generated with the OpenAI API (`OPENAI_MODEL`, default `gpt-4o-mini`) and saved on the flight.
+  - `quick_log.py` — reads a pilot's plain-text description into new-flight form fields with an LLM (OpenAI SDK against Gemini, then Groq, from `QUICK_LOG_PROVIDERS`; keys `GEMINI_API_KEY`/`GROQ_API_KEY`). The model's JSON is validated before it reaches the form; nothing is saved. Hidden when no key is set.
 - `Flight.is_draft`: drafts must be excluded from totals, currency, rankings and maintenance — remember this when adding any aggregate query.
 - A flight reporting its aircraft *Grounded* blocks new flights in that aircraft until maintenance is logged.
 - `users/` has no `tests.py`; account/profile/auth tests live in `flights/tests.py` (`AccountTests`, `PublicProfileTests`, etc.). Tests use DRF `APITestCase`; `flights/tests.py` has an `ApiTestCase` base with helpers.

@@ -54,11 +54,6 @@ export default function SharedFlightPage({ params }: { params: Promise<{ id: str
                     <RouteMap data={mapData} className="h-72" />
                 </div>
             )}
-            {flight.narrative && (
-                <Section title="The story">
-                    <p className="font-display text-lg font-light leading-relaxed text-bone">{flight.narrative}</p>
-                </Section>
-            )}
             {flight.photo && (
                 <Section title="Photo">
                     <div className="relative aspect-[16/9] overflow-hidden rounded-xl border border-line">

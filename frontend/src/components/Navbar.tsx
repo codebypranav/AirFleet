@@ -9,7 +9,6 @@ const LINKS = [
     { href: '/flights', label: 'Logbook' },
     { href: '/aircraft', label: 'Fleet' },
     { href: '/stats', label: 'Stats' },
-    { href: '/flights/narrative', label: 'Stories' },
     { href: '/instruction', label: 'Instruction' },
     { href: '/rankings', label: 'Rankings' },
     { href: '/profile', label: 'Profile' },
@@ -24,11 +23,7 @@ export default function Navbar({ variant = 'app' }: { variant?: 'app' | 'public'
         router.push('/login');
     };
 
-    // Everything under /flights belongs to the logbook except the stories tab.
-    const isActive = (href: string) =>
-        href === '/flights'
-            ? pathname.startsWith('/flights') && !pathname.startsWith('/flights/narrative')
-            : pathname.startsWith(href);
+    const isActive = (href: string) => pathname.startsWith(href);
 
     if (variant === 'public') {
         return (

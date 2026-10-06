@@ -212,7 +212,7 @@ REST_FRAMEWORK = {
     ),
     # Rates for the throttle classes on the endpoints that cost money or call out to other services.
     'DEFAULT_THROTTLE_RATES': {
-        'narrative': os.environ.get('NARRATIVE_RATE', '30/hour'),
+        'quick_log': os.environ.get('QUICK_LOG_RATE', '30/hour'),
         'lookup': '120/hour',
         'invite': '30/hour',
         'auth': '30/minute',
@@ -244,8 +244,23 @@ else:
 # OAuth client ID of the Google app the frontend signs in with; enables /api/auth/google/.
 GOOGLE_CLIENT_ID = os.environ.get('GOOGLE_CLIENT_ID', '')
 
-OPENAI_API_KEY = os.environ.get('OPENAI_API_KEY', '')
-OPENAI_MODEL = os.environ.get('OPENAI_MODEL', 'gpt-4o-mini')
+# Quick log reads a pilot's description of a flight with a language model. Any OpenAI-compatible API
+# works; these two have free tiers. They're tried in order, so the second covers the first's outages
+# and daily limits. With neither key set, quick log is hidden.
+QUICK_LOG_PROVIDERS = [provider for provider in (
+    {
+        'name': 'gemini',
+        'base_url': 'https://generativelanguage.googleapis.com/v1beta/openai/',
+        'api_key': os.environ.get('GEMINI_API_KEY', ''),
+        'model': os.environ.get('GEMINI_MODEL', 'gemini-flash-lite-latest'),
+    },
+    {
+        'name': 'groq',
+        'base_url': 'https://api.groq.com/openai/v1',
+        'api_key': os.environ.get('GROQ_API_KEY', ''),
+        'model': os.environ.get('GROQ_MODEL', 'openai/gpt-oss-20b'),
+    },
+) if provider['api_key']]
 
 # Update the DATABASES configuration
 DATABASES = {

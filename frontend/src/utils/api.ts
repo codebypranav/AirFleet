@@ -1,7 +1,7 @@
 import Cookies from 'js-cookie';
 import type {
     Achievement, Aircraft, Airport, Currency, Endorsement, EndorsementKind, Flight, FlightPlanDraft, ImportResult,
-    InstructorLink, Paginated, Profile, PublicFlight, PublicPilot, RouteMapData, Signature, Stats, StudentFlight,
+    InstructorLink, Paginated, Profile, PublicFlight, PublicPilot, QuickLogDraft, RouteMapData, Signature, Stats, StudentFlight,
 } from '@/types/flight';
 
 const ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/+$/, '').replace(/\/api$/, '');
@@ -135,8 +135,6 @@ export const getFlight = (id: number | string) => apiJson<Flight>(`/flights/${id
 export const addFlight = (data: FormData) => apiJson<Flight>('/flights/', { method: 'POST', body: data });
 export const updateFlight = (id: number | string, data: FormData) => apiJson<Flight>(`/flights/${id}/`, { method: 'PATCH', body: data });
 export const deleteFlight = (id: number | string) => apiJson<void>(`/flights/${id}/`, { method: 'DELETE' });
-export const generateNarrative = (flightId: number) =>
-    apiJson<{ narrative: string; narrative_generated_at: string }>('/generate-narrative/', { method: 'POST', json: { flight_id: flightId } });
 
 export async function downloadExport(filters: FlightFilters = {}) {
     const response = await apiFetch(`/flights/export/${query(filters)}`);
@@ -160,6 +158,13 @@ export const readFlightPlan = (file: File) => {
     body.append('file', file);
     return apiJson<FlightPlanDraft>('/flights/from-plan/', { method: 'POST', body });
 };
+
+/** Whether quick log has an AI provider configured; the form hides it when not. */
+export const getQuickLogStatus = () => apiJson<{ enabled: boolean }>('/flights/quick-log/');
+
+/** Reads a plain-text description of a flight into form fields. `now` is the pilot's local time, for "today" and "this morning". */
+export const readQuickLog = (text: string, now: string) =>
+    apiJson<QuickLogDraft>('/flights/quick-log/', { method: 'POST', json: { text, now } });
 
 export const getStats = (filters: FlightFilters = {}) => apiJson<Stats>(`/stats/${query(filters)}`);
 export const getRoutes = () => apiJson<RouteMapData>('/stats/routes/');

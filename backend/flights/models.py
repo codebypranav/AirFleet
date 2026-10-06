@@ -109,8 +109,6 @@ class Flight(models.Model):
     is_draft = models.BooleanField(default=False)
 
     weather_conditions = models.TextField(blank=True, help_text="Usually the departure METAR")
-    narrative = models.TextField(blank=True)
-    narrative_generated_at = models.DateTimeField(null=True, blank=True)
 
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
