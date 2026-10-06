@@ -85,7 +85,7 @@ function ProfileForm({ profile, onSaved }: { profile: Profile; onSaved: (p: Prof
                     <span className="block text-sm text-bone">Public profile</span>
                     <span className="block text-xs text-ash">
                         Anyone with the link can see your profile, totals, achievements, route map and flights
-                        (route, times, aircraft, photo and story). Notes, gates and flight plans stay private.
+                        (route, times, aircraft and photo). Notes, gates and flight plans stay private.
                     </span>
                 </span>
             </label>
@@ -162,7 +162,7 @@ function DeleteAccountForm({ username }: { username: string }) {
         <form onSubmit={submit} className="card space-y-5 p-5 sm:p-6">
             {error && <p className="alert-error" role="alert">{error}</p>}
             <p className="text-sm text-stone">
-                Permanently deletes your profile, every flight, aircraft, photo and story. Public links stop working.
+                Permanently deletes your profile, every flight, aircraft and photo. Public links stop working.
                 You may want to <button type="button" onClick={() => downloadExport()} className="text-fern hover:underline">export your logbook</button> first.
                 See the <Link href="/privacy" className="text-fern hover:underline">privacy notice</Link> for what we keep and where.
             </p>

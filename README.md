@@ -1,6 +1,6 @@
 # AirFleet
 
-AirFleet is a personal aviation operations and flight logging project that combines a Django backend, a Next.js frontend, and AI-assisted narrative generation. The application is designed to help pilots or sim pilots store flight entries, manage user accounts, and generate short, human-readable summaries from raw flight data.
+AirFleet is a personal aviation operations and flight logging project that combines a Django backend, a Next.js frontend, and AI-assisted flight entry. The application is designed to help pilots or sim pilots store flight entries, manage user accounts, and log a flight by describing it in plain words.
 
 ## Product goal
 
@@ -9,7 +9,7 @@ The system is meant to function as a lightweight aviation workspace with:
 - flight record storage
 - user-specific flight history
 - JWT-based authentication
-- AI-generated narratives summarizing flight events
+- AI quick log: describe a flight in plain words to fill in the logbook entry
 - a dashboard and UI for reviewing flight data
 
 ## Features
@@ -26,8 +26,9 @@ The system is meant to function as a lightweight aviation workspace with:
   90 days of flying (hours left ÷ recent rate), alongside the annual.
 - **Stats:** totals, hours per month, most-flown routes and aircraft, a great-circle route
   map (Leaflet), passenger/night/IFR currency, and achievements.
-- **Stories:** AI narratives are written on request and saved on the flight. The prompt
-  includes airport names, weather, night/instrument time and the pilot's notes.
+- **Quick log:** describe a flight in your own words ("KPAO to KSQL and back, 1.4, 3 landings,
+  0.3 hood") and AI fills in the new-flight form for you to check before saving. Uses free-tier
+  Gemini, with Groq as a fallback; hidden when neither is configured.
 - **Weather and SimBrief:** fetch the departure METAR (aviationweather.gov, last ~15 days)
   or prefill a flight from your latest SimBrief flight plan.
 - **Flight plan PDFs:** upload a SimBrief OFP, or any plan that includes an ICAO flight plan, to
@@ -59,7 +60,7 @@ This is a learning-oriented application rather than a certified aviation complia
 - Django REST Framework
 - PostgreSQL
 - JWT authentication via `djangorestframework-simplejwt`
-- OpenAI API integration for narrative generation
+- OpenAI-compatible LLM client (Gemini, Groq free tiers) for quick log
 
 The backend is organized around Django apps:
 
@@ -97,24 +98,22 @@ The `flights` app contains the main API views:
 
 - `FlightListView` handles listing and creating flight records
 - `FlightDetailView` handles get/update/delete for a single flight
-- `generate_narrative` calls the OpenAI API and returns a generated narrative for a flight
+- `QuickLogView` reads a plain-text description of a flight into form fields with an LLM
 
-This is the main business logic for recording aviation events and summarizing them for the user.
+This is the main business logic for recording aviation events and making them quick to enter.
 
-### AI narrative generation
-`POST /api/generate-narrative/` takes a `flight_id`, builds a prompt from the stored flight and saves the
-result on it (`narrative`, `narrative_generated_at`). It is rate limited per user (`NARRATIVE_RATE`,
-default `30/hour`). The prompt includes structured flight metadata such as:
+### Quick log
+`POST /api/flights/quick-log/` takes `text` (a pilot's own description of a flight, up to 1,000
+characters) and `now` (their local time, so "this morning" resolves) and returns form fields plus
+warnings; nothing is saved. A language model reads the text and answers in JSON, which
+`flights/quick_log.py` checks before it reaches the form: airports must be in the bundled database,
+hours must be 0–24, arrival is worked out from departure plus total time, and disagreements are
+flagged. The prompt also lists the pilot's fleet so "the 172" can resolve to a registration.
 
-- departure airport and time
-- arrival airport and time
-- total flight time
-- distance
-- aircraft registration
-- aircraft condition
-- weather conditions, night and instrument time, and the pilot's notes
-
-The generated response is returned to the frontend and kept with the flight.
+Providers are any OpenAI-compatible API, tried in order: Gemini (`GEMINI_API_KEY`) then Groq
+(`GROQ_API_KEY`). Both have free tiers, so the second takes over when the first is down or out of
+its daily quota. `GET /api/flights/quick-log/` returns `{"enabled": ...}`, and the form hides quick
+log when neither key is set. Requests are limited per user (`QUICK_LOG_RATE`, default `30/hour`).
 
 ### Instructor sign-off
 `InstructorLink` joins a student and an instructor. Either pilot invites the other by username or
@@ -133,7 +132,7 @@ the instructor's password. Each `Signature` stores:
 
 The flight API recomputes the hash from the current entry. If the student edits a signed field, the
 signature shows as **invalidated**, with the fields that changed, until the instructor signs again (or
-the values are put back). Notes, photos, weather and stories aren't signed and can change freely. A
+the values are put back). Notes, photos and weather aren't signed and can change freely. A
 signature stays on the student's flight if the instructor unlinks or deletes their account.
 
 The instructor who signed can **withdraw** a signature (`POST /api/instruction/signatures/<id>/withdraw/`)
@@ -246,8 +245,6 @@ The application relies on values such as:
 ```bash
 SECRET_KEY=your-secret
 DATABASE_URL=postgresql://postgres:postgres@localhost:5432/airfleet
-OPENAI_API_KEY=your-openai-key
-OPENAI_MODEL=gpt-4o-mini  # optional, model used for flight narratives
 NEXTAUTH_SECRET=your-nextauth-secret
 NEXTAUTH_URL=http://localhost:3000
 ```
@@ -263,7 +260,11 @@ EMAIL_HOST_USER=...
 EMAIL_HOST_PASSWORD=...
 DEFAULT_FROM_EMAIL="AirFleet <no-reply@example.com>"
 GOOGLE_CLIENT_ID=...                      # enables Google sign-in (same ID as the frontend)
-NARRATIVE_RATE=30/hour                    # AI narrative limit per user
+GEMINI_API_KEY=...                        # quick log, from aistudio.google.com (free tier)
+GROQ_API_KEY=...                          # quick log fallback, from console.groq.com (free tier)
+GEMINI_MODEL=gemini-flash-lite-latest     # optional overrides of the quick log models
+GROQ_MODEL=openai/gpt-oss-20b
+QUICK_LOG_RATE=30/hour                    # quick log limit per user
 
 # Frontend
 GOOGLE_CLIENT_ID=...                      # with GOOGLE_CLIENT_SECRET, shows "Continue with Google"
@@ -284,7 +285,8 @@ The demo runs entirely on free tiers: Neon (Postgres), Render (Django API) and V
 1. **Database (Neon):** create a project at neon.com and copy its connection string
    (it ends in `?sslmode=require`).
 2. **Backend (Render):** New → Blueprint → select this repo. Render reads `render.yaml`
-   and asks for `DATABASE_URL` (the Neon string) and `OPENAI_API_KEY`; `SECRET_KEY` is generated.
+   and asks for `DATABASE_URL` (the Neon string) and the optional quick log keys `GEMINI_API_KEY`
+   and `GROQ_API_KEY`; `SECRET_KEY` is generated.
    Migrations run automatically on every start. The free instance sleeps after 15 minutes
    idle, so the first request after a pause takes about a minute.
 3. **Frontend (Vercel):** import the repo with root directory `frontend` and Node 22, and set
@@ -306,10 +308,9 @@ short-lived signed photo URLs. Without them, photos fall back to local disk.
 Typical usage looks like this:
 
 1. user signs in or registers (password or Google)
-2. flights are logged by hand, from SimBrief, or imported from ForeFlight/CSV
+2. flights are logged by hand, by describing them (quick log), from SimBrief, or imported from ForeFlight/CSV
 3. the logbook, fleet and stats pages show history, totals, currency and maintenance
-4. the AI endpoint turns a flight into a short narrative that is saved with it
-5. the user can edit flights over time and optionally share a public profile
+4. the user can edit flights over time and optionally share a public profile
 
 ## Why this project matters technically
 

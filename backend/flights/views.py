@@ -8,7 +8,6 @@ from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime
-from openai import OpenAI, OpenAIError
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes, throttle_classes
 from rest_framework.pagination import PageNumberPagination
@@ -18,7 +17,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
-from . import airports, external, flight_plans, insights, logbook_io
+from . import airports, external, flight_plans, insights, logbook_io, quick_log
 from .models import Aircraft, Flight
 from .serializers import AircraftSerializer, FlightSerializer, PublicFlightSerializer
 
@@ -28,8 +27,8 @@ MAX_IMPORT_BYTES = 5 * 1024 * 1024
 MAX_PLAN_BYTES = 10 * 1024 * 1024
 
 
-class NarrativeThrottle(UserRateThrottle):
-    scope = 'narrative'
+class QuickLogThrottle(UserRateThrottle):
+    scope = 'quick_log'
 
 
 class LookupThrottle(UserRateThrottle):
@@ -53,7 +52,7 @@ def filter_flights(queryset, params):
     if aircraft := params.get('aircraft', '').strip().upper():
         queryset = queryset.filter(registration_number=aircraft)
     if q := params.get('q', '').strip():
-        queryset = queryset.filter(Q(notes__icontains=q) | Q(flight_plan__icontains=q) | Q(narrative__icontains=q))
+        queryset = queryset.filter(Q(notes__icontains=q) | Q(flight_plan__icontains=q))
     if params.get('simulator') in ('true', 'false'):
         queryset = queryset.filter(is_simulator=params['simulator'] == 'true')
     if params.get('draft') in ('true', 'false'):
@@ -142,64 +141,27 @@ class FlightPlanView(APIView):
             return Response({'error': str(e)}, status=422)
 
 
-@api_view(['POST'])
-@permission_classes([IsAuthenticated])
-@throttle_classes([NarrativeThrottle])
-def generate_narrative(request):
-    """Write a short story for one of the pilot's flights and save it on the flight."""
-    flight_id = request.data.get('flight_id')
-    if not flight_id:
-        return Response({'error': 'flight_id is required'}, status=400)
-    flight = get_object_or_404(Flight.objects.select_related('aircraft'), pk=flight_id, user=request.user)
+class QuickLogView(APIView):
+    """Read a plain-text description of a flight into the new-flight form. Nothing is saved.
 
-    if not settings.OPENAI_API_KEY:
-        return Response({"error": "OpenAI API key is not configured"}, status=503)
+    GET says whether quick log is set up, so the form can hide it when no AI provider is configured.
+    """
+    permission_classes = [IsAuthenticated]
 
-    dep, arr = airports.get(flight.departure_airport), airports.get(flight.arrival_airport)
-    aircraft = flight.registration_number + (f" ({flight.aircraft.type_code})" if flight.aircraft and flight.aircraft.type_code else '')
-    lines = [
-        f"- Departure: {flight.departure_airport}{f' ({dep.name})' if dep else ''} at {flight.departure_time:%Y-%m-%d %H:%M} UTC",
-        f"- Arrival: {flight.arrival_airport}{f' ({arr.name})' if arr else ''} at {flight.arrival_time:%Y-%m-%d %H:%M} UTC",
-        f"- Duration: {flight.total_time}",
-        f"- Distance: {flight.distance} nautical miles",
-        f"- Aircraft: {aircraft}",
-        f"- Aircraft condition: {flight.get_aircraft_condition_display()}",
-        f"- Weather: {flight.weather_conditions or 'Unknown'}",
-    ]
-    if flight.night_time:
-        lines.append(f"- Night time: {flight.night_time}")
-    if flight.instrument_time or flight.approaches:
-        lines.append(f"- Instrument time: {flight.instrument_time}, approaches flown: {flight.approaches}")
-    if flight.is_simulator:
-        lines.append("- Flown in a simulator")
-    if flight.notes:
-        lines.append(f"- Pilot's notes: {flight.notes[:500]}")
-    prompt = (
-        "Write a short account of this flight:\n" + "\n".join(lines) +
-        "\n\nWrite 2-3 plain sentences in the voice of a pilot's own notes: where they went, how long it took, "
-        "and anything notable about the weather, the aircraft or the notes. Stick to the details above and don't "
-        "invent anything. No dramatic or flowery language, no exclamation marks."
-    )
+    def get_throttles(self):
+        return [QuickLogThrottle()] if self.request.method == 'POST' else []
 
-    client = OpenAI(api_key=settings.OPENAI_API_KEY)
-    try:
-        response = client.chat.completions.create(
-            model=settings.OPENAI_MODEL,
-            messages=[
-                {"role": "system", "content": "You write brief, matter-of-fact summaries of flights for a pilot's logbook."},
-                {"role": "user", "content": prompt}
-            ],
-            max_tokens=250,
-            temperature=0.7,
-        )
-    except OpenAIError:
-        logger.exception("OpenAI request failed for flight %s", flight.pk)
-        return Response({"error": "Failed to generate narrative"}, status=502)
+    def get(self, request):
+        return Response({'enabled': quick_log.enabled()})
 
-    flight.narrative = (response.choices[0].message.content or '').strip()
-    flight.narrative_generated_at = timezone.now()
-    flight.save(update_fields=['narrative', 'narrative_generated_at', 'updated_at'])
-    return Response({"narrative": flight.narrative, "narrative_generated_at": flight.narrative_generated_at})
+    def post(self, request):
+        fleet = list(Aircraft.objects.filter(user=request.user).values_list('registration', 'type_code'))
+        try:
+            return Response(quick_log.read(request.data.get('text'), request.data.get('now'), fleet))
+        except quick_log.QuickLogError as e:
+            return Response({'error': str(e)}, status=422)
+        except quick_log.QuickLogUnavailable:
+            return Response({'error': 'Quick log isn’t available right now. Fill in the form instead.'}, status=503)
 
 
 @api_view(['GET'])

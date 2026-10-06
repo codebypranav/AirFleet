@@ -28,7 +28,7 @@ test('a pilot logs, edits, shares, exports and deletes flights', async ({ page, 
     await page.goto('/flights');
     await expect(page.getByText('3 h', { exact: true })).toBeVisible();
     await page.getByText('Filter flights').click();
-    await page.getByLabel('Search notes & stories').fill('crosswind');
+    await page.getByLabel('Search notes & flight plans').fill('crosswind');
     await page.getByRole('button', { name: 'Apply filters' }).click();
     await expect(page.getByText('1 match')).toBeVisible();
     await expect(page.locator('ol > li')).toHaveCount(1);
@@ -114,6 +114,43 @@ test('a pilot starts a draft from a flight plan PDF and logs it after the flight
     await expect(page.getByText('8.5 h', { exact: true })).toBeVisible();
 });
 
+test('a pilot fills the new-flight form with quick log', async ({ page }) => {
+    await register(page, `e2equick${Date.now()}`);
+    // The AI provider isn't configured in tests, so stand in for the API's quick log endpoint.
+    await page.route('**/api/flights/quick-log/', async (route) => {
+        const headers = {
+            'access-control-allow-origin': 'http://localhost:3000',
+            'access-control-allow-headers': 'authorization, content-type',
+            'access-control-allow-methods': 'GET, POST, OPTIONS',
+        };
+        const request = route.request();
+        if (request.method() === 'OPTIONS') return route.fulfill({ status: 204, headers });
+        if (request.method() === 'GET') return route.fulfill({ headers, json: { enabled: true } });
+        expect(request.postDataJSON()).toMatchObject({ text: 'KJFK to KBOS this morning in N172SP, 3 landings' });
+        return route.fulfill({
+            headers,
+            json: {
+                flight: {
+                    departure_airport: 'KJFK', arrival_airport: 'KBOS',
+                    departure_time: '2026-01-07T09:00', arrival_time: '2026-01-07T10:30',
+                    registration_number: 'N172SP', pic_time: '1:30', day_landings: 3,
+                },
+                warnings: ['N172SP isn’t in your fleet yet.'],
+            },
+        });
+    });
+
+    await page.goto('/flights/add');
+    await page.getByLabel('Quick log').fill('KJFK to KBOS this morning in N172SP, 3 landings');
+    await page.getByRole('button', { name: 'Fill the form' }).click();
+    await expect(page.getByText(/Check everything before saving\. N172SP isn’t in your fleet yet\./)).toBeVisible();
+    await expect(page.getByLabel('From', { exact: true })).toHaveValue('KJFK');
+    await expect(page.getByLabel('Departure (your local time)')).toHaveValue('2026-01-07T09:00');
+    await expect(page.getByLabel('Day landings')).toHaveValue('3');
+    await page.getByRole('button', { name: 'Save to logbook' }).click();
+    await expect(page.getByRole('heading', { name: 'KJFK → KBOS' })).toBeVisible();
+});
+
 test('signed-out visitors are sent to log in, and rankings stay public', async ({ page }) => {
     await page.goto('/flights');
     await expect(page).toHaveURL(/\/login$/);
@@ -154,5 +191,5 @@ test('a pilot deletes their account', async ({ page }) => {
 test('the privacy notice is public', async ({ page }) => {
     await page.goto('/privacy');
     await expect(page.getByRole('heading', { name: 'Your data in AirFleet' })).toBeVisible();
-    await expect(page.getByText(/only when you ask for a story/)).toBeVisible();
+    await expect(page.getByText(/only when you use quick log/)).toBeVisible();
 });

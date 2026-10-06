@@ -87,7 +87,7 @@ class FlightSerializer(serializers.ModelSerializer):
     class Meta:
         model = Flight
         fields = '__all__'
-        read_only_fields = ('user', 'aircraft', 'narrative', 'narrative_generated_at', 'created_at', 'updated_at')
+        read_only_fields = ('user', 'aircraft', 'created_at', 'updated_at')
 
     def get_departure_info(self, obj):
         return airport_info(obj.departure_airport)
@@ -187,7 +187,7 @@ class PublicFlightSerializer(serializers.ModelSerializer):
         model = Flight
         fields = (
             'id', 'pilot', 'departure_airport', 'arrival_airport', 'departure_time', 'arrival_time',
-            'total_time', 'distance', 'registration_number', 'aircraft_type', 'photo', 'narrative',
+            'total_time', 'distance', 'registration_number', 'aircraft_type', 'photo',
             'night_time', 'instrument_time', 'day_landings', 'night_landings', 'approaches',
             'cross_country', 'is_simulator', 'departure_info', 'arrival_info',
         )

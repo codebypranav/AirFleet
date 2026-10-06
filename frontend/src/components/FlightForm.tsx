@@ -5,7 +5,7 @@ import Link from 'next/link';
 import AirportInput from '@/components/AirportInput';
 import { CameraIcon, CloudIcon, UploadIcon } from '@/components/Icons';
 import type { Airport, Flight } from '@/types/flight';
-import { getFleet, getMetar, getSimbrief, readFlightPlan } from '@/utils/api';
+import { getFleet, getMetar, getQuickLogStatus, getSimbrief, readFlightPlan, readQuickLog } from '@/utils/api';
 import { CONDITIONS, distanceNm, durationInput, formatHours, fromLocalInput, parseDurationInput, toLocalInput } from '@/utils/format';
 
 const TIME_FIELDS = [
@@ -109,10 +109,20 @@ export default function FlightForm({
     const simbriefUser = simbriefInput ?? savedSimbriefUser;
     const [simbriefStatus, setSimbriefStatus] = useState('');
     const [planStatus, setPlanStatus] = useState('');
+    const [quickLogEnabled, setQuickLogEnabled] = useState(false);
+    const [quickText, setQuickText] = useState('');
+    const [quickStatus, setQuickStatus] = useState('');
+    const [quickReading, setQuickReading] = useState(false);
 
     useEffect(() => {
         getFleet().then((planes) => setFleet(planes.map((p) => p.registration))).catch(() => {});
     }, []);
+
+    // Quick log only shows when the server has an AI provider set up.
+    useEffect(() => {
+        if (flight) return;
+        getQuickLogStatus().then(({ enabled }) => setQuickLogEnabled(enabled)).catch(() => {});
+    }, [flight]);
 
     const set = <K extends keyof FormState>(name: K, value: FormState[K]) => setForm((prev) => ({ ...prev, [name]: value }));
     // A changed route makes the saved distance stale; blank it so the server recomputes it.
@@ -203,6 +213,40 @@ export default function FlightForm({
         }
     };
 
+    const quickLog = async () => {
+        if (!quickText.trim()) return;
+        setQuickReading(true);
+        setQuickStatus('Reading…');
+        try {
+            const { flight: found, warnings } = await readQuickLog(quickText.trim(), toLocalInput(new Date().toISOString()));
+            setForm((prev) => {
+                const next = { ...prev };
+                // Times come back as local "YYYY-MM-DDTHH:MM" and hours as "H:MM", ready for the inputs.
+                for (const key of ['departure_time', 'arrival_time', 'registration_number', ...TIME_FIELDS.map(([k]) => k)] as const) {
+                    if (found[key]) next[key] = found[key];
+                }
+                for (const key of ['departure_airport', 'arrival_airport'] as const) {
+                    if (found[key]) {
+                        next[key] = found[key];
+                        next.distance = ''; // new route, so let the server work the distance out
+                    }
+                }
+                for (const [key] of COUNT_FIELDS) {
+                    if (found[key] !== undefined) next[key] = String(found[key]);
+                }
+                if (found.cross_country !== undefined) next.cross_country = found.cross_country;
+                if (found.is_simulator !== undefined) next.is_simulator = found.is_simulator;
+                if (found.notes) next.notes = prev.notes || found.notes;
+                return next;
+            });
+            setQuickStatus(['Filled in what was found. Check everything before saving.', ...warnings].join(' '));
+        } catch (e) {
+            setQuickStatus(e instanceof Error ? e.message : 'Could not read that description');
+        } finally {
+            setQuickReading(false);
+        }
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
@@ -261,6 +305,35 @@ export default function FlightForm({
     return (
         <form onSubmit={handleSubmit} className="space-y-6 animate-rise">
             {error && <div className="alert-error" role="alert">{error}</div>}
+
+            {!flight && quickLogEnabled && (
+                <div className="card p-5 sm:p-6">
+                    <label htmlFor="quick_log" className="field-label">Quick log</label>
+                    <textarea
+                        id="quick_log"
+                        value={quickText}
+                        onChange={(e) => setQuickText(e.target.value)}
+                        onKeyDown={(e) => {
+                            if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                                e.preventDefault();
+                                quickLog();
+                            }
+                        }}
+                        rows={2}
+                        maxLength={1000}
+                        placeholder="e.g. KPAO to KSQL and back this morning, 9:00 to 10:24 in N12345. 3 landings, 0.3 under the hood."
+                        className="field-input"
+                    />
+                    <div className="mt-3 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                        <p className="text-xs text-ash" aria-live="polite">
+                            {quickStatus || 'Describe the flight in your own words and AI fills in the form below for you to check. Nothing is saved until you save.'}
+                        </p>
+                        <button type="button" onClick={quickLog} className="btn btn-ghost shrink-0" disabled={!quickText.trim() || quickReading}>
+                            {quickReading ? 'Reading…' : 'Fill the form'}
+                        </button>
+                    </div>
+                </div>
+            )}
 
             {!flight && (
                 <div className="card flex flex-col gap-3 p-5 sm:flex-row sm:items-end sm:p-6">

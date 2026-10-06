@@ -8,7 +8,7 @@ from django.core.cache import cache
 from django.test import SimpleTestCase, override_settings
 from rest_framework.test import APITestCase
 
-from . import airports, external, flight_plans, insights
+from . import airports, external, flight_plans, insights, quick_log
 from .models import Aircraft, Flight
 
 FLIGHT = {
@@ -188,55 +188,6 @@ class ApiFlowTests(ApiTestCase):
         res = self.client.get('/api/rankings/?period=year')
         self.assertEqual((res.data['period'], res.data['flights'], res.data['airports']), ('year', [], []))
 
-    @override_settings(OPENAI_API_KEY='sk-test')
-    def test_generate_narrative_is_saved(self):
-        self.authenticate()
-        flight = self.add_flight(weather_conditions='KJFK 011000Z 27010KT 10SM CLR')
-        completion = mock.Mock()
-        completion.choices = [mock.Mock(message=mock.Mock(content='  A smooth flight.  '))]
-        with mock.patch('flights.views.OpenAI') as client_cls:
-            create = client_cls.return_value.chat.completions.create
-            create.return_value = completion
-            res = self.client.post('/api/generate-narrative/', {'flight_id': flight['id']}, format='json')
-        self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.data['narrative'], 'A smooth flight.')
-        self.assertEqual(Flight.objects.get().narrative, 'A smooth flight.')
-        prompt = create.call_args.kwargs['messages'][1]['content']
-        self.assertIn('27010KT', prompt)
-        self.assertIn('John F. Kennedy', prompt)
-
-    @override_settings(OPENAI_API_KEY='sk-test')
-    def test_generate_narrative_for_someone_elses_flight(self):
-        self.authenticate('alice')
-        flight = self.add_flight()
-        self.authenticate('bob')
-        res = self.client.post('/api/generate-narrative/', {'flight_id': flight['id']}, format='json')
-        self.assertEqual(res.status_code, 404)
-
-    @override_settings(OPENAI_API_KEY='')
-    def test_generate_narrative_without_key(self):
-        self.authenticate()
-        flight = self.add_flight()
-        res = self.client.post('/api/generate-narrative/', {'flight_id': flight['id']}, format='json')
-        self.assertEqual(res.status_code, 503)
-
-    @override_settings(OPENAI_API_KEY='sk-test')
-    def test_generate_narrative_is_throttled(self):
-        from rest_framework.settings import api_settings
-        self.authenticate()
-        flight = self.add_flight()
-        rates = {**api_settings.DEFAULT_THROTTLE_RATES, 'narrative': '2/hour'}
-        completion = mock.Mock(choices=[mock.Mock(message=mock.Mock(content='Story'))])
-        with mock.patch('flights.views.NarrativeThrottle.THROTTLE_RATES', rates), mock.patch('flights.views.OpenAI') as client_cls:
-            client_cls.return_value.chat.completions.create.return_value = completion
-            codes = [self.client.post('/api/generate-narrative/', {'flight_id': flight['id']}, format='json').status_code for _ in range(3)]
-        self.assertEqual(codes[2], 429)
-
-    def test_errors_do_not_leak_exceptions(self):
-        self.authenticate()
-        res = self.client.post('/api/generate-narrative/', {}, format='json')
-        self.assertEqual(res.status_code, 400)
-        self.assertEqual(res.data, {'error': 'flight_id is required'})
 
 
 class AircraftTests(ApiTestCase):
@@ -840,3 +791,145 @@ class DraftFlightTests(ApiTestCase):
         self.assertEqual(res.status_code, 400)
         self.assertIn('grounded', str(res.data))
         self.assertTrue(Flight.objects.get(pk=draft['id']).is_draft)
+
+
+GEMINI = {'name': 'gemini', 'base_url': 'https://gemini.test/', 'api_key': 'g-key', 'model': 'gemini-test'}
+GROQ = {'name': 'groq', 'base_url': 'https://groq.test/', 'api_key': 'q-key', 'model': 'groq-test'}
+NOW = datetime(2026, 10, 6, 14, 0)
+
+
+def completion(content):
+    return mock.Mock(choices=[mock.Mock(message=mock.Mock(content=content))])
+
+
+class QuickLogCleanTests(SimpleTestCase):
+    def clean(self, fleet=(), **data):
+        return quick_log.clean(data, list(fleet))
+
+    def test_fills_checked_fields(self):
+        result = self.clean(
+            fleet=[('N12345', 'C172')],
+            departure_airport='kpao', arrival_airport='KSQL',
+            departure_time='2026-10-06T09:00', arrival_time='2026-10-06T10:24', total_hours=1.4,
+            registration_number='n12345', pic_hours=1.4, simulated_instrument_hours=0.3,
+            day_landings=3, night_landings=0.0, approaches=None, cross_country=False, notes=' Gusty. ',
+        )
+        self.assertEqual(result['flight'], {
+            'departure_airport': 'KPAO', 'arrival_airport': 'KSQL',
+            'departure_time': '2026-10-06T09:00', 'arrival_time': '2026-10-06T10:24',
+            'registration_number': 'N12345', 'pic_time': '1:24', 'simulated_instrument_time': '0:18',
+            'day_landings': 3, 'night_landings': 0, 'cross_country': False, 'notes': 'Gusty.',
+        })
+        self.assertEqual(result['warnings'], [])
+
+    def test_unknown_airport_and_bad_values_are_dropped(self):
+        result = self.clean(departure_airport='ZZZZ', pic_hours=30, day_landings='lots', is_simulator='yes', registration_number='N 1@')
+        self.assertEqual(result['flight'], {})
+        self.assertEqual(len(result['warnings']), 2)
+        self.assertIn('ZZZZ', result['warnings'][0])
+
+    def test_arrival_from_total_and_after_midnight(self):
+        flight = self.clean(departure_time='2026-10-05T23:00', total_hours=1.5)['flight']
+        self.assertEqual(flight['arrival_time'], '2026-10-06T00:30')
+        flight = self.clean(departure_time='2026-10-05T23:00', arrival_time='2026-10-05T00:30')['flight']
+        self.assertEqual(flight['arrival_time'], '2026-10-06T00:30')
+
+    def test_warns_when_times_disagree_or_are_missing(self):
+        result = self.clean(departure_time='2026-10-06T09:00', arrival_time='2026-10-06T11:00', total_hours=1.2)
+        self.assertIn('Check them', result['warnings'][0])
+        result = self.clean(total_hours=1.2)
+        self.assertNotIn('departure_time', result['flight'])
+        self.assertIn('Add the departure and arrival times.', result['warnings'])
+
+    def test_warns_about_aircraft_outside_the_fleet(self):
+        result = self.clean(fleet=[('N12345', 'C172')], registration_number='N999AB')
+        self.assertEqual(result['flight']['registration_number'], 'N999AB')
+        self.assertIn('isn’t in your fleet', result['warnings'][0])
+
+    def test_prompt_has_local_time_fleet_and_text(self):
+        user = quick_log.build_messages('KPAO pattern work', NOW, [('N12345', 'C172'), ('N54321', '')])[1]['content']
+        self.assertIn('Tuesday 2026-10-06 14:00', user)
+        self.assertIn('- N12345 (C172)', user)
+        self.assertIn('- N54321\n', user)
+        self.assertIn('KPAO pattern work', user)
+
+
+class QuickLogApiTests(ApiTestCase):
+    url = '/api/flights/quick-log/'
+
+    def post(self, text='KPAO to KSQL, 1.4 hours', **extra):
+        return self.client.post(self.url, {'text': text, 'now': '2026-10-06T14:00', **extra}, format='json')
+
+    @override_settings(QUICK_LOG_PROVIDERS=[GEMINI])
+    def test_reads_description_into_form_fields(self):
+        self.authenticate()
+        self.client.post('/api/aircraft/', {'registration': 'N12345', 'type_code': 'C172'}, format='json')
+        answer = '```json\n{"departure_airport": "KPAO", "arrival_airport": "KSQL", "registration_number": "N12345"}\n```'
+        with mock.patch('flights.quick_log.OpenAI') as client_cls:
+            create = client_cls.return_value.chat.completions.create
+            create.return_value = completion(answer)
+            res = self.post()
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(res.data['flight'], {'departure_airport': 'KPAO', 'arrival_airport': 'KSQL', 'registration_number': 'N12345'})
+        self.assertEqual(client_cls.call_args.kwargs['base_url'], 'https://gemini.test/')
+        self.assertEqual(create.call_args.kwargs['model'], 'gemini-test')
+        prompt = create.call_args.kwargs['messages'][1]['content']
+        self.assertIn('N12345 (C172)', prompt)
+        self.assertIn('2026-10-06 14:00', prompt)
+        self.assertFalse(Flight.objects.exists())
+
+    @override_settings(QUICK_LOG_PROVIDERS=[GEMINI, GROQ])
+    def test_falls_back_to_the_next_provider(self):
+        from openai import RateLimitError
+        self.authenticate()
+        limited = RateLimitError('quota', response=mock.Mock(status_code=429), body=None)
+        with mock.patch('flights.quick_log.OpenAI') as client_cls:
+            client_cls.return_value.chat.completions.create.side_effect = [limited, completion('{"departure_airport": "KPAO"}')]
+            res = self.post()
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['flight'], {'departure_airport': 'KPAO'})
+        self.assertEqual([c.kwargs['api_key'] for c in client_cls.call_args_list], ['g-key', 'q-key'])
+
+    @override_settings(QUICK_LOG_PROVIDERS=[GEMINI])
+    def test_unavailable_when_every_provider_fails(self):
+        self.authenticate()
+        with mock.patch('flights.quick_log.OpenAI') as client_cls:
+            client_cls.return_value.chat.completions.create.return_value = completion('not json')
+            res = self.post()
+        self.assertEqual(res.status_code, 503)
+        self.assertNotIn('json', res.data['error'].lower())
+
+    @override_settings(QUICK_LOG_PROVIDERS=[])
+    def test_disabled_without_a_provider(self):
+        self.authenticate()
+        self.assertEqual(self.client.get(self.url).data, {'enabled': False})
+        self.assertEqual(self.post().status_code, 503)
+        with override_settings(QUICK_LOG_PROVIDERS=[GEMINI]):
+            self.assertEqual(self.client.get(self.url).data, {'enabled': True})
+
+    @override_settings(QUICK_LOG_PROVIDERS=[GEMINI])
+    def test_rejects_empty_long_and_useless_text(self):
+        self.authenticate()
+        with mock.patch('flights.quick_log.OpenAI') as client_cls:
+            client_cls.return_value.chat.completions.create.return_value = completion('{"departure_airport": null}')
+            self.assertEqual(self.post('  ').status_code, 422)
+            self.assertEqual(self.post('x' * 1001).status_code, 422)
+            self.assertEqual(client_cls.call_count, 0)
+            res = self.post('nice day')
+        self.assertEqual(res.status_code, 422)
+        self.assertIn('Couldn’t find any flight details', res.data['error'])
+
+    def test_requires_sign_in(self):
+        self.assertEqual(self.client.get(self.url).status_code, 401)
+        self.assertEqual(self.post().status_code, 401)
+
+    @override_settings(QUICK_LOG_PROVIDERS=[GEMINI])
+    def test_is_throttled(self):
+        from rest_framework.settings import api_settings
+        self.authenticate()
+        rates = {**api_settings.DEFAULT_THROTTLE_RATES, 'quick_log': '2/hour'}
+        with mock.patch('flights.views.QuickLogThrottle.THROTTLE_RATES', rates), mock.patch('flights.quick_log.OpenAI') as client_cls:
+            client_cls.return_value.chat.completions.create.return_value = completion('{"departure_airport": "KPAO"}')
+            codes = [self.post().status_code for _ in range(3)]
+            self.assertEqual(self.client.get(self.url).status_code, 200)
+        self.assertEqual(codes, [200, 200, 429])

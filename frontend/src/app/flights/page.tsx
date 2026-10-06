@@ -122,7 +122,7 @@ export default function FlightsPage() {
                             {filterField('to', 'To date', { type: 'date' })}
                             {filterField('airport', 'Airport', { placeholder: 'e.g. KSFO', maxLength: 4 })}
                             {filterField('aircraft', 'Registration', { placeholder: 'e.g. N172SP' })}
-                            {filterField('q', 'Search notes & stories', { placeholder: 'e.g. crosswind' })}
+                            {filterField('q', 'Search notes & flight plans', { placeholder: 'e.g. crosswind' })}
                             <div>
                                 <label htmlFor="filter-simulator" className="field-label">Flights</label>
                                 <select

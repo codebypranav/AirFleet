@@ -27,9 +27,10 @@ export default function PrivacyPage() {
                 <Section title="What we store">
                     <ul className="list-disc space-y-2 pl-5">
                         <Item title="Account">username, email, name, bio and home airport, plus a hashed password (never the password itself).</Item>
-                        <Item title="Flights">airports, dates and times, aircraft registrations, logbook times, weather, notes, flight plans, photos and generated stories. Together these are a record of where and when you flew.</Item>
+                        <Item title="Flights">airports, dates and times, aircraft registrations, logbook times, weather, notes, flight plans and photos. Together these are a record of where and when you flew.</Item>
                         <Item title="Aircraft">registrations, types, hours and maintenance dates you enter.</Item>
                         <Item title="Instruction">who your instructors and students are; each sign-off, with the instructor&apos;s name, certificate number and expiry, their remarks and a copy of the flight&apos;s logbook fields as signed; and endorsements, with their wording, dates and the same instructor details. Withdrawn sign-offs and endorsements are kept, marked withdrawn, with the reason given.</Item>
+                        <Item title="Quick log descriptions">read once to fill in the new-flight form, then discarded. Only the fields you save are kept.</Item>
                         <Item title="Flight plan PDFs">read once to fill in a draft flight, then discarded. The PDF isn&apos;t stored and isn&apos;t sent to anyone else; only the fields you save are kept.</Item>
                         <Item title="Cookies">only the sign-in tokens that keep you logged in. No advertising or tracking cookies.</Item>
                     </ul>
@@ -44,7 +45,7 @@ export default function PrivacyPage() {
 
                 <Section title="Who else handles it">
                     <ul className="list-disc space-y-2 pl-5">
-                        <Item title="OpenAI">only when you ask for a story: the flight&apos;s airports, times, aircraft, weather, logbook times and the first 500 characters of your notes.</Item>
+                        <Item title="Google Gemini and Groq">only when you use quick log: the description you type, your local time and your aircraft&apos;s registrations and types, so an AI model can fill in the form. Nothing else from your logbook is sent. These services may keep what&apos;s sent and use it to improve their models, so leave out anything you wouldn&apos;t want shared.</Item>
                         <Item title="Google">only if you sign in with Google, to confirm your email address.</Item>
                         <Item title="aviationweather.gov and SimBrief">when you fetch weather (airport code and date) or import a flight plan (your SimBrief username).</Item>
                         <Item title="Hosting">the app, database, photo storage and email are run by our hosting providers, who store data on our behalf.</Item>
@@ -54,7 +55,7 @@ export default function PrivacyPage() {
                 <Section title="Instructors">
                     <p className="text-stone">
                         An instructor you link with can see your flights that have dual received time: route, times, aircraft,
-                        logbook columns, landings and approaches. Not your notes, photos, stories or other flights. Unlinking
+                        logbook columns, landings and approaches. Not your notes, photos or other flights. Unlinking
                         stops that straight away. They also see the endorsements they have given you, and no one else&apos;s.
                         Sign-offs and endorsements stay on your record, with the instructor&apos;s name and certificate
                         number, even if they later delete their account. Your CSV export includes who signed each flight.
@@ -64,7 +65,7 @@ export default function PrivacyPage() {
                 <Section title="Public profiles">
                     <p className="text-stone">
                         Your logbook is private unless you turn on <em>Public profile</em>. Then anyone with the link can see
-                        your profile, totals, route map and flights (route, times, aircraft, photo and story), which shows
+                        your profile, totals, route map and flights (route, times, aircraft and photo), which shows
                         where you have flown and when. Notes, gates and flight plans stay private. Your username and totals
                         appear in rankings either way.
                     </p>

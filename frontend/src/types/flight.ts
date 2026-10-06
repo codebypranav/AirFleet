@@ -41,8 +41,6 @@ export interface Flight {
     /** Started from a flight plan and not flown yet; left out of totals, currency and rankings. */
     is_draft: boolean;
     weather_conditions: string;
-    narrative: string;
-    narrative_generated_at: string | null;
     signature: Signature | null;
     created_at: string;
     updated_at: string;
@@ -124,7 +122,6 @@ export interface PublicFlight {
     registration_number: string;
     aircraft_type: string;
     photo?: string | null;
-    narrative: string;
     night_time: string;
     instrument_time: string;
     day_landings: number;
@@ -257,5 +254,15 @@ export interface FlightPlanDraft {
     source: 'simbrief' | 'icao';
     callsign: string;
     flight: Partial<Flight> & { aircraft_type?: string };
+    warnings: string[];
+}
+
+/** A plain-text description of a flight read into new-flight form fields; see flights/quick_log.py.
+ * Times are local "YYYY-MM-DDTHH:MM" and hours "H:MM", as the form's inputs take them. */
+export interface QuickLogDraft {
+    flight: Partial<Pick<Flight,
+        | 'departure_airport' | 'arrival_airport' | 'departure_time' | 'arrival_time' | 'registration_number'
+        | 'pic_time' | 'sic_time' | 'dual_received_time' | 'night_time' | 'instrument_time' | 'simulated_instrument_time'
+        | 'day_landings' | 'night_landings' | 'approaches' | 'cross_country' | 'is_simulator' | 'notes'>>;
     warnings: string[];
 }

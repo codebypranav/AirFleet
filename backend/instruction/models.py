@@ -9,7 +9,7 @@ from django.db.models import F, Q
 from flights.models import Flight
 
 # The logbook entry an instructor vouches for. Editing any of these after signing
-# invalidates the signature; notes, photos, weather and stories can change freely.
+# invalidates the signature; notes, photos and weather can change freely.
 SIGNED_FIELDS = (
     'departure_airport', 'arrival_airport', 'departure_time', 'arrival_time', 'total_time',
     'registration_number', 'pic_time', 'sic_time', 'dual_received_time', 'night_time',

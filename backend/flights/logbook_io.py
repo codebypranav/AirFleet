@@ -11,7 +11,7 @@ EXPORT_FIELDS = [
     'registration_number', 'aircraft_type', 'aircraft_condition', 'distance',
     'pic_time', 'sic_time', 'dual_received_time', 'night_time', 'instrument_time', 'simulated_instrument_time',
     'day_landings', 'night_landings', 'approaches', 'cross_country', 'is_simulator',
-    'departure_gate', 'arrival_gate', 'flight_plan', 'weather_conditions', 'notes', 'narrative',
+    'departure_gate', 'arrival_gate', 'flight_plan', 'weather_conditions', 'notes',
     'instructor_name', 'instructor_certificate', 'instructor_signed_at', 'signature_status',
 ]
 # From the flight's latest instructor signature. Informational: a signature can't be imported.
@@ -21,8 +21,8 @@ SIGNATURE_FIELDS = {
     'instructor_signed_at': 'signed_at',
     'signature_status': 'status',
 }
-# Read back on import; aircraft_type, narrative and the signature columns are informational only.
-IMPORT_FIELDS = [f for f in EXPORT_FIELDS if f not in ('aircraft_type', 'narrative', *SIGNATURE_FIELDS)]
+# Read back on import; aircraft_type and the signature columns are informational only.
+IMPORT_FIELDS = [f for f in EXPORT_FIELDS if f not in ('aircraft_type', *SIGNATURE_FIELDS)]
 
 FOREFLIGHT_CLASSES = {
     'airplane_single_engine_land': 'SEL',

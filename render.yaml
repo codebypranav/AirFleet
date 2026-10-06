@@ -20,12 +20,13 @@ services:
       # Neon connection string, e.g. postgresql://user:pass@ep-xxx.neon.tech/neondb?sslmode=require
       - key: DATABASE_URL
         sync: false
-      - key: OPENAI_API_KEY
+      # Quick log (AI flight entry): free-tier Gemini, with Groq as a fallback. Leave both unset to hide it.
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GROQ_API_KEY
         sync: false
       - key: SECRET_KEY
         generateValue: true
-      - key: OPENAI_MODEL
-        value: gpt-4o-mini
       # Neon Object Storage for flight photos (from `neon link` / .env.local)
       - key: AWS_ACCESS_KEY_ID
         sync: false
