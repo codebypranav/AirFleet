@@ -9,6 +9,26 @@ import { greatCircle } from '@/utils/format';
 const token = (name: string, fallback: string) =>
     getComputedStyle(document.documentElement).getPropertyValue(name).trim() || fallback;
 
+// With an ArcGIS Location Platform key (free tier: 2M tiles a month) satellite view uses Esri's
+// high-resolution World Imagery; without one it falls back to NASA's keyless Blue Marble mosaic.
+const ARCGIS_KEY = process.env.NEXT_PUBLIC_ARCGIS_API_KEY;
+const BASEMAP_KEY = 'airfleet.basemap';
+
+const readBasemap = () => {
+    try {
+        return window.localStorage.getItem(BASEMAP_KEY);
+    } catch {
+        return null;
+    }
+};
+const saveBasemap = (name: string) => {
+    try {
+        window.localStorage.setItem(BASEMAP_KEY, name);
+    } catch {
+        // Storage blocked: the choice just isn't remembered.
+    }
+};
+
 /** Great-circle route map. Lines get heavier the more often a route was flown. */
 export default function RouteMap({ data, className = 'h-80' }: { data: RouteMapData; className?: string }) {
     const container = useRef<HTMLDivElement>(null);
@@ -26,11 +46,27 @@ export default function RouteMap({ data, className = 'h-80' }: { data: RouteMapD
             const ink = token('--color-ink', '#11120f');
 
             map = L.map(element, { worldCopyJump: true, scrollWheelZoom: false, attributionControl: true });
-            L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                subdomains: 'abcd',
-                maxZoom: 12,
-            }).addTo(map);
+            const basemaps: Record<string, import('leaflet').TileLayer> = {
+                Map: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                    subdomains: 'abcd',
+                    maxZoom: 12,
+                }),
+                Satellite: ARCGIS_KEY
+                    ? L.tileLayer(`https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token=${encodeURIComponent(ARCGIS_KEY)}`, {
+                          attribution: 'Powered by <a href="https://www.esri.com">Esri</a> &middot; Esri, Maxar, Earthstar Geographics, and the GIS User Community',
+                          maxZoom: 12,
+                      })
+                    : L.tileLayer('https://gibs.earthdata.nasa.gov/wmts/epsg3857/best/BlueMarble_NextGeneration/default/GoogleMapsCompatible_Level8/{z}/{y}/{x}.jpeg', {
+                          attribution: 'Imagery &copy; <a href="https://www.earthdata.nasa.gov/gibs">NASA GIBS</a> Blue Marble',
+                          maxNativeZoom: 8,
+                          maxZoom: 12,
+                      }),
+            };
+            const saved = readBasemap();
+            basemaps[saved && saved in basemaps ? saved : 'Map'].addTo(map);
+            L.control.layers(basemaps, undefined, { position: 'topright' }).addTo(map);
+            map.on('baselayerchange', (e) => saveBasemap(e.name));
 
             const byCode = new Map<string, Airport>(data.airports.map((a) => [a.code, a]));
             const most = Math.max(...data.routes.map((r) => r.flights), 1);
