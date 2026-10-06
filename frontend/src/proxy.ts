@@ -11,10 +11,6 @@ export function proxy(request: NextRequest) {
     // A refresh token is enough: the client swaps it for a fresh access token on its first request.
     const signedIn = Boolean(request.cookies.get('accessToken')?.value || request.cookies.get('refreshToken')?.value)
 
-    // The API was asleep: signed-in pilots wait on the login page, which sends them back once it answers.
-    if (path === '/login' && request.nextUrl.searchParams.get('reason') === 'waking') {
-        return undefined
-    }
     if (GUEST_ONLY.has(path)) {
         return signedIn ? NextResponse.redirect(new URL('/flights', request.url)) : undefined
     }
@@ -22,10 +18,7 @@ export function proxy(request: NextRequest) {
         return undefined
     }
     if (!signedIn) {
-        // Remember where they were headed so logging in lands them back there.
-        const login = new URL('/login', request.url)
-        login.searchParams.set('next', path + request.nextUrl.search)
-        return NextResponse.redirect(login)
+        return NextResponse.redirect(new URL('/login', request.url))
     }
 }
 
