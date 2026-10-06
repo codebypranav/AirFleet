@@ -1,7 +1,7 @@
 // AirFleet's mark: a compass dial whose maple leaf midrib is the needle.
 
 const MAPLE_LEAF =
-    'M50 6 55 17 61 14 58 36 70 24 73 30 85 27 81 40 87 43 70 57 73 64 53 61 52.5 80 47.5 80 47 61 27 64 30 57 13 43 19 40 15 27 27 30 30 24 42 36 39 14 45 17Z';
+    'M50 4 60 18 66 12 59 36 70 24 73 30 85 27 81 40 87 43 70 57 73 64 53 61 52.5 80 47.5 80 47 61 27 64 30 57 13 43 19 40 15 27 27 30 30 24 41 36 34 12 40 18Z';
 
 const polar = (cx: number, cy: number, r: number, deg: number) => {
     const rad = ((deg - 90) * Math.PI) / 180;
@@ -18,10 +18,10 @@ export function MapleLeaf({ className = '' }: { className?: string }) {
 
 // Palmate veins fanning out from the leaf's centre (50 43), in MAPLE_LEAF coordinates.
 const LEAF_VEINS =
-    'M50 43 77 31M50 43 23 31M50 43 66 55M50 43 34 55M50 43 50 62M64 37 67 28M36 37 33 28M68 35 80 41M32 35 20 41M50 33 56 22M50 33 44 22';
+    'M50 43 77 31M50 43 23 31M50 43 66 55M50 43 34 55M50 43 50 62M64 37 67 28M36 37 33 28M68 35 80 41M32 35 20 41M50 33 58 21M50 33 42 21';
 
-// Centre the leaf's bounding box (13–87 × 6–80) on the dial's pivot at (24, 24).
-const LEAF_SCALE = 0.42;
+// Centre the leaf's bounding box (13–87 × 4–80) on the dial's pivot at (24, 24).
+const LEAF_SCALE = 0.3;
 const LEAF_TRANSFORM = `translate(${24 - 50 * LEAF_SCALE} ${24 - 43 * LEAF_SCALE}) scale(${LEAF_SCALE})`;
 
 export function BrandMark({ className = '' }: { className?: string }) {
@@ -37,12 +37,12 @@ export function BrandMark({ className = '' }: { className?: string }) {
             })}
             <g transform={LEAF_TRANSFORM}>
                 <path d={MAPLE_LEAF} fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" />
-                <path d={LEAF_VEINS} className="stroke-ink" strokeWidth="2.6" strokeLinecap="round" />
+                <path d={LEAF_VEINS} className="stroke-ink" strokeWidth="3.4" strokeLinecap="round" />
             </g>
             {/* The midrib doubles as the compass needle, pivoting at the leaf's centre and pointing north. */}
-            <path d="M24 24V9.5" className="stroke-clay" strokeWidth="1.3" strokeLinecap="round" />
-            <path d="M24 4.4 26 10H22Z" className="fill-clay stroke-clay" strokeWidth="0.5" strokeLinejoin="round" />
-            <circle cx="24" cy="24" r="1.8" className="fill-clay stroke-ink" strokeWidth="0.7" />
+            <path d="M24 24V9.5" className="stroke-needle" strokeWidth="1" strokeLinecap="round" />
+            <path d="M24 4.4 26 10H22Z" className="fill-needle stroke-needle" strokeWidth="0.5" strokeLinejoin="round" />
+            <circle cx="24" cy="24" r="1.8" className="fill-needle stroke-ink" strokeWidth="0.7" />
         </svg>
     );
 }

@@ -22,6 +22,7 @@
   --color-clay: #c0915f;
   --color-sand: #d8c79e;
   --color-rust: #b5603f;
+  --color-needle: #d4483b;
 
   --color-background: var(--color-ink);
   --color-foreground: var(--color-bone);
