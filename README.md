@@ -271,6 +271,7 @@ GOOGLE_CLIENT_SECRET=...
 API_URL=...                               # API origin for server-side calls, if it differs from NEXT_PUBLIC_API_URL
 NEXT_PUBLIC_ENABLE_DEBUG=true             # turns on the /debug connection page
 NEXT_PUBLIC_PRIVACY_CONTACT=you@example.com  # shown on /privacy for data requests
+NEXT_PUBLIC_ARCGIS_API_KEY=...            # optional: high-res Esri satellite view (free tier, 2M tiles/month); without it satellite uses NASA Blue Marble
 ```
 
 For Google sign-in, create an OAuth client (Web application) in Google Cloud and add
