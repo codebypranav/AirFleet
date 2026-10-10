@@ -156,8 +156,8 @@ class ApiFlowTests(ApiTestCase):
         self.authenticate()
         for day in range(1, 26):
             self.add_flight(
-                departure_time=f'2026-01-{day:02d}T10:00:00Z', arrival_time=f'2026-01-{day:02d}T11:00:00Z',
-                total_time='01:00:00', arrival_airport='KBOS' if day % 5 == 0 else 'KLAX',
+                departure_time=f'2026-01-{day:02d}T10:00:00Z', arrival_time=f'2026-01-{day:02d}T16:00:00Z',
+                total_time='06:00:00', arrival_airport='KBOS' if day % 5 == 0 else 'KLAX',
                 registration_number='N1' if day <= 10 else 'N2', notes='crosswind' if day == 3 else '',
             )
         page = self.client.get('/api/flights/').data
@@ -228,7 +228,7 @@ class AircraftTests(ApiTestCase):
         self.assertFalse(res.data['grounded'])
         self.assertEqual(res.data['hours_since_maintenance'], 0)
         self.assertEqual(res.data['annual_due'], '2027-01-01')
-        self.add_flight(departure_time='2030-01-02T10:00:00Z', arrival_time='2030-01-02T15:30:00Z')
+        self.add_flight(departure_time='2026-01-03T10:00:00Z', arrival_time='2026-01-03T15:30:00Z')
 
     def test_maintenance_due(self):
         self.authenticate()
@@ -791,6 +791,109 @@ class DraftFlightTests(ApiTestCase):
         self.assertEqual(res.status_code, 400)
         self.assertIn('grounded', str(res.data))
         self.assertTrue(Flight.objects.get(pk=draft['id']).is_draft)
+
+
+class RealismTests(ApiTestCase):
+    """Flights that couldn't have happened stay out of the logbook; fast ones still get in."""
+
+    def post(self, **overrides):
+        return self.client.post('/api/flights/', {**FLIGHT, **overrides}, format='json')
+
+    def errors(self, res):
+        """The field errors of a rejected flight; the create view wraps them."""
+        self.assertEqual(res.status_code, 400, res.data)
+        return res.data.get('errors', res.data)
+
+    def test_rejects_an_impossible_ground_speed(self):
+        self.authenticate()
+        res = self.post(arrival_time='2026-01-01T10:20:00Z', total_time='00:20:00')
+        self.assertIn('kt', str(self.errors(res)['distance']))
+        self.assertFalse(Flight.objects.exists())
+
+    def test_allows_a_supersonic_airliner(self):
+        self.authenticate()
+        # EGLL-KJFK in 2h55m, the Concorde's schedule: about 1,030 kt over the ground.
+        res = self.post(
+            departure_airport='EGLL', arrival_airport='KJFK', distance=2999,
+            departure_time='2026-01-01T10:00:00Z', arrival_time='2026-01-01T12:55:00Z', total_time='02:55:00',
+        )
+        self.assertEqual(res.status_code, 201, res.data)
+
+    def test_a_simulator_session_may_reposition(self):
+        self.authenticate()
+        res = self.post(arrival_time='2026-01-01T10:20:00Z', total_time='00:20:00', is_simulator=True)
+        self.assertEqual(res.status_code, 201, res.data)
+
+    def test_rejects_a_flight_that_hasnt_happened(self):
+        self.authenticate()
+        start = datetime.now(dt_timezone.utc) + timedelta(days=3)
+        times = {'departure_time': start.isoformat(), 'arrival_time': (start + timedelta(hours=5, minutes=30)).isoformat()}
+        res = self.post(**times)
+        self.assertIn('arrival_time', self.errors(res))
+        # Planning that same flight is what drafts are for.
+        self.assertEqual(self.post(**times, is_draft=True).status_code, 201)
+
+    def test_rejects_dates_outside_the_age_of_flight(self):
+        self.authenticate()
+        res = self.post(departure_time='1899-01-01T10:00:00Z', arrival_time='1899-01-01T15:30:00Z')
+        self.assertIn('1903', str(self.errors(res)['departure_time']))
+
+        res = self.post(departure_time='2062-01-01T10:00:00Z', arrival_time='2062-01-01T15:30:00Z', is_draft=True)
+        self.assertIn('departure_time', self.errors(res))
+
+    def test_rejects_a_flight_that_lasts_days(self):
+        self.authenticate()
+        res = self.post(arrival_time='2026-01-04T10:00:00Z', total_time='3 00:00:00')
+        self.assertIn('total_time', self.errors(res))
+
+    def test_rejects_more_landings_and_approaches_than_there_was_time_for(self):
+        self.authenticate()
+        circuits = {
+            'arrival_airport': 'KJFK', 'distance': 0,
+            'arrival_time': '2026-01-01T11:00:00Z', 'total_time': '01:00:00',
+        }
+        self.assertEqual(self.post(**circuits, day_landings=12, night_landings=4).status_code, 201)
+
+        res = self.post(**circuits, day_landings=10, night_landings=30)
+        self.assertIn('circuits', str(self.errors(res)['night_landings']))
+
+        res = self.post(**circuits, approaches=20)
+        self.assertIn('approaches', self.errors(res))
+
+    def test_rejects_a_distance_shorter_than_the_airports_allow(self):
+        self.authenticate()
+        res = self.post(distance=214)
+        self.assertIn('nm apart', str(self.errors(res)['distance']))
+        # A route that wanders is fine; only an impossibly short one isn't.
+        self.assertEqual(self.post(distance=2400).status_code, 201)
+
+    def test_rejects_negative_hours(self):
+        self.authenticate()
+        res = self.post(pic_time='-01:00:00')
+        self.assertIn('negative', str(self.errors(res)['pic_time']))
+
+    def test_an_edit_cant_make_a_flight_unrealistic(self):
+        self.authenticate()
+        flight = self.add_flight()
+        res = self.client.patch(f"/api/flights/{flight['id']}/", {'approaches': 99}, format='json')
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(Flight.objects.get().approaches, 0)
+
+    def test_import_skips_unrealistic_rows(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.authenticate()
+        text = (
+            'departure_airport,arrival_airport,departure_time,arrival_time,registration_number\n'
+            'KJFK,KBOS,2026-01-01T10:00:00Z,2026-01-01T11:00:00Z,N1\n'
+            'KJFK,EGLL,2026-01-02T10:00:00Z,2026-01-02T10:20:00Z,N1\n'
+        )
+        res = self.client.post(
+            '/api/flights/import/',
+            {'file': SimpleUploadedFile('logbook.csv', text.encode(), content_type='text/csv')},
+            format='multipart',
+        )
+        self.assertEqual((res.data['created'], res.data['skipped']), (1, 1), res.data)
+        self.assertIn('distance', res.data['errors'][0]['errors'])
 
 
 GEMINI = {'name': 'gemini', 'base_url': 'https://gemini.test/', 'api_key': 'g-key', 'model': 'gemini-test'}
