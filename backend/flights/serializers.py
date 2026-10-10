@@ -4,7 +4,7 @@ from django.db.models import Sum
 from django.utils import timezone
 from rest_framework import serializers
 
-from . import airports, insights
+from . import airports, insights, realism
 from .models import Aircraft, Flight
 
 MAX_PHOTO_BYTES = 10 * 1024 * 1024
@@ -143,15 +143,32 @@ class FlightSerializer(serializers.ModelSerializer):
         total_time = data['total_time']
 
         for column in TIME_COLUMNS:
-            if (current(column) or timedelta(0)) > total_time:
-                label = column.replace('_', ' ').replace(' time', '')
-                raise serializers.ValidationError({column: f"{label.capitalize()} time can't be longer than the flight."})
+            value = current(column) or timedelta(0)
+            label = column.replace('_', ' ').replace(' time', '').capitalize()
+            if value < timedelta(0):
+                raise serializers.ValidationError({column: f"{label} time can't be negative."})
+            if value > total_time:
+                raise serializers.ValidationError({column: f"{label} time can't be longer than the flight."})
 
+        great_circle = airports.distance_nm(
+            airports.get(current('departure_airport')), airports.get(current('arrival_airport'))
+        )
+        supplied_distance = data.get('distance')
         airports_changed = 'departure_airport' in data or 'arrival_airport' in data
-        if not data.get('distance') and (self.instance is None or airports_changed or 'distance' in data):
-            data['distance'] = airports.distance_nm(
-                airports.get(current('departure_airport')), airports.get(current('arrival_airport'))
-            )
+        if not supplied_distance and (self.instance is None or airports_changed or 'distance' in data):
+            data['distance'] = great_circle
+
+        unrealistic = realism.problems(
+            departure_time=departure_time, arrival_time=arrival_time, total_time=total_time,
+            now=timezone.now(), distance=current('distance') or 0,
+            # Only the pilot's own figure is worth checking against the great circle; ours is the great circle.
+            great_circle=great_circle if supplied_distance else None,
+            day_landings=current('day_landings'), night_landings=current('night_landings'),
+            approaches=current('approaches'), is_draft=bool(current('is_draft')),
+            is_simulator=bool(current('is_simulator')),
+        )
+        if unrealistic:
+            raise serializers.ValidationError(unrealistic)
 
         registration = current('registration_number')
         # A grounded aircraft can still be planned for; the block applies when a flight enters the logbook.

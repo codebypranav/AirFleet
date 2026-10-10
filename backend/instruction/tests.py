@@ -12,6 +12,9 @@ from .endorsements import add_calendar_months
 from .models import InstructorLink, Signature
 
 LESSON = {**FLIGHT, 'dual_received_time': '01:30:00', 'notes': 'Steep turns'}
+# An hour on the student's own, on a short route so that hour is a believable speed.
+SOLO = {'arrival_airport': 'KBOS', 'distance': 0, 'departure_time': '2026-01-02T10:00:00Z',
+        'arrival_time': '2026-01-02T11:00:00Z', 'total_time': '01:00:00'}
 
 
 class InstructionTestCase(ApiTestCase):
@@ -108,7 +111,7 @@ class SignatureTests(InstructionTestCase):
         self.link_id = self.link()
         self.login('student')
         self.lesson = self.add_flight(**LESSON)
-        self.solo = self.add_flight(departure_time='2026-01-02T10:00:00Z', arrival_time='2026-01-02T11:00:00Z', total_time='01:00:00')
+        self.solo = self.add_flight(**SOLO)
         self.login('cfi')
 
     def test_instructor_sees_only_dual_flights_and_signed_fields(self):
@@ -353,7 +356,7 @@ class DraftAndExportTests(InstructionTestCase):
         self.link()
         self.login('student')
         lesson = self.add_flight(**LESSON)
-        self.add_flight(departure_time='2026-01-02T10:00:00Z', arrival_time='2026-01-02T11:00:00Z', total_time='01:00:00')
+        self.add_flight(**SOLO)
         self.login('cfi')
         self.sign(lesson['id'])
         self.login('student')

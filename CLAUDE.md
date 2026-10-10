@@ -40,6 +40,7 @@ Full stack: `docker compose up --build` (Postgres, Django :8000, Next :3000).
   - `flight_plans.py` — parses uploaded OFP PDFs (pypdf) anchored on the ICAO `(FPL-...)` message to create draft flights; the PDF isn't stored.
   - `logbook_io.py` — CSV export and AirFleet/ForeFlight CSV import (dedupe, per-row errors).
   - `insights.py` — stats, currency, achievements, maintenance forecast.
+  - `realism.py` — the envelope a logged flight has to fit (block speed, duration, dates, landings/approaches per hour). `FlightSerializer.validate` rejects anything outside it, on create, edit and CSV import alike. The limits are physical, not fleet-based — supersonic flights still log fine — so loosen them rather than special-casing an aircraft.
   - `quick_log.py` — reads a pilot's plain-text description into new-flight form fields with an LLM (OpenAI SDK against Gemini, then Groq, from `QUICK_LOG_PROVIDERS`; keys `GEMINI_API_KEY`/`GROQ_API_KEY`). The model's JSON is validated before it reaches the form; nothing is saved. Hidden when no key is set.
 - `Flight.is_draft`: drafts must be excluded from totals, currency, rankings and maintenance — remember this when adding any aggregate query.
 - A flight reporting its aircraft *Grounded* blocks new flights in that aircraft until maintenance is logged.
