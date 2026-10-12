@@ -12,6 +12,9 @@ const token = (name: string, fallback: string) =>
 // With an ArcGIS Location Platform key (free tier: 2M tiles a month) satellite view uses Esri's
 // high-resolution World Imagery; without one it falls back to NASA's keyless Blue Marble mosaic.
 const ARCGIS_KEY = process.env.NEXT_PUBLIC_ARCGIS_API_KEY;
+// CARTO stopped serving keyless raster tiles in September 2026 - without a key every tile comes
+// back stamped "API KEY REQUIRED", so fall back to OpenStreetMap's standard (lighter) tiles.
+const CARTO_KEY = process.env.NEXT_PUBLIC_CARTO_API_KEY;
 const BASEMAP_KEY = 'airfleet.basemap';
 
 const readBasemap = () => {
@@ -47,11 +50,16 @@ export default function RouteMap({ data, className = 'h-80' }: { data: RouteMapD
 
             map = L.map(element, { worldCopyJump: true, scrollWheelZoom: false, attributionControl: true });
             const basemaps: Record<string, import('leaflet').TileLayer> = {
-                Map: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
-                    subdomains: 'abcd',
-                    maxZoom: 12,
-                }),
+                Map: CARTO_KEY
+                    ? L.tileLayer(`https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png?key=${encodeURIComponent(CARTO_KEY)}`, {
+                          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> &copy; <a href="https://carto.com/attributions">CARTO</a>',
+                          subdomains: 'abcd',
+                          maxZoom: 12,
+                      })
+                    : L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                          attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+                          maxZoom: 12,
+                      }),
                 Satellite: ARCGIS_KEY
                     ? L.tileLayer(`https://ibasemaps-api.arcgis.com/arcgis/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}?token=${encodeURIComponent(ARCGIS_KEY)}`, {
                           attribution: 'Powered by <a href="https://www.esri.com">Esri</a> &middot; Esri, Maxar, Earthstar Geographics, and the GIS User Community',

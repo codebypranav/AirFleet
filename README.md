@@ -288,6 +288,7 @@ API_URL=...                               # API origin for server-side calls, if
 NEXT_PUBLIC_ENABLE_DEBUG=true             # turns on the /debug connection page
 NEXT_PUBLIC_PRIVACY_CONTACT=you@example.com  # shown on /privacy for data requests
 NEXT_PUBLIC_ARCGIS_API_KEY=...            # optional: high-res Esri satellite view (free tier, 2M tiles/month); without it satellite uses NASA Blue Marble
+NEXT_PUBLIC_CARTO_API_KEY=...             # dark basemap tiles (free key from carto.com/basemaps/apikey); without it the map falls back to OpenStreetMap
 ```
 
 For Google sign-in, create an OAuth client (Web application) in Google Cloud and add
