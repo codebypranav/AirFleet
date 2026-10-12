@@ -266,3 +266,45 @@ export interface QuickLogDraft {
         | 'day_landings' | 'night_landings' | 'approaches' | 'cross_country' | 'is_simulator' | 'notes'>>;
     warnings: string[];
 }
+
+export type InsightTone = 'warning' | 'notice' | 'info' | 'good';
+
+/** Something that stands out across the pilot's flights or fleet; see flights/patterns.py. */
+export interface PatternFinding {
+    key: string;
+    tone: InsightTone;
+    title: string;
+    detail: string;
+}
+
+export interface Patterns {
+    findings: PatternFinding[];
+    themes_enabled: boolean;
+}
+
+/** A recurring theme AI found in the pilot's flight notes, with the flights it comes from. */
+export interface NoteTheme {
+    title: string;
+    kind: 'struggle' | 'strength' | 'observation';
+    summary: string;
+    flights: { id: number; date: string; route: string }[];
+}
+
+export interface NoteThemes {
+    themes: NoteTheme[];
+    notes_read: number;
+}
+
+/** A check on a planned (draft) flight against the pilot's own logbook; see flights/plan_review.py. */
+export interface PlanCheck {
+    key: string;
+    tone: Exclude<InsightTone, 'good'>;
+    title: string;
+    detail: string;
+    suggestion: string;
+}
+
+export interface PlanReview {
+    checks: PlanCheck[];
+    simulator: boolean;
+}

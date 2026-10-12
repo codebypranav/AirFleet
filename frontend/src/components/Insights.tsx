@@ -1,6 +1,11 @@
-import type { Achievement, Currency, Stats } from '@/types/flight';
+"use client";
+
+import { useState } from 'react';
+import Link from 'next/link';
+import type { Achievement, Currency, InsightTone, NoteThemes, PatternFinding, PlanCheck, Stats } from '@/types/flight';
 import { AlertIcon, CheckIcon, MedalIcon } from '@/components/Icons';
-import { formatDate } from '@/utils/format';
+import { readNoteThemes } from '@/utils/api';
+import { formatDate, formatDay } from '@/utils/format';
 
 const niceMax = (value: number) => {
     if (value <= 0) return 1;
@@ -147,5 +152,98 @@ export function AchievementGrid({ items }: { items: Achievement[] }) {
                 </li>
             ))}
         </ul>
+    );
+}
+
+const INSIGHT_TONES: Record<InsightTone, { label: string; className: string; Icon: typeof CheckIcon }> = {
+    warning: { label: 'Act on this', className: 'border-rust/50 text-[#e7b6a1]', Icon: AlertIcon },
+    notice: { label: 'Worth a look', className: 'border-sand/50 text-sand', Icon: AlertIcon },
+    info: { label: 'Good to know', className: 'border-line text-stone', Icon: CheckIcon },
+    good: { label: 'Nice', className: 'border-moss/50 text-fern', Icon: CheckIcon },
+};
+
+function ToneBadge({ tone }: { tone: InsightTone }) {
+    const { label, className, Icon } = INSIGHT_TONES[tone];
+    return (
+        <span className={`inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-0.5 text-xs ${className}`}>
+            <Icon className="h-3.5 w-3.5" />
+            {label}
+        </span>
+    );
+}
+
+/** Findings or plan checks: a title, the numbers behind it and, for a plan, what to change. */
+export function InsightList({ items }: { items: (PatternFinding | PlanCheck)[] }) {
+    return (
+        <ul className="grid gap-4 md:grid-cols-2">
+            {items.map((item) => (
+                <li key={item.key} className="card p-5">
+                    <div className="flex items-start justify-between gap-3">
+                        <p className="text-bone">{item.title}</p>
+                        <ToneBadge tone={item.tone} />
+                    </div>
+                    {item.detail && <p className="mt-2 break-words text-sm text-stone">{item.detail}</p>}
+                    {'suggestion' in item && item.suggestion && (
+                        <p className="mt-3 border-l-2 border-clay/60 pl-3 text-sm text-bone">{item.suggestion}</p>
+                    )}
+                </li>
+            ))}
+        </ul>
+    );
+}
+
+const THEME_KINDS = { struggle: 'Keeps coming up', strength: 'Going well', observation: 'Pattern' };
+
+/** On request, AI reads the pilot's flight notes for recurring themes; each one links to the flights behind it. */
+export function NoteThemesPanel() {
+    const [result, setResult] = useState<NoteThemes | null>(null);
+    const [status, setStatus] = useState('');
+    const [reading, setReading] = useState(false);
+
+    const read = async () => {
+        setReading(true);
+        setStatus('Reading your notes…');
+        try {
+            const found = await readNoteThemes();
+            setResult(found);
+            setStatus(found.themes.length ? '' : `Read the notes on ${found.notes_read} flights. Nothing comes up more than once yet.`);
+        } catch (e) {
+            setStatus(e instanceof Error ? e.message : 'Could not read your notes');
+        } finally {
+            setReading(false);
+        }
+    };
+
+    return (
+        <div className="card p-5 sm:p-6">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                <p className="text-sm text-stone" aria-live="polite">
+                    {status || (result
+                        ? `From the notes on your last ${result.notes_read} flights. AI wrote these; check them against the flights.`
+                        : 'AI reads the notes you write after each flight and points out what keeps coming up: things you’re working on and things going well.')}
+                </p>
+                <button type="button" onClick={read} className="btn btn-ghost shrink-0" disabled={reading}>
+                    {reading ? 'Reading…' : result ? 'Read again' : 'Find themes in my notes'}
+                </button>
+            </div>
+            {result && result.themes.length > 0 && (
+                <ul className="mt-5 space-y-4">
+                    {result.themes.map((theme) => (
+                        <li key={theme.title} className="border-t border-line pt-4">
+                            <p className="eyebrow">{THEME_KINDS[theme.kind]}</p>
+                            <p className="mt-1 text-bone">{theme.title}</p>
+                            <p className="mt-1 text-sm text-stone">{theme.summary}</p>
+                            <p className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs">
+                                {theme.flights.map((f) => (
+                                    <Link key={f.id} href={`/flights/${f.id}`} className="font-mono text-fern hover:underline">
+                                        {formatDay(f.date)} {f.route}
+                                    </Link>
+                                ))}
+                            </p>
+                        </li>
+                    ))}
+                </ul>
+            )}
+        </div>
     );
 }

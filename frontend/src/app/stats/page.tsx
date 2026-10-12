@@ -2,9 +2,9 @@
 
 import Link from 'next/link';
 import RouteMap from '@/components/RouteMap';
-import { AchievementGrid, CurrencyCards, MonthlyHoursChart, RankedList } from '@/components/Insights';
+import { AchievementGrid, CurrencyCards, InsightList, MonthlyHoursChart, NoteThemesPanel, RankedList } from '@/components/Insights';
 import { EmptyState, ErrorState, PageHeader, PageShell, Section, Spinner, StatGrid } from '@/components/PageShell';
-import { getAchievements, getCurrency, getRoutes, getStats } from '@/utils/api';
+import { getAchievements, getCurrency, getPatterns, getRoutes, getStats } from '@/utils/api';
 import { useApi } from '@/utils/useApi';
 
 export default function StatsPage() {
@@ -12,6 +12,7 @@ export default function StatsPage() {
     const currency = useApi(getCurrency);
     const achievements = useApi(getAchievements);
     const routes = useApi(getRoutes);
+    const patterns = useApi(getPatterns);
 
     const totals = stats.data?.totals;
     const earned = achievements.data?.filter((a) => a.earned).length ?? 0;
@@ -52,6 +53,21 @@ export default function StatsPage() {
 
                     <Section title="Currency">
                         {currency.data ? <CurrencyCards items={currency.data} /> : <p className="text-sm text-ash">Checking…</p>}
+                    </Section>
+
+                    <Section title="Patterns">
+                        {!patterns.data ? (
+                            <p className="text-sm text-ash">Looking for patterns…</p>
+                        ) : patterns.data.findings.length > 0 ? (
+                            <InsightList items={patterns.data.findings} />
+                        ) : (
+                            <p className="text-sm text-ash">Nothing stands out in your flying right now.</p>
+                        )}
+                        {patterns.data?.themes_enabled && (
+                            <div className="mt-4">
+                                <NoteThemesPanel />
+                            </div>
+                        )}
                     </Section>
 
                     <Section title="Monthly hours">

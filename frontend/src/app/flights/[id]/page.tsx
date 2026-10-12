@@ -7,11 +7,36 @@ import { useRouter } from 'next/navigation';
 import RouteMap from '@/components/RouteMap';
 import { EditIcon, ShareIcon, TrashIcon } from '@/components/Icons';
 import { ErrorState, PageHeader, PageShell, Section, Spinner, StatGrid } from '@/components/PageShell';
+import { InsightList } from '@/components/Insights';
 import { DISCLAIMER, SignatureBadge, SignatureDetails } from '@/components/Signature';
 import type { Flight } from '@/types/flight';
-import { deleteFlight, getFlight, getProfile } from '@/utils/api';
+import { deleteFlight, getFlight, getPlanReview, getProfile } from '@/utils/api';
 import { conditionFor, durationToSeconds, formatDate, formatDuration, formatTime, photoUrl } from '@/utils/format';
 import { useApi } from '@/utils/useApi';
+
+/** For a planned flight: what in the pilot's logbook, fleet and current weather suggests changing the plan. */
+function PlanReviewSection({ id }: { id: number }) {
+    const { data, error, reload } = useApi(() => getPlanReview(id), String(id));
+    return (
+        <Section title="Before you go">
+            {error ? (
+                <ErrorState message={error} onRetry={reload} />
+            ) : !data ? (
+                <p className="text-sm text-ash">Checking the plan against your logbook…</p>
+            ) : data.simulator ? (
+                <p className="text-sm text-ash">A simulator session: nothing to check.</p>
+            ) : data.checks.length > 0 ? (
+                <InsightList items={data.checks} />
+            ) : (
+                <p className="text-sm text-stone">Nothing in your logbook or fleet suggests changing this plan.</p>
+            )}
+            <p className="mt-3 text-xs text-ash">
+                Checked against your own logbook, fleet and, close to departure, the current METARs. Not a weather briefing:
+                forecasts, NOTAMs, fuel and performance are still yours to check.
+            </p>
+        </Section>
+    );
+}
 
 const COLUMNS: [keyof Flight, string][] = [
     ['pic_time', 'PIC'],
@@ -120,6 +145,8 @@ export default function FlightDetail({ params }: { params: Promise<{ id: string 
                     </Link>
                 )}
             </div>
+
+            {flight.is_draft && <PlanReviewSection id={flight.id} />}
 
             {mapData && (
                 <div className="mt-8 animate-rise">

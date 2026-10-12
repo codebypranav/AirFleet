@@ -1,7 +1,8 @@
 import Cookies from 'js-cookie';
 import type {
     Achievement, Aircraft, Airport, Currency, Endorsement, EndorsementKind, Flight, FlightPlanDraft, ImportResult,
-    InstructorLink, Paginated, Profile, PublicFlight, PublicPilot, QuickLogDraft, RouteMapData, Signature, Stats, StudentFlight,
+    InstructorLink, NoteThemes, Paginated, Patterns, PlanReview, Profile, PublicFlight, PublicPilot, QuickLogDraft, RouteMapData,
+    Signature, Stats, StudentFlight,
 } from '@/types/flight';
 
 const ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/+$/, '').replace(/\/api$/, '');
@@ -170,6 +171,11 @@ export const getStats = (filters: FlightFilters = {}) => apiJson<Stats>(`/stats/
 export const getRoutes = () => apiJson<RouteMapData>('/stats/routes/');
 export const getCurrency = () => apiJson<Currency[]>('/currency/');
 export const getAchievements = () => apiJson<Achievement[]>('/achievements/');
+export const getPatterns = () => apiJson<Patterns>('/insights/');
+/** Asks AI for recurring themes in the pilot's flight notes. Shares quick log's rate limit. */
+export const readNoteThemes = () => apiJson<NoteThemes>('/insights/themes/', { method: 'POST' });
+/** Checks a planned (draft) flight against the pilot's logbook, fleet and, close to departure, the weather. */
+export const getPlanReview = (id: number | string) => apiJson<PlanReview>(`/flights/${id}/review/`);
 
 export const getFleet = () => apiJson<Aircraft[]>('/aircraft/');
 export const getAircraft = (id: number | string) => apiJson<Aircraft>(`/aircraft/${id}/`);
