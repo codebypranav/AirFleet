@@ -1,0 +1,12 @@
+# Local development artifacts that must never reach the image.
+# The Dockerfile does `COPY . /app/` with dockerContext: ./backend (render.yaml).
+.env
+.env.*
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+*.sqlite3
+media/
+staticfiles/

@@ -14,8 +14,15 @@ import dj_database_url
 from pathlib import Path
 import os
 
+from dotenv import load_dotenv
+
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Local development convenience: read backend/.env when it exists. Real environment
+# variables take precedence (override=False), so this is a no-op in CI and on Render,
+# where every setting below comes from the environment.
+load_dotenv(BASE_DIR / '.env', override=False)
 
 
 # Quick-start development settings - unsuitable for production
