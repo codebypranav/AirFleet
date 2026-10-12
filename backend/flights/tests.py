@@ -1,4 +1,5 @@
 import io
+import json
 from datetime import date, datetime, timedelta, timezone as dt_timezone
 from unittest import mock
 
@@ -8,7 +9,7 @@ from django.core.cache import cache
 from django.test import SimpleTestCase, override_settings
 from rest_framework.test import APITestCase
 
-from . import airports, external, flight_plans, insights, quick_log
+from . import airports, external, flight_plans, insights, patterns, plan_review, quick_log
 from .models import Aircraft, Flight
 
 FLIGHT = {
@@ -1036,3 +1037,252 @@ class QuickLogApiTests(ApiTestCase):
             codes = [self.post().status_code for _ in range(3)]
             self.assertEqual(self.client.get(self.url).status_code, 200)
         self.assertEqual(codes, [200, 200, 429])
+
+
+def log(user, when, dep='KPAO', arr='KSQL', hours=1.0, distance=100, **extra):
+    """A flight straight into the database, skipping validation so tests can place it anywhere in time."""
+    if not isinstance(when, datetime):
+        when = datetime.combine(when, datetime.min.time(), dt_timezone.utc) + timedelta(hours=17)
+    return Flight.objects.create(
+        user=user, departure_airport=dep, arrival_airport=arr, departure_time=when,
+        arrival_time=when + timedelta(hours=hours), total_time=timedelta(hours=hours),
+        registration_number=extra.pop('registration_number', 'N123'), distance=distance, **extra,
+    )
+
+
+class PatternTests(ApiTestCase):
+    today = date(2026, 6, 1)
+
+    def setUp(self):
+        super().setUp()
+        self.authenticate()
+        self.user = get_user_model().objects.get(username='pilot')
+
+    def findings(self):
+        from .views import fleet
+        found = patterns.findings(Flight.objects.logged().filter(user=self.user), fleet(self.user), self.today)
+        return {f['key']: f for f in found}
+
+    def test_recency(self):
+        log(self.user, self.today - timedelta(days=45))
+        self.assertEqual(self.findings()['recency']['tone'], 'notice')
+        log(self.user, self.today - timedelta(days=70))
+        log(self.user, self.today - timedelta(days=5), is_draft=True)  # planned, not flown
+        Flight.objects.filter(departure_time__date=self.today - timedelta(days=45)).delete()
+        self.assertEqual(self.findings()['recency']['title'], '70 days since you last flew')
+        log(self.user, self.today - timedelta(days=5))
+        self.assertNotIn('recency', self.findings())
+
+    def test_trend(self):
+        for days in (10, 20):
+            log(self.user, self.today - timedelta(days=days))
+        for days in (100, 120, 150):
+            log(self.user, self.today - timedelta(days=days), hours=2)
+        trend = self.findings()['trend']
+        self.assertEqual((trend['tone'], trend['title']), ('notice', 'You’re flying 67% less'))
+        self.assertIn('2.0 h in the last 90 days, down from 6.0 h', trend['detail'])
+
+    def test_route_concentration_and_new_airports(self):
+        log(self.user, self.today - timedelta(days=400))
+        for i in range(6):
+            log(self.user, self.today - timedelta(days=10 + i), *(('KSQL', 'KPAO') if i % 2 else ('KPAO', 'KSQL')))
+        for i, dest in enumerate(('KSFO', 'KOAK', 'KSJC')):
+            log(self.user, self.today - timedelta(days=30 + i), arr=dest)
+        found = self.findings()
+        self.assertEqual(found['concentration']['title'], 'Most of your flying is KPAO–KSQL')
+        self.assertIn('6 of your 9 flights', found['concentration']['detail'])
+        self.assertEqual(found['new_airports']['detail'], 'KOAK, KSFO, KSJC')
+
+    def test_unused_skills(self):
+        log(self.user, self.today - timedelta(days=400), night_landings=3, approaches=2)
+        log(self.user, self.today - timedelta(days=20))
+        found = self.findings()
+        self.assertIn('night_unused', found)
+        self.assertIn('instrument_unused', found)
+        log(self.user, self.today - timedelta(days=30), approaches=1, is_simulator=True)
+        found = self.findings()
+        self.assertNotIn('instrument_unused', found)
+        self.assertIn('night_unused', found)  # simulator landings aren't night flying
+
+    def test_maintenance(self):
+        grounded = Aircraft.objects.create(user=self.user, registration='N1', grounded=True)
+        annual = Aircraft.objects.create(user=self.user, registration='N2', annual_due=self.today + timedelta(days=10))
+        Aircraft.objects.create(user=self.user, registration='N3', annual_due=self.today + timedelta(days=200))
+        found = self.findings()
+        self.assertEqual(found[f'maintenance_{grounded.pk}']['tone'], 'warning')
+        self.assertEqual(found[f'maintenance_{annual.pk}']['title'], 'N2’s annual is due in about 10 days')
+        self.assertEqual(len([k for k in found if k.startswith('maintenance_')]), 2)
+
+    def test_api(self):
+        res = self.client.get('/api/insights/')
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res.data['findings'], [])
+        self.assertIn('themes_enabled', res.data)
+        self.client.credentials()
+        self.assertEqual(self.client.get('/api/insights/').status_code, 401)
+
+
+class NoteThemeTests(ApiTestCase):
+    url = '/api/insights/themes/'
+
+    def setUp(self):
+        super().setUp()
+        self.authenticate()
+        self.user = get_user_model().objects.get(username='pilot')
+
+    def noted(self, *notes):
+        return [log(self.user, date(2026, 5, 1) + timedelta(days=i), notes=n) for i, n in enumerate(notes)]
+
+    def test_clean_keeps_only_themes_backed_by_two_flights(self):
+        a, b, c = self.noted('Floated the landing', 'Floated again', 'Nice day')
+        data = {'themes': [
+            {'title': ' Floating landings ', 'kind': 'struggle', 'summary': 'You float.', 'flights': [a.id, f'#{b.id}', b.id, 99999]},
+            {'title': 'One-off', 'kind': 'struggle', 'summary': 'Once.', 'flights': [c.id, 99999]},
+            {'title': 'No summary', 'kind': 'strength', 'summary': '', 'flights': [a.id, b.id]},
+            {'title': 'Odd kind', 'kind': 'advice', 'summary': 'Hmm.', 'flights': [a.id, c.id]},
+            'not a theme',
+        ]}
+        themes = patterns.clean_themes(data, [a, b, c])
+        self.assertEqual([t['title'] for t in themes], ['Floating landings', 'Odd kind'])
+        self.assertEqual([f['id'] for f in themes[0]['flights']], [a.id, b.id])
+        self.assertEqual(themes[0]['flights'][0]['route'], 'KPAO → KSQL')
+        self.assertEqual(themes[1]['kind'], 'observation')
+        self.assertEqual(patterns.clean_themes({'themes': 'nope'}, [a]), [])
+        self.assertEqual(patterns.clean_themes([], [a]), [])
+
+    @override_settings(QUICK_LOG_PROVIDERS=[GEMINI])
+    def test_reads_notes_of_logged_flights(self):
+        a, b, c = self.noted('Crosswind was rough', 'Crosswind again, side-slipped', 'Smooth')
+        log(self.user, date(2026, 5, 10), notes='Planned: practise crosswinds', is_draft=True)
+        answer = {'themes': [{'title': 'Crosswind landings', 'kind': 'struggle', 'summary': 'Crosswinds keep coming up.', 'flights': [a.id, b.id]}]}
+        with mock.patch('flights.quick_log.OpenAI') as client_cls:
+            create = client_cls.return_value.chat.completions.create
+            create.return_value = completion(json.dumps(answer))
+            res = self.client.post(self.url)
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(res.data['notes_read'], 3)
+        self.assertEqual(res.data['themes'][0]['title'], 'Crosswind landings')
+        prompt = create.call_args.kwargs['messages'][1]['content']
+        self.assertIn(f'#{b.id} 2026-05-02 KPAO-KSQL: Crosswind again, side-slipped', prompt)
+        self.assertNotIn('Planned', prompt)
+
+    @override_settings(QUICK_LOG_PROVIDERS=[GEMINI])
+    def test_needs_enough_notes(self):
+        self.noted('Only one note')
+        with mock.patch('flights.quick_log.OpenAI') as client_cls:
+            res = self.client.post(self.url)
+        self.assertEqual(res.status_code, 422)
+        self.assertEqual(client_cls.call_count, 0)
+
+    @override_settings(QUICK_LOG_PROVIDERS=[])
+    def test_unavailable_without_a_provider(self):
+        self.noted('a', 'b', 'c')
+        self.assertEqual(self.client.post(self.url).status_code, 503)
+        self.assertFalse(self.client.get('/api/insights/').data['themes_enabled'])
+
+
+class PlanReviewTests(ApiTestCase):
+    now = datetime(2026, 11, 20, 12, 0, tzinfo=dt_timezone.utc)
+
+    def setUp(self):
+        super().setUp()
+        self.authenticate()
+        self.user = get_user_model().objects.get(username='pilot')
+
+    def plan(self, when, dep='KPAO', arr='KSQL', hours=1.0, distance=100, **extra):
+        return log(self.user, when, dep, arr, hours, distance, is_draft=True, **extra)
+
+    def review(self, flight, aircraft=None):
+        history = Flight.objects.logged().filter(user=self.user)
+        return {c['key']: c for c in plan_review.review(flight, history, aircraft, now=self.now)['checks']}
+
+    def test_sun_elevation(self):
+        jfk = airports.get('KJFK')
+        self.assertAlmostEqual(plan_review.sun_elevation(jfk.lat, jfk.lon, datetime(2026, 6, 21, 17, 0, tzinfo=dt_timezone.utc)), 72.5, delta=1.5)
+        self.assertTrue(plan_review.is_dark(jfk, datetime(2026, 6, 21, 4, 0, tzinfo=dt_timezone.utc)))
+        self.assertFalse(plan_review.is_dark(jfk, datetime(2026, 6, 21, 12, 0, tzinfo=dt_timezone.utc)))
+
+    def test_block_time_long_leg_and_new_airport(self):
+        for day in range(1, 4):
+            log(self.user, date(2026, 11, day), night_landings=1, day_landings=2, approaches=2)
+        checks = self.review(self.plan(date(2026, 11, 25), arr='KLAX', hours=2, distance=300))
+        self.assertIn('assumes 150 kt block to block; your 3 flights in N123 average 100 kt', checks['block_speed']['detail'])
+        self.assertIn('Budget about 3:00 block time, landing around 20:00Z', checks['block_speed']['suggestion'])
+        self.assertIn('300 nm, against 100 nm', checks['long_leg']['detail'])
+        self.assertEqual(checks['new_airport']['detail'], 'Los Angeles International Airport')
+        self.assertNotIn('passenger_currency', checks)
+
+        checks = self.review(self.plan(date(2026, 11, 25), hours=1, distance=110))
+        self.assertEqual(set(checks), set())  # a plan like the ones they fly
+
+    def test_speed_falls_back_to_type(self):
+        aircraft = Aircraft.objects.create(user=self.user, registration='N456', type_code='C172')
+        sister = Aircraft.objects.create(user=self.user, registration='N123', type_code='C172')
+        for day in range(1, 4):
+            log(self.user, date(2026, 11, day), aircraft=sister, day_landings=1)
+        checks = self.review(self.plan(date(2026, 11, 25), hours=1, distance=200, registration_number='N456'), aircraft)
+        self.assertIn('your 3 flights in the C172 average 100 kt', checks['block_speed']['detail'])
+
+    def test_night_arrival_without_currency(self):
+        log(self.user, date(2026, 11, 1), day_landings=3)
+        # Boston in December: civil twilight ends around 21:45Z.
+        draft = self.plan(datetime(2026, 12, 1, 22, 30, tzinfo=dt_timezone.utc), 'KJFK', 'KBOS', distance=160)
+        checks = self.review(draft)
+        night = checks['night_currency']
+        self.assertEqual(night['tone'], 'warning')
+        self.assertRegex(night['detail'], r'Civil twilight ends at 21:[34]\dZ at KBOS')
+        self.assertRegex(night['suggestion'], r'^Leave by 20:[34]\dZ to land before dark')
+        self.assertEqual(list(checks)[0], 'night_currency')  # warnings first
+
+        log(self.user, date(2026, 11, 10), night_landings=3)
+        checks = self.review(draft)
+        self.assertNotIn('night_currency', checks)
+        self.assertEqual(checks['night']['tone'], 'info')
+
+    def test_currency_on_the_day_of_the_flight(self):
+        # Six approaches in April keep them instrument current to the end of October only.
+        log(self.user, date(2026, 4, 1), day_landings=3, approaches=6)
+        checks = self.review(self.plan(date(2026, 11, 25)))
+        self.assertIn('you’ll have 0', checks['passenger_currency']['detail'])
+        self.assertIn('2026-11-25', checks['instrument_currency']['title'])
+
+    def test_aircraft(self):
+        aircraft = Aircraft.objects.create(user=self.user, registration='N123', maintenance_interval_hours=2, annual_due=date(2026, 11, 22))
+        log(self.user, date(2026, 11, 1), aircraft=aircraft, day_landings=3)
+        checks = self.review(self.plan(date(2026, 11, 25), hours=1.5, distance=150), aircraft)
+        self.assertIn('1.0 h left on the inspection; this flight is 1.5 h', checks['inspection']['detail'])
+        self.assertEqual(checks['annual']['tone'], 'warning')
+        aircraft.grounded = True
+        checks = self.review(self.plan(date(2026, 11, 25)), aircraft)
+        self.assertEqual(checks['grounded']['tone'], 'warning')
+        self.assertNotIn('inspection', checks)
+
+    def test_weather_close_to_departure(self):
+        log(self.user, date(2026, 11, 1), day_landings=3)
+        reports = {'KPAO': {'flight_category': 'IFR', 'raw': 'KPAO 201153Z 00000KT 1/2SM FG OVC002'}, 'KSQL': {'flight_category': 'VFR', 'raw': ''}}
+        soon = self.plan(self.now + timedelta(hours=1))
+        with mock.patch('flights.plan_review.external.metar', side_effect=lambda code: reports[code]) as metar:
+            checks = self.review(soon)
+            self.review(self.plan(self.now + timedelta(days=2)))
+        self.assertEqual(metar.call_count, 2)  # only for the flight leaving soon
+        self.assertEqual(checks['weather_KPAO']['title'], 'KPAO is IFR right now')
+        self.assertNotIn('weather_KSQL', checks)
+        with mock.patch('flights.plan_review.external.metar', side_effect=external.ExternalLookupError('down')):
+            self.assertNotIn('weather_KPAO', self.review(soon))
+
+    def test_api(self):
+        draft = self.add_flight(is_draft=True, departure_time='2026-12-01T15:00:00Z', arrival_time='2026-12-01T20:30:00Z', total_time='05:30:00')
+        logged = self.add_flight()
+        with mock.patch('flights.plan_review.external.metar') as metar:
+            res = self.client.get(f"/api/flights/{draft['id']}/review/")
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertFalse(res.data['simulator'])
+        self.assertIn('passenger_currency', [c['key'] for c in res.data['checks']])
+        metar.assert_not_called()
+        self.assertEqual(self.client.get(f"/api/flights/{logged['id']}/review/").status_code, 400)
+
+        sim = self.plan(date(2026, 12, 2), is_simulator=True)
+        self.assertEqual(self.client.get(f'/api/flights/{sim.id}/review/').data, {'checks': [], 'simulator': True})
+
+        self.authenticate('other')
+        self.assertEqual(self.client.get(f"/api/flights/{draft['id']}/review/").status_code, 404)

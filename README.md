@@ -26,6 +26,15 @@ due dates and route maps, and lets an instructor sign lessons and give endorseme
   90 days of flying (hours left ÷ recent rate), alongside the annual.
 - **Stats:** totals, hours per month, most-flown routes and aircraft, a great-circle route
   map (Leaflet, with a satellite view), passenger/night/IFR currency, and achievements.
+- **Patterns:** what stands out across your flying (a long gap since your last flight, flying
+  much less or more than before, night or instrument skills unused for months, most flying on one
+  route, an aircraft's inspection or annual coming due). With AI configured, it can also read the
+  notes you write after each flight for recurring themes, each linked to the flights behind it.
+- **Plan review:** a draft flight is checked against your own logbook before you go, with concrete
+  changes where the numbers support one: a block time based on how fast you actually fly that
+  aircraft, a time to leave by to land before dark when you aren't night current, a leg much
+  longer than any you've logged, a first visit to the destination, passenger and IFR currency on
+  the day, the aircraft's maintenance, and current METARs when departure is close.
 - **Photos:** attach a photo to a flight; stored privately in Neon Object Storage and served
   through short-lived signed URLs.
 - **Quick log:** describe a flight in your own words ("KPAO to KSQL and back, 1.4, 3 landings,
@@ -105,6 +114,19 @@ Providers are any OpenAI-compatible API, tried in order: Gemini (`GEMINI_API_KEY
 (`GROQ_API_KEY`). Both have free tiers, so the second takes over when the first is down or out of
 its daily quota. `GET /api/flights/quick-log/` returns `{"enabled": ...}`, and the form hides quick
 log when neither key is set. Requests are limited per user (`QUICK_LOG_RATE`, default `30/hour`).
+
+### Patterns and plan review
+`GET /api/insights/` returns findings computed from the logbook in `flights/patterns.py`, each with
+the numbers behind it. `POST /api/insights/themes/` sends the notes of the pilot's last 40 logged
+flights to the quick log providers and returns recurring themes. A theme is kept only if it cites at
+least two of the flights the model was shown; it shares quick log's rate limit.
+
+`GET /api/flights/<id>/review/` checks a draft flight in `flights/plan_review.py`. This part
+deliberately uses no language model. Every suggestion comes from arithmetic the pilot can check: their
+average block speed in the aircraft (or type), their longest leg, the airports they've logged,
+currency on the day of the flight, the aircraft's maintenance, the sun's position at the destination
+for night arrivals, and the current METAR when the flight leaves within three hours. It doesn't
+replace a briefing: forecasts, NOTAMs, fuel and performance are left to the pilot.
 
 ### Instructor sign-off
 `InstructorLink` joins a student and an instructor. Either pilot invites the other by username or
@@ -253,7 +275,7 @@ EMAIL_HOST_USER=...
 EMAIL_HOST_PASSWORD=...
 DEFAULT_FROM_EMAIL="AirFleet <no-reply@example.com>"
 GOOGLE_CLIENT_ID=...                      # enables Google sign-in (same ID as the frontend)
-GEMINI_API_KEY=...                        # quick log, from aistudio.google.com (free tier)
+GEMINI_API_KEY=...                        # quick log and note themes, from aistudio.google.com (free tier)
 GROQ_API_KEY=...                          # quick log fallback, from console.groq.com (free tier)
 GEMINI_MODEL=gemini-flash-lite-latest     # optional overrides of the quick log models
 GROQ_MODEL=openai/gpt-oss-20b

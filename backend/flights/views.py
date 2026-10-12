@@ -17,7 +17,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
-from . import airports, external, flight_plans, insights, logbook_io, quick_log
+from . import airports, external, flight_plans, insights, logbook_io, patterns, plan_review, quick_log
 from .models import Aircraft, Flight
 from .serializers import AircraftSerializer, FlightSerializer, PublicFlightSerializer
 
@@ -188,6 +188,42 @@ def currency(request):
 @permission_classes([IsAuthenticated])
 def achievements(request):
     return Response(insights.achievements(Flight.objects.logged().filter(user=request.user)))
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def flight_patterns(request):
+    """What stands out across the pilot's flights and fleet; see patterns.py. themes_enabled says whether notes can be read by AI."""
+    flights = Flight.objects.logged().filter(user=request.user)
+    return Response({
+        'findings': patterns.findings(flights, fleet(request.user), timezone.now().date()),
+        'themes_enabled': quick_log.enabled(),
+    })
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([QuickLogThrottle])
+def note_themes(request):
+    """Recurring themes in the pilot's flight notes, read by a language model. Shares quick log's providers and rate limit."""
+    try:
+        return Response(patterns.note_themes(Flight.objects.logged().filter(user=request.user)))
+    except patterns.ThemesError as e:
+        return Response({'error': str(e)}, status=422)
+    except quick_log.QuickLogUnavailable:
+        return Response({'error': 'Reading your notes isn’t available right now. Try again later.'}, status=503)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([LookupThrottle])
+def review_plan(request, pk):
+    """Checks on a planned (draft) flight against the pilot's own logbook; see plan_review.py."""
+    flight = get_object_or_404(Flight, pk=pk, user=request.user)
+    if not flight.is_draft:
+        return Response({'error': 'Only planned (draft) flights are reviewed.'}, status=400)
+    aircraft = Aircraft.objects.filter(user=request.user, registration=flight.registration_number).first()
+    return Response(plan_review.review(flight, Flight.objects.logged().filter(user=request.user), aircraft))
 
 
 def fleet(user):
