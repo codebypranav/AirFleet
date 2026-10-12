@@ -25,8 +25,7 @@ const LEAF_SCALE = 0.3;
 const LEAF_TRANSFORM = `translate(${24 - 50 * LEAF_SCALE} ${24 - 43 * LEAF_SCALE}) scale(${LEAF_SCALE})`;
 
 export function BrandMark({ className = '' }: { className?: string }) {
-    // No tick at north: the needle marks it.
-    const ticks = Array.from({ length: 11 }, (_, i) => (i + 1) * 30);
+    const ticks = Array.from({ length: 12 }, (_, i) => i * 30);
     return (
         <svg aria-hidden="true" viewBox="0 0 48 48" className={className} fill="none">
             <circle cx="24" cy="24" r="21" stroke="currentColor" strokeOpacity="0.7" strokeWidth="1.6" />
@@ -39,10 +38,14 @@ export function BrandMark({ className = '' }: { className?: string }) {
                 <path d={MAPLE_LEAF} fill="currentColor" stroke="currentColor" strokeWidth="3" strokeLinejoin="round" />
                 <path d={LEAF_VEINS} className="stroke-ink" strokeWidth="3.4" strokeLinecap="round" />
             </g>
-            {/* The midrib doubles as the compass needle, pivoting at the leaf's centre and pointing north. */}
-            <path d="M24 24V9.5" className="stroke-needle" strokeWidth="1" strokeLinecap="round" />
-            <path d="M24 4.4 26 10H22Z" className="fill-needle stroke-needle" strokeWidth="0.5" strokeLinejoin="round" />
-            <circle cx="24" cy="24" r="1.8" className="fill-needle stroke-ink" strokeWidth="0.7" />
+            {/* The midrib doubles as the compass needle: a lozenge pivoting at the leaf's centre, red half
+                pointing north, pale half south, each with a shaded facet so it reads as a raised blade. */}
+            <g className="stroke-ink" strokeWidth="0.6" strokeLinejoin="round">
+                <path d="M24 8.5 26.1 24H21.9Z" className="fill-needle" />
+                <path d="M24 38 26.1 24H21.9Z" className="fill-bone" />
+            </g>
+            <path d="M24 8.5 24 24H21.9ZM24 38 24 24H21.9Z" fill="#000" fillOpacity="0.25" />
+            <circle cx="24" cy="24" r="1.5" className="fill-ink stroke-bone" strokeWidth="0.6" />
         </svg>
     );
 }
