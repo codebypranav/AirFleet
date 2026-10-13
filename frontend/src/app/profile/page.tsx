@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Avatar from '@/components/Avatar';
 import { CheckIcon, ShareIcon } from '@/components/Icons';
 import { ErrorState, PageHeader, PageShell, Section, Spinner } from '@/components/PageShell';
 import type { Profile } from '@/types/flight';
-import { changePassword, clearTokens, deleteAccount, downloadExport, getProfile, saveTokens, updateProfile } from '@/utils/api';
+import { changePassword, clearTokens, deleteAccount, downloadExport, getProfile, saveTokens, updateAvatar, updateProfile } from '@/utils/api';
 import { formatDate } from '@/utils/format';
 import { useApi } from '@/utils/useApi';
 
@@ -93,6 +94,50 @@ function ProfileForm({ profile, onSaved }: { profile: Profile; onSaved: (p: Prof
                 <button type="submit" className="btn btn-primary" disabled={saving}>{saving ? 'Saving…' : 'Save profile'}</button>
             </div>
         </form>
+    );
+}
+
+function AvatarForm({ profile, onSaved }: { profile: Profile; onSaved: (p: Profile) => void }) {
+    const [error, setError] = useState('');
+    const [saving, setSaving] = useState(false);
+
+    const save = async (file: File | null) => {
+        setSaving(true);
+        setError('');
+        try {
+            onSaved(await updateAvatar(file));
+        } catch (err) {
+            setError(err instanceof Error ? err.message : 'Could not update your picture');
+        } finally {
+            setSaving(false);
+        }
+    };
+
+    return (
+        <div className="card flex flex-col gap-4 p-5 sm:flex-row sm:items-center sm:p-6">
+            <Avatar username={profile.username} avatar={profile.avatar} size={72} />
+            <div className="flex-1">
+                {error && <p className="alert-error mb-3" role="alert">{error}</p>}
+                <p className="text-xs text-ash">Shown on your public page and to pilots you fly with. JPEG, PNG, WebP, GIF or HEIC, up to 10 MB.</p>
+            </div>
+            <div className="flex gap-2">
+                <label className={`btn btn-ghost cursor-pointer ${saving ? 'pointer-events-none opacity-60' : ''}`}>
+                    {saving ? 'Uploading…' : profile.avatar ? 'Change' : 'Upload'}
+                    <input
+                        type="file"
+                        accept="image/*"
+                        className="sr-only"
+                        disabled={saving}
+                        onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            e.target.value = '';
+                            if (file) save(file);
+                        }}
+                    />
+                </label>
+                {profile.avatar && <button onClick={() => save(null)} disabled={saving} className="btn btn-ghost">Remove</button>}
+            </div>
+        </div>
     );
 }
 
@@ -222,6 +267,9 @@ export default function ProfilePage() {
             ) : (
                 <>
                     <ProfileForm profile={profile} onSaved={(saved) => setData(() => saved)} />
+                    <Section title="Profile picture">
+                        <AvatarForm profile={profile} onSaved={(saved) => setData(() => saved)} />
+                    </Section>
                     <Section title="Password">
                         <PasswordForm />
                     </Section>

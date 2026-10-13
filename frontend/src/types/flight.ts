@@ -222,6 +222,7 @@ export interface Profile {
     email: string;
     first_name: string;
     last_name: string;
+    avatar: string | null;
     bio: string;
     home_airport: string;
     is_public: boolean;
@@ -230,8 +231,28 @@ export interface Profile {
     date_joined: string;
 }
 
+export type CrewRole = 'PIC' | 'SIC';
+
+export interface CrewSeat {
+    id: number;
+    username: string;
+    avatar: string | null;
+    role: CrewRole;
+    status: 'LOGGER' | 'PENDING' | 'ACCEPTED' | 'DECLINED';
+    is_me: boolean;
+}
+
+export interface CrewInvite {
+    id: number;
+    role: CrewRole;
+    invited_by: string;
+    flight: PublicFlight;
+    created_at: string;
+}
+
 export interface PublicPilot {
     username: string;
+    avatar: string | null;
     bio: string;
     home_airport: string;
     member_since: string;

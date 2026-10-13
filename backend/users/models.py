@@ -5,6 +5,7 @@ class CustomUser(AbstractUser):
     email = models.EmailField(unique=True)
     bio = models.TextField(blank=True, max_length=500)
     home_airport = models.CharField(max_length=4, blank=True)
+    avatar = models.ImageField(upload_to='avatars/', null=True, blank=True)
     # Opt-in: a public pilot shares their profile page, stats and flights by link.
     is_public = models.BooleanField(default=False)
     # Instructing is a capability, not an account type: any pilot who records a flight

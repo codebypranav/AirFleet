@@ -126,6 +126,11 @@ class ProfileView(APIView):
                 flight.photo.delete(save=False)
             except Exception:
                 logger.exception("Could not delete photo of flight %s", flight.pk)
+        if user.avatar:
+            try:
+                user.avatar.delete(save=False)
+            except Exception:
+                logger.exception("Could not delete avatar of user %s", user.pk)
         user_id = user.pk
         user.delete()
         logger.info("Deleted user %s", user_id)

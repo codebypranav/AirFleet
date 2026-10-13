@@ -3,6 +3,7 @@ from datetime import timedelta
 
 from django.conf import settings
 from django.contrib.auth import get_user_model
+from django.db import transaction
 from django.db.models import Count, Q, Sum
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
@@ -17,9 +18,11 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
-from . import airports, external, flight_plans, insights, logbook_io, patterns, plan_review, quick_log
-from .models import Aircraft, Flight
-from .serializers import AircraftSerializer, FlightSerializer, PublicFlightSerializer
+from . import airports, crew, external, flight_plans, insights, logbook_io, patterns, plan_review, quick_log
+from .models import Aircraft, CrewSeat, Flight
+from .serializers import (
+    AddCrewSerializer, AircraftSerializer, CrewInviteSerializer, CrewRoleSerializer, CrewSeatSerializer, FlightSerializer, PublicFlightSerializer,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +36,10 @@ class QuickLogThrottle(UserRateThrottle):
 
 class LookupThrottle(UserRateThrottle):
     scope = 'lookup'
+
+
+class CrewInviteThrottle(UserRateThrottle):
+    scope = 'invite'
 
 
 class FlightPagination(PageNumberPagination):
@@ -87,6 +94,67 @@ class FlightListView(UserFlightsMixin, generics.ListCreateAPIView):
 
 class FlightDetailView(UserFlightsMixin, generics.RetrieveUpdateDestroyAPIView):
     serializer_class = FlightSerializer
+
+
+class CrewView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_throttles(self):
+        return [CrewInviteThrottle()] if self.request.method == 'POST' else []
+
+    def flight(self, pk):
+        return get_object_or_404(Flight, pk=pk, user=self.request.user)
+
+    def seats(self, flight):
+        return CrewSeatSerializer(crew.members(flight), many=True, context={'request': self.request}).data
+
+    def get(self, request, pk):
+        return Response(self.seats(self.flight(pk)))
+
+    def post(self, request, pk):
+        flight = self.flight(pk)
+        serializer = AddCrewSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        crew.invite(flight, **serializer.validated_data)
+        return Response(self.seats(flight), status=201)
+
+    def patch(self, request, pk):
+        flight = self.flight(pk)
+        serializer = CrewRoleSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        crew.set_role(flight, serializer.validated_data['role'])
+        return Response(self.seats(flight))
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def crew_invites(request):
+    seats = CrewSeat.objects.filter(pilot=request.user, status=CrewSeat.PENDING).select_related('flight__user', 'flight__aircraft')
+    return Response(CrewInviteSerializer(seats, many=True, context={'request': request}).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def accept_crew_invite(request, pk):
+    with transaction.atomic():
+        seat = get_object_or_404(
+            CrewSeat.objects.select_for_update().select_related('flight'), pk=pk, pilot=request.user, status=CrewSeat.PENDING,
+        )
+        return Response(crew.accept(seat, request), status=201)
+
+
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def end_crew_seat(request, pk):
+    seat = get_object_or_404(
+        CrewSeat.objects.filter(Q(pilot=request.user) | Q(flight__user=request.user)), pk=pk, status=CrewSeat.PENDING,
+    )
+    if seat.pilot_id == request.user.pk:
+        seat.status = CrewSeat.DECLINED
+        seat.save(update_fields=['status'])
+    else:
+        seat.delete()
+    return Response(status=204)
 
 
 @api_view(['GET'])
@@ -335,6 +403,7 @@ def public_pilot(request, username):
     flights = Flight.objects.logged().filter(user=pilot).select_related('aircraft')
     return Response({
         'username': pilot.username,
+        'avatar': request.build_absolute_uri(pilot.avatar.url) if pilot.avatar else None,
         'bio': pilot.bio,
         'home_airport': pilot.home_airport,
         'member_since': pilot.date_joined.date().isoformat(),

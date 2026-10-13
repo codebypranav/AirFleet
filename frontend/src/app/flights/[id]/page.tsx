@@ -4,6 +4,7 @@ import { use, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { CrewSection } from '@/components/Crew';
 import RouteMap from '@/components/RouteMap';
 import { EditIcon, ShareIcon, TrashIcon } from '@/components/Icons';
 import { ErrorState, PageHeader, PageShell, Section, Spinner, StatGrid } from '@/components/PageShell';
@@ -193,6 +194,8 @@ export default function FlightDetail({ params }: { params: Promise<{ id: string 
                     </dl>
                 </Section>
             </div>
+
+            {!flight.is_draft && <CrewSection flightId={flight.id} />}
 
             {(flight.signature || durationToSeconds(flight.dual_received_time) > 0) && (
                 <Section title="Instructor sign-off">

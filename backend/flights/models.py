@@ -119,3 +119,31 @@ class Flight(models.Model):
 
     def __str__(self):
         return f"{self.departure_airport} → {self.arrival_airport} ({self.departure_time.date()})"
+
+
+class CrewSeat(models.Model):
+    PIC, SIC = 'PIC', 'SIC'
+    ROLE_CHOICES = [(PIC, 'Captain'), (SIC, 'First officer')]
+    LOGGER, PENDING, ACCEPTED, DECLINED = 'LOGGER', 'PENDING', 'ACCEPTED', 'DECLINED'
+    STATUS_CHOICES = [(LOGGER, 'Logger'), (PENDING, 'Pending'), (ACCEPTED, 'Accepted'), (DECLINED, 'Declined')]
+
+    crew = models.UUIDField(db_index=True)
+    pilot = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='crew_seats')
+    flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name='crew_seats')
+    role = models.CharField(max_length=3, choices=ROLE_CHOICES)
+    status = models.CharField(max_length=8, choices=STATUS_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at']
+        constraints = [
+            models.UniqueConstraint(
+                fields=['flight'], condition=models.Q(status__in=['LOGGER', 'ACCEPTED']), name='one_crew_per_flight',
+            ),
+            models.UniqueConstraint(
+                fields=['crew', 'pilot'], condition=~models.Q(status='DECLINED'), name='one_open_seat_per_pilot',
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.pilot} as {self.role} ({self.get_status_display()})"

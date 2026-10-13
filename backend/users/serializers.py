@@ -2,6 +2,7 @@ from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
 from flights import airports
+from flights.serializers import check_image
 from .models import CustomUser
 
 
@@ -41,10 +42,20 @@ class ProfileSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomUser
         fields = (
-            'username', 'email', 'first_name', 'last_name', 'bio', 'home_airport', 'is_public',
+            'username', 'email', 'first_name', 'last_name', 'avatar', 'bio', 'home_airport', 'is_public',
             'instructor_certificate_number', 'instructor_certificate_expires', 'date_joined',
         )
         read_only_fields = ('date_joined',)
+
+    def validate_avatar(self, value):
+        return check_image(value)
+
+    def update(self, instance, validated_data):
+        old = instance.avatar.name if 'avatar' in validated_data else None
+        user = super().update(instance, validated_data)
+        if old and old != user.avatar.name:
+            user.avatar.storage.delete(old)
+        return user
 
     def validate_username(self, value):
         if CustomUser.objects.filter(username__iexact=value).exclude(pk=self.instance.pk).exists():
