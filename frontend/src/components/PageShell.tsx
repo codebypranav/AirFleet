@@ -1,5 +1,6 @@
 import Navbar from '@/components/Navbar';
 import Contours from '@/components/Contours';
+import LiveFlights from '@/components/LiveFlights';
 import { CompassCard } from '@/components/Brand';
 
 export function PageShell({ children, variant = 'app' }: { children: React.ReactNode; variant?: 'app' | 'public' }) {
@@ -7,6 +8,7 @@ export function PageShell({ children, variant = 'app' }: { children: React.React
         <div className="relative min-h-screen overflow-hidden bg-ink text-bone">
             <Contours className="absolute inset-x-0 top-0 h-[520px] w-full text-moss/10 [mask-image:linear-gradient(to_bottom,black,transparent)]" />
             <Navbar variant={variant} />
+            {variant === 'app' && <LiveFlights />}
             <main className="relative mx-auto w-full max-w-5xl px-4 pb-24 pt-10 sm:px-6 sm:pt-14">{children}</main>
         </div>
     );

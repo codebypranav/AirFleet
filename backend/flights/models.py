@@ -107,6 +107,7 @@ class Flight(models.Model):
     is_simulator = models.BooleanField(default=False)
     # Started from a flight plan before the flight; finalised once the actual times are in.
     is_draft = models.BooleanField(default=False)
+    in_flight = models.BooleanField(default=False)
 
     weather_conditions = models.TextField(blank=True, help_text="Usually the departure METAR")
 
@@ -116,6 +117,9 @@ class Flight(models.Model):
     class Meta:
         ordering = ['-departure_time']
         indexes = [models.Index(fields=['user', '-departure_time'])]
+        constraints = [
+            models.UniqueConstraint(fields=['user'], condition=models.Q(in_flight=True), name='one_live_flight_per_pilot'),
+        ]
 
     def __str__(self):
         return f"{self.departure_airport} → {self.arrival_airport} ({self.departure_time.date()})"

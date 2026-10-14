@@ -1,8 +1,8 @@
 import Cookies from 'js-cookie';
 import type {
     Achievement, Aircraft, Airport, CrewInvite, CrewRole, CrewSeat, Currency, Endorsement, EndorsementKind, Flight, FlightPlanDraft, ImportResult,
-    InstructorLink, NoteThemes, Paginated, Patterns, PlanReview, Profile, PublicFlight, PublicPilot, QuickLogDraft, RouteMapData,
-    Signature, Stats, StudentFlight,
+    InstructorLink, LiveFlight, NoteThemes, Paginated, Patterns, PlanReview, Profile, PublicFlight, PublicPilot, QuickLogDraft, RouteMapData,
+    Signature, StartFlight, Stats, StudentFlight,
 } from '@/types/flight';
 
 const ORIGIN = (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000').replace(/\/+$/, '').replace(/\/api$/, '');
@@ -185,6 +185,12 @@ export const setMyCrewRole = (flightId: number | string, role: CrewRole) =>
 export const getCrewInvites = () => apiJson<CrewInvite[]>('/crew/invites/');
 export const acceptCrewInvite = (id: number) => apiJson<Flight>(`/crew/${id}/accept/`, { method: 'POST' });
 export const endCrewSeat = (id: number) => apiJson<void>(`/crew/${id}/`, { method: 'DELETE' });
+
+export const getLiveFlights = () => apiJson<LiveFlight[]>('/live/');
+export const startFlight = (data: StartFlight) => apiJson<LiveFlight>('/live/', { method: 'POST', json: data });
+export const stillFlying = (id: number) => apiJson<LiveFlight>(`/live/${id}/still-flying/`, { method: 'POST' });
+export const landFlight = (id: number, arrival_time?: string) =>
+    apiJson<Flight>(`/live/${id}/land/`, { method: 'POST', json: arrival_time ? { arrival_time } : {} });
 
 export const getFleet = () => apiJson<Aircraft[]>('/aircraft/');
 export const getAircraft = (id: number | string) => apiJson<Aircraft>(`/aircraft/${id}/`);

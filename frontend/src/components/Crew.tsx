@@ -8,10 +8,10 @@ import { acceptCrewInvite, addCrew, endCrewSeat, getCrew, getCrewInvites, setMyC
 import { formatDate } from '@/utils/format';
 import { useApi } from '@/utils/useApi';
 
-const ROLES: Record<CrewRole, string> = { PIC: 'Captain (PIC)', SIC: 'First officer (SIC)' };
+export const ROLES: Record<CrewRole, string> = { PIC: 'Captain (PIC)', SIC: 'First officer (SIC)' };
 const STATUS: Record<CrewSeat['status'], string> = { LOGGER: 'Logged it', PENDING: 'Invited', ACCEPTED: 'In their logbook', DECLINED: 'Declined' };
 
-function useAction() {
+export function useAction() {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const run = async (action: () => Promise<unknown>) => {

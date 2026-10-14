@@ -78,6 +78,10 @@ export default function FlightsPage() {
                             <DownloadIcon className="h-4 w-4" />
                             {exporting ? 'Exporting…' : 'Export CSV'}
                         </button>
+                        <Link href="/flights/start" className="btn btn-ghost">
+                            <PlaneIcon className="h-4 w-4" />
+                            Start flight
+                        </Link>
                         <Link href="/flights/add" className="btn btn-primary">
                             <PlusIcon className="h-4 w-4" />
                             Add flight

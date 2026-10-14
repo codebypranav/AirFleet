@@ -98,7 +98,7 @@ class FlightSerializer(serializers.ModelSerializer):
     class Meta:
         model = Flight
         fields = '__all__'
-        read_only_fields = ('user', 'aircraft', 'created_at', 'updated_at')
+        read_only_fields = ('user', 'aircraft', 'in_flight', 'created_at', 'updated_at')
 
     def get_departure_info(self, obj):
         return airport_info(obj.departure_airport)
@@ -133,6 +133,8 @@ class FlightSerializer(serializers.ModelSerializer):
     def validate(self, data):
         # On a partial update, fall back to the stored values for anything not sent.
         current = lambda field: data.get(field, getattr(self.instance, field, None))
+        if self.instance is not None and self.instance.in_flight and not current('is_draft'):
+            raise serializers.ValidationError("Land the flight before logging it.")
 
         departure_time, arrival_time = current('departure_time'), current('arrival_time')
         if departure_time >= arrival_time:
@@ -177,7 +179,7 @@ class FlightSerializer(serializers.ModelSerializer):
         registration = current('registration_number')
         # A grounded aircraft can still be planned for; the block applies when a flight enters the logbook.
         entering_logbook = not current('is_draft') and (self.instance is None or self.instance.is_draft)
-        if entering_logbook and not self.context.get('historical'):
+        if (entering_logbook or self.context.get('live')) and not self.context.get('historical'):
             grounded = Aircraft.objects.filter(
                 user=self.context['request'].user, registration=registration, grounded=True
             ).exists()
@@ -253,3 +255,34 @@ class CrewRoleSerializer(serializers.Serializer):
 
 class AddCrewSerializer(CrewRoleSerializer):
     username = serializers.CharField(max_length=150)
+
+
+class StartFlightSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(choices=CrewSeat.ROLE_CHOICES, default=CrewSeat.PIC)
+    departure_airport = serializers.CharField(max_length=4)
+    arrival_airport = serializers.CharField(max_length=4)
+    registration_number = serializers.CharField(max_length=10)
+    ete_minutes = serializers.IntegerField(min_value=1, max_value=realism.MAX_FLIGHT_HOURS * 60)
+    crew = AddCrewSerializer(many=True, required=False, max_length=8)
+
+
+class LandSerializer(serializers.Serializer):
+    arrival_time = serializers.DateTimeField(required=False)
+
+
+class LiveFlightSerializer(serializers.ModelSerializer):
+    pilot = serializers.CharField(source='user.username', read_only=True)
+    eta = serializers.DateTimeField(source='arrival_time', read_only=True)
+    is_mine = serializers.SerializerMethodField()
+    unconfirmed = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Flight
+        fields = ('id', 'pilot', 'departure_airport', 'arrival_airport', 'registration_number', 'departure_time', 'eta', 'is_mine', 'unconfirmed')
+
+    def get_is_mine(self, obj):
+        return obj.user_id == self.context['request'].user.pk
+
+    def get_unconfirmed(self, obj):
+        from .live import unconfirmed
+        return unconfirmed(obj)
