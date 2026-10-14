@@ -10,7 +10,7 @@ from django.test import SimpleTestCase, override_settings
 from rest_framework.test import APITestCase
 
 from . import airports, external, flight_plans, insights, patterns, plan_review, quick_log
-from .models import Aircraft, Flight
+from .models import Aircraft, CrewSeat, Flight
 
 FLIGHT = {
     'departure_airport': 'KJFK',
@@ -1286,3 +1286,177 @@ class PlanReviewTests(ApiTestCase):
 
         self.authenticate('other')
         self.assertEqual(self.client.get(f"/api/flights/{draft['id']}/review/").status_code, 404)
+
+
+class CrewTests(ApiTestCase):
+    def setUp(self):
+        super().setUp()
+        self.register('maria')
+        self.register('sam')
+        self.authenticate()
+        self.flight = self.add_flight(notes='mine', day_landings=1, pic_time='05:30:00')
+
+    def invite(self, username='maria', role='SIC', flight=None):
+        return self.client.post(f"/api/flights/{(flight or self.flight)['id']}/crew/", {'username': username, 'role': role}, format='json')
+
+    def crew(self, flight_id):
+        return {(m['username'], m['role'], m['status']) for m in self.client.get(f'/api/flights/{flight_id}/crew/').data}
+
+    def accept_as(self, username='maria'):
+        self.authenticate(username)
+        invite = self.client.get('/api/crew/invites/').data[0]
+        return self.client.post(f"/api/crew/{invite['id']}/accept/")
+
+    def test_accepting_adds_the_flight_to_the_crewmates_logbook(self):
+        self.assertEqual(self.invite().status_code, 201)
+        self.authenticate('maria')
+        invites = self.client.get('/api/crew/invites/').data
+        self.assertEqual((invites[0]['invited_by'], invites[0]['role'], invites[0]['flight']['id']), ('pilot', 'SIC', self.flight['id']))
+        self.assertNotIn('notes', invites[0]['flight'])
+
+        res = self.client.post(f"/api/crew/{invites[0]['id']}/accept/")
+        self.assertEqual(res.status_code, 201, res.data)
+        copy = res.data
+        self.assertEqual((copy['departure_airport'], copy['registration_number'], copy['total_time']), ('KJFK', 'N12345', '05:30:00'))
+        self.assertEqual((copy['sic_time'], copy['pic_time'], copy['notes'], copy['day_landings']), ('05:30:00', '00:00:00', '', 0))
+        self.assertEqual(self.client.get('/api/flights/').data['count'], 1)
+        self.assertEqual(self.client.get('/api/crew/invites/').data, [])
+        self.assertEqual(self.crew(copy['id']), {('pilot', 'PIC', 'LOGGER'), ('maria', 'SIC', 'ACCEPTED')})
+
+        self.authenticate()
+        self.assertEqual(self.crew(self.flight['id']), {('pilot', 'PIC', 'LOGGER'), ('maria', 'SIC', 'ACCEPTED')})
+
+    def test_rejected_invites(self):
+        self.assertEqual(self.invite('nobody').status_code, 400)
+        self.assertEqual(self.invite('pilot').status_code, 400)
+        self.assertEqual(self.invite().status_code, 201)
+        self.assertEqual(self.invite().status_code, 400)
+        draft = self.add_flight(is_draft=True, departure_time='2027-06-01T10:00:00Z', arrival_time='2027-06-01T15:30:00Z')
+        self.assertEqual(self.invite(flight=draft).status_code, 400)
+
+        self.authenticate('maria')
+        self.assertEqual(self.invite('sam').status_code, 404)
+
+    def test_only_the_logger_invites_and_sees_pending(self):
+        self.invite()
+        copy = self.accept_as('maria').data
+        self.assertEqual(self.invite('sam', flight=copy).status_code, 400)
+
+        self.authenticate()
+        self.invite('sam', role='PIC')
+        self.assertIn(('sam', 'PIC', 'PENDING'), self.crew(self.flight['id']))
+        self.authenticate('maria')
+        self.assertEqual(self.crew(copy['id']), {('pilot', 'PIC', 'LOGGER'), ('maria', 'SIC', 'ACCEPTED')})
+
+    def test_decline_cancel_and_reinvite(self):
+        self.invite()
+        self.authenticate('maria')
+        invite_id = self.client.get('/api/crew/invites/').data[0]['id']
+        self.assertEqual(self.client.delete(f'/api/crew/{invite_id}/').status_code, 204)
+        self.assertEqual(self.client.get('/api/flights/').data['count'], 0)
+
+        self.authenticate()
+        self.assertIn(('maria', 'SIC', 'DECLINED'), self.crew(self.flight['id']))
+        self.assertEqual(self.invite().status_code, 201)
+        pending = next(m for m in self.client.get(f"/api/flights/{self.flight['id']}/crew/").data if m['status'] == 'PENDING')
+        self.assertEqual(self.client.delete(f"/api/crew/{pending['id']}/").status_code, 204)
+        self.authenticate('maria')
+        self.assertEqual(self.client.get('/api/crew/invites/').data, [])
+
+    def test_decline_or_cancel_after_accept_leaves_the_seat(self):
+        self.invite()
+        stale = CrewSeat.objects.get(status=CrewSeat.PENDING)
+        copy = self.accept_as('maria').data
+        for user in ('maria', 'pilot'):
+            self.authenticate(user)
+            with mock.patch('flights.views.get_object_or_404', return_value=stale):
+                self.assertEqual(self.client.delete(f'/api/crew/{stale.pk}/').status_code, 404)
+        self.assertEqual(self.crew(self.flight['id']), {('pilot', 'PIC', 'LOGGER'), ('maria', 'SIC', 'ACCEPTED')})
+        self.assertEqual(CrewSeat.objects.get(pk=stale.pk).flight_id, copy['id'])
+
+    def test_my_role_is_a_label(self):
+        res = self.client.patch(f"/api/flights/{self.flight['id']}/crew/", {'role': 'SIC'}, format='json')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(self.crew(self.flight['id']), {('pilot', 'SIC', 'LOGGER')})
+        self.assertEqual(self.client.get(f"/api/flights/{self.flight['id']}/").data['pic_time'], '05:30:00')
+
+    def test_deleting_the_original_keeps_copies_and_drops_pending(self):
+        self.invite()
+        self.invite('sam')
+        copy = self.accept_as('maria').data
+        self.authenticate()
+        self.client.delete(f"/api/flights/{self.flight['id']}/")
+
+        self.authenticate('maria')
+        self.assertEqual(self.client.get(f"/api/flights/{copy['id']}/").status_code, 200)
+        self.assertEqual(self.crew(copy['id']), {('maria', 'SIC', 'ACCEPTED')})
+        self.authenticate('sam')
+        self.assertEqual(self.client.get('/api/crew/invites/').data, [])
+
+    def test_avatar_hidden_until_accepted(self):
+        get_user_model().objects.filter(username='maria').update(avatar='avatars/maria.png')
+        self.invite()
+        self.assertIsNone(self.client.get(f"/api/flights/{self.flight['id']}/crew/").data[1]['avatar'])
+        self.accept_as('maria')
+        self.authenticate()
+        self.assertIn('avatars/maria.png', self.client.get(f"/api/flights/{self.flight['id']}/crew/").data[1]['avatar'])
+
+    def test_cannot_accept_once_the_original_is_a_draft_again(self):
+        self.invite()
+        Flight.objects.filter(pk=self.flight['id']).update(is_draft=True)
+        self.assertEqual(self.accept_as('maria').status_code, 400)
+        self.assertFalse(Flight.objects.filter(user__username='maria').exists())
+
+    def test_deleting_a_copy_leaves_the_crew(self):
+        self.invite()
+        copy = self.accept_as('maria').data
+        self.client.delete(f"/api/flights/{copy['id']}/")
+        self.authenticate()
+        self.assertEqual(self.crew(self.flight['id']), {('pilot', 'PIC', 'LOGGER')})
+
+    def test_accepting_runs_the_crewmates_checks_once(self):
+        self.invite()
+        self.authenticate('maria')
+        Aircraft.objects.create(user=get_user_model().objects.get(username='maria'), registration='N12345', grounded=True)
+        invite_id = self.client.get('/api/crew/invites/').data[0]['id']
+        res = self.client.post(f'/api/crew/{invite_id}/accept/')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('grounded', str(res.data))
+
+        Aircraft.objects.filter(registration='N12345', user__username='maria').update(grounded=False)
+        self.assertEqual(self.client.post(f'/api/crew/{invite_id}/accept/').status_code, 201)
+        self.assertEqual(self.client.post(f'/api/crew/{invite_id}/accept/').status_code, 404)
+        self.assertEqual(Flight.objects.filter(user__username='maria').count(), 1)
+        self.assertEqual(Flight.objects.get(user__username='maria').aircraft.registration, 'N12345')
+
+
+class AvatarTests(ApiTestCase):
+    image = PhotoUploadTests.image
+
+    def test_upload_replace_and_remove(self):
+        self.authenticate()
+        res = self.client.patch('/api/me/', {'avatar': self.image('me.png')}, format='multipart')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertIn('avatars/me', res.data['avatar'])
+        first = get_user_model().objects.get(username='pilot').avatar
+        self.client.patch('/api/me/', {'avatar': self.image('me2.png')}, format='multipart')
+        self.assertFalse(first.storage.exists(first.name))
+
+        second = get_user_model().objects.get(username='pilot').avatar
+        res = self.client.patch('/api/me/', {'avatar': None}, format='json')
+        self.assertIsNone(res.data['avatar'])
+        self.assertFalse(second.storage.exists(second.name))
+
+    def test_rejects_non_images(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        self.authenticate()
+        res = self.client.patch('/api/me/', {'avatar': SimpleUploadedFile('x.png', b'not an image')}, format='multipart')
+        self.assertEqual(res.status_code, 400)
+
+    def test_public_page_and_account_deletion(self):
+        self.authenticate()
+        self.client.patch('/api/me/', {'avatar': self.image(), 'is_public': True}, format='multipart')
+        avatar = get_user_model().objects.get(username='pilot').avatar
+        self.assertIn('avatars/', self.client.get('/api/pilots/pilot/').data['avatar'])
+        self.client.delete('/api/me/', {'confirm': 'pilot', 'password': PASSWORD}, format='json')
+        self.assertFalse(avatar.storage.exists(avatar.name))

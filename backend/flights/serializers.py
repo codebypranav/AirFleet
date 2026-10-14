@@ -5,7 +5,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from . import airports, insights, realism
-from .models import Aircraft, Flight
+from .models import Aircraft, CrewSeat, Flight
 
 MAX_PHOTO_BYTES = 10 * 1024 * 1024
 ALLOWED_PHOTO_FORMATS = {'JPEG', 'PNG', 'WEBP', 'GIF', 'HEIF', 'MPO'}
@@ -15,6 +15,17 @@ TIME_COLUMNS = ('pic_time', 'sic_time', 'dual_received_time', 'night_time', 'ins
 def airport_info(code):
     airport = airports.get(code)
     return airport.as_dict() if airport else None
+
+
+def check_image(photo):
+    if photo is None:
+        return photo
+    if photo.size > MAX_PHOTO_BYTES:
+        raise serializers.ValidationError("Photos must be 10 MB or smaller.")
+    image = getattr(photo, 'image', None)
+    if image is not None and image.format not in ALLOWED_PHOTO_FORMATS:
+        raise serializers.ValidationError("Upload a JPEG, PNG, WebP, GIF or HEIC image.")
+    return photo
 
 
 class AircraftSerializer(serializers.ModelSerializer):
@@ -117,14 +128,7 @@ class FlightSerializer(serializers.ModelSerializer):
         return value.strip().upper()
 
     def validate_photo(self, photo):
-        if photo is None:
-            return photo
-        if photo.size > MAX_PHOTO_BYTES:
-            raise serializers.ValidationError("Photos must be 10 MB or smaller.")
-        image = getattr(photo, 'image', None)
-        if image is not None and image.format not in ALLOWED_PHOTO_FORMATS:
-            raise serializers.ValidationError("Upload a JPEG, PNG, WebP, GIF or HEIC image.")
-        return photo
+        return check_image(photo)
 
     def validate(self, data):
         # On a partial update, fall back to the stored values for anything not sent.
@@ -214,3 +218,38 @@ class PublicFlightSerializer(serializers.ModelSerializer):
 
     def get_arrival_info(self, obj):
         return airport_info(obj.arrival_airport)
+
+
+class CrewSeatSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='pilot.username', read_only=True)
+    avatar = serializers.SerializerMethodField()
+    is_me = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CrewSeat
+        fields = ('id', 'username', 'avatar', 'role', 'status', 'is_me')
+
+    def get_avatar(self, obj):
+        if not obj.pilot.avatar or obj.status in (CrewSeat.PENDING, CrewSeat.DECLINED):
+            return None
+        return self.context['request'].build_absolute_uri(obj.pilot.avatar.url)
+
+    def get_is_me(self, obj):
+        return obj.pilot_id == self.context['request'].user.pk
+
+
+class CrewInviteSerializer(serializers.ModelSerializer):
+    invited_by = serializers.CharField(source='flight.user.username', read_only=True)
+    flight = PublicFlightSerializer(read_only=True)
+
+    class Meta:
+        model = CrewSeat
+        fields = ('id', 'role', 'invited_by', 'flight', 'created_at')
+
+
+class CrewRoleSerializer(serializers.Serializer):
+    role = serializers.ChoiceField(choices=CrewSeat.ROLE_CHOICES)
+
+
+class AddCrewSerializer(CrewRoleSerializer):
+    username = serializers.CharField(max_length=150)

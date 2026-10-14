@@ -1,6 +1,6 @@
 import Cookies from 'js-cookie';
 import type {
-    Achievement, Aircraft, Airport, Currency, Endorsement, EndorsementKind, Flight, FlightPlanDraft, ImportResult,
+    Achievement, Aircraft, Airport, CrewInvite, CrewRole, CrewSeat, Currency, Endorsement, EndorsementKind, Flight, FlightPlanDraft, ImportResult,
     InstructorLink, NoteThemes, Paginated, Patterns, PlanReview, Profile, PublicFlight, PublicPilot, QuickLogDraft, RouteMapData,
     Signature, Stats, StudentFlight,
 } from '@/types/flight';
@@ -177,6 +177,15 @@ export const readNoteThemes = () => apiJson<NoteThemes>('/insights/themes/', { m
 /** Checks a planned (draft) flight against the pilot's logbook, fleet and, close to departure, the weather. */
 export const getPlanReview = (id: number | string) => apiJson<PlanReview>(`/flights/${id}/review/`);
 
+export const getCrew = (flightId: number | string) => apiJson<CrewSeat[]>(`/flights/${flightId}/crew/`);
+export const addCrew = (flightId: number | string, username: string, role: CrewRole) =>
+    apiJson<CrewSeat[]>(`/flights/${flightId}/crew/`, { method: 'POST', json: { username, role } });
+export const setMyCrewRole = (flightId: number | string, role: CrewRole) =>
+    apiJson<CrewSeat[]>(`/flights/${flightId}/crew/`, { method: 'PATCH', json: { role } });
+export const getCrewInvites = () => apiJson<CrewInvite[]>('/crew/invites/');
+export const acceptCrewInvite = (id: number) => apiJson<Flight>(`/crew/${id}/accept/`, { method: 'POST' });
+export const endCrewSeat = (id: number) => apiJson<void>(`/crew/${id}/`, { method: 'DELETE' });
+
 export const getFleet = () => apiJson<Aircraft[]>('/aircraft/');
 export const getAircraft = (id: number | string) => apiJson<Aircraft>(`/aircraft/${id}/`);
 export const addAircraft = (data: Partial<Aircraft>) => apiJson<Aircraft>('/aircraft/', { method: 'POST', json: data });
@@ -194,6 +203,12 @@ export const getSimbrief = (username: string) => apiJson<Partial<Flight> & { air
 
 export const getProfile = () => apiJson<Profile>('/me/');
 export const updateProfile = (data: Partial<Profile>) => apiJson<Profile>('/me/', { method: 'PATCH', json: data });
+export const updateAvatar = (file: File | null) => {
+    if (!file) return updateProfile({ avatar: null });
+    const body = new FormData();
+    body.append('avatar', file);
+    return apiJson<Profile>('/me/', { method: 'PATCH', body });
+};
 export const changePassword = (current_password: string, new_password: string) =>
     apiJson<{ access: string; refresh: string }>('/me/password/', { method: 'POST', json: { current_password, new_password } });
 export const deleteAccount = (confirm: string, password: string) =>

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { PageShell, PageHeader, EmptyState, ErrorState, Spinner, StatGrid } from '@/components/PageShell';
 import { CameraIcon, DownloadIcon, PlaneIcon, PlusIcon, UploadIcon } from '@/components/Icons';
+import { CrewInvites } from '@/components/Crew';
 import { SignatureBadge } from '@/components/Signature';
 import { downloadExport, getFlights, getStats, type FlightFilters } from '@/utils/api';
 import { conditionFor, formatDate, formatDuration, formatTime, photoUrl } from '@/utils/format';
@@ -84,6 +85,8 @@ export default function FlightsPage() {
                     </div>
                 }
             />
+
+            <CrewInvites onAccepted={() => { flights.reload(); stats.reload(); }} />
 
             {flights.error ? (
                 <ErrorState message={flights.error} onRetry={flights.reload} />

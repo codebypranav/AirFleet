@@ -2,6 +2,7 @@
 
 import { use } from 'react';
 import Link from 'next/link';
+import Avatar from '@/components/Avatar';
 import RouteMap from '@/components/RouteMap';
 import { AchievementGrid } from '@/components/Insights';
 import { PlaneIcon } from '@/components/Icons';
@@ -29,6 +30,7 @@ export default function PilotPage({ params }: { params: Promise<{ username: stri
                         eyebrow={`Pilot${pilot.home_airport ? ` · based at ${pilot.home_airport}` : ''} · since ${formatDate(pilot.member_since, 'long')}`}
                         title={pilot.username}
                         description={pilot.bio || undefined}
+                        action={pilot.avatar && <Avatar username={pilot.username} avatar={pilot.avatar} size={96} />}
                     />
                     <StatGrid
                         stats={[
