@@ -3,7 +3,7 @@ from datetime import timedelta
 from django.conf import settings
 from django.core.validators import MinLengthValidator
 from django.db import models
-from django.db.models import Sum
+from django.db.models import Q, Sum
 
 
 class Aircraft(models.Model):
@@ -54,13 +54,18 @@ class FlightQuerySet(models.QuerySet):
         return self.filter(is_draft=False)
 
     def followed_by(self, viewer):
-        pilots = (
-            Follow.objects.filter(follower=viewer, status=Follow.APPROVED)
-            .exclude(pilot__in=Block.objects.filter(blocked=viewer).values('blocker'))
-            .exclude(pilot__in=Block.objects.filter(blocker=viewer).values('blocked'))
-            .values('pilot')
-        )
+        pilots = Follow.objects.filter(follower=viewer, status=Follow.APPROVED).exclude(blocked_with(viewer, 'pilot')).values('pilot')
         return self.filter(user__in=pilots, user__is_active=True, hidden_from_followers=False)
+
+    def open_to(self, viewer):
+        return self.logged().filter(Q(user=viewer) | Q(pk__in=Flight.objects.followed_by(viewer).values('pk')))
+
+
+def blocked_with(user, field):
+    return (
+        Q(**{f'{field}__in': Block.objects.filter(blocked=user).values('blocker')})
+        | Q(**{f'{field}__in': Block.objects.filter(blocker=user).values('blocked')})
+    )
 
 
 class Flight(models.Model):
@@ -198,3 +203,60 @@ class Block(models.Model):
 
     def __str__(self):
         return f"{self.blocker} blocked {self.blocked}"
+
+
+class Comment(models.Model):
+    flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name='comments')
+    author = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, related_name='comments')
+    parent = models.ForeignKey('self', on_delete=models.CASCADE, null=True, blank=True, related_name='replies')
+    body = models.CharField(max_length=500, blank=True)
+    edited = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['created_at', 'pk']
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(author__isnull=True, body='') | (models.Q(author__isnull=False) & ~models.Q(body='')),
+                name='placeholder_is_empty',
+            ),
+        ]
+
+
+class Like(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='likes')
+    flight = models.ForeignKey(Flight, on_delete=models.CASCADE, related_name='likes')
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, null=True, blank=True, related_name='likes')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(fields=['user', 'flight'], condition=models.Q(comment__isnull=True), name='one_flight_like'),
+            models.UniqueConstraint(fields=['user', 'comment'], name='one_comment_like'),
+        ]
+
+
+class Notification(models.Model):
+    recipient = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='notifications')
+    follow = models.ForeignKey(Follow, on_delete=models.CASCADE, null=True, related_name='+')
+    comment = models.ForeignKey(Comment, on_delete=models.CASCADE, null=True, related_name='+')
+    like = models.ForeignKey(Like, on_delete=models.CASCADE, null=True, related_name='+')
+    read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at', '-pk']
+        indexes = [models.Index(fields=['recipient', 'read'])]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(follow__isnull=False, comment=None, like=None)
+                    | models.Q(follow=None, comment__isnull=False, like=None)
+                    | models.Q(follow=None, comment=None, like__isnull=False)
+                ),
+                name='one_cause',
+            ),
+            models.UniqueConstraint(fields=['recipient', 'follow'], name='one_notification_per_follow'),
+            models.UniqueConstraint(fields=['recipient', 'comment'], name='one_notification_per_comment'),
+            models.UniqueConstraint(fields=['recipient', 'like'], name='one_notification_per_like'),
+        ]

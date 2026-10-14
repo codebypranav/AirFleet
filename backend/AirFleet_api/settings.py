@@ -223,6 +223,8 @@ REST_FRAMEWORK = {
         'lookup': '120/hour',
         'invite': '30/hour',
         'follow': '60/hour',
+        'comment': '60/hour',
+        'like': '300/hour',
         'auth': '30/minute',
     },
 }

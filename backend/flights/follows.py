@@ -3,6 +3,7 @@ from django.db import transaction
 from django.db.models import Count, Q
 from rest_framework.exceptions import NotFound, ValidationError
 
+from . import social
 from .models import Block, Follow
 
 
@@ -17,7 +18,10 @@ def pilot_named(viewer, username, blockable=False):
 def follow(viewer, username):
     pilot = pilot_named(viewer, username)
     status = Follow.APPROVED if pilot.is_public else Follow.PENDING
-    return Follow.objects.get_or_create(follower=viewer, pilot=pilot, defaults={'status': status})[0]
+    follow, created = Follow.objects.get_or_create(follower=viewer, pilot=pilot, defaults={'status': status})
+    if created:
+        social.notify_follow(follow)
+    return follow
 
 
 def unfollow(viewer, username):
@@ -25,8 +29,13 @@ def unfollow(viewer, username):
 
 
 def approve(pilot, username):
-    if not Follow.objects.filter(pilot=pilot, follower__username__iexact=username).update(status=Follow.APPROVED):
+    follow = Follow.objects.filter(pilot=pilot, follower__username__iexact=username).select_related('follower', 'pilot').first()
+    if follow is None:
         raise NotFound(f"{username} hasn't asked to follow you.")
+    if follow.status == Follow.PENDING:
+        follow.status = Follow.APPROVED
+        follow.save(update_fields=['status'])
+        social.notify_approved([follow])
 
 
 def remove(pilot, username):
@@ -46,7 +55,9 @@ def unblock(viewer, username):
 
 def approve_waiting(pilot):
     if pilot.is_public:
-        pilot.followers.filter(status=Follow.PENDING).update(status=Follow.APPROVED)
+        waiting = list(pilot.followers.filter(status=Follow.PENDING).select_related('follower', 'pilot'))
+        Follow.objects.filter(pk__in=[f.pk for f in waiting]).update(status=Follow.APPROVED)
+        social.notify_approved(waiting)
 
 
 def follower_counts(usernames):

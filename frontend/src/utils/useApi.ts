@@ -40,3 +40,15 @@ export function useApi<T>(load: () => Promise<T>, key: string = '') {
 
     return { ...state, reload, setData };
 }
+
+export function usePoll(reload: () => void) {
+    useEffect(() => {
+        const poll = () => document.visibilityState === 'visible' && reload();
+        const timer = setInterval(poll, 30_000);
+        document.addEventListener('visibilitychange', poll);
+        return () => {
+            clearInterval(timer);
+            document.removeEventListener('visibilitychange', poll);
+        };
+    }, [reload]);
+}

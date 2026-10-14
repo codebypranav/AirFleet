@@ -10,8 +10,8 @@ from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from . import airports, external, flight_plans, insights, patterns, plan_review, quick_log
-from .models import Aircraft, Block, CrewSeat, Flight, Follow
+from . import airports, external, flight_plans, insights, patterns, plan_review, quick_log, views
+from .models import Aircraft, Block, CrewSeat, Flight, Follow, Like, Notification
 
 FLIGHT = {
     'departure_airport': 'KJFK',
@@ -1717,3 +1717,231 @@ class FollowTests(ApiTestCase):
         self.client.post('/api/pilots/pilot/block/')
         self.client.delete('/api/me/', {'confirm': 'amy', 'password': PASSWORD}, format='json')
         self.assertEqual((Follow.objects.count(), Block.objects.count()), (0, 0))
+
+
+class SocialTests(ApiTestCase):
+    def setUp(self):
+        super().setUp()
+        self.authenticate('amy')
+        self.client.patch('/api/me/', {'is_public': True}, format='json')
+        self.flight = self.add_flight()['id']
+        self.register('sam')
+        self.authenticate()
+        self.client.post('/api/pilots/amy/follow/')
+
+    def as_(self, username):
+        self.authenticate(username)
+        return self
+
+    def comment(self, body='Nice landing', parent=None, flight=None):
+        return self.client.post(f'/api/flights/{flight or self.flight}/comments/', {'body': body, 'parent': parent}, format='json')
+
+    def thread(self, flight=None):
+        res = self.client.get(f'/api/flights/{flight or self.flight}/comments/')
+        if res.status_code != 200:
+            return res.status_code
+        return [(c['author'], c['body'], [(r['author'], r['body']) for r in c['replies']]) for c in res.data]
+
+    def notifications(self):
+        return [(n['kind'], n['actor']) for n in self.client.get('/api/notifications/').data]
+
+    def unread(self):
+        return self.client.get('/api/notifications/unread/').data['count']
+
+    def test_followers_and_the_owner_comment_with_one_level_of_replies(self):
+        top = self.comment().data['id']
+        self.as_('amy')
+        reply = self.comment('Thanks', parent=top).data['id']
+        self.as_('pilot')
+        res = self.comment('Any time', parent=reply)
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertEqual(self.thread(), [('pilot', 'Nice landing', [('amy', 'Thanks'), ('pilot', 'Any time')])])
+        self.assertEqual(self.comment('x' * 501).status_code, 400)
+        self.assertEqual(self.comment('   ').status_code, 400)
+        self.assertEqual(self.comment(['x']).status_code, 400)
+        self.assertEqual(self.comment(parent='abc').status_code, 400)
+
+        draft = Flight.objects.create(**{**Flight.objects.filter(pk=self.flight).values()[0], 'id': None, 'is_draft': True})
+        self.assertEqual((self.thread(draft.pk), self.comment(flight=draft.pk).status_code), (404, 404))
+        self.as_('sam')
+        self.assertEqual((self.thread(), self.comment().status_code), (404, 404))
+
+    def test_editing_and_deleting(self):
+        top = self.comment().data['id']
+        alone = self.comment('Second').data['id']
+        res = self.client.patch(f'/api/comments/{top}/', {'body': 'Very nice landing'}, format='json')
+        self.assertEqual((res.status_code, res.data['edited']), (200, True))
+        self.as_('amy')
+        reply = self.comment('Thanks', parent=top).data['id']
+        self.client.post(f'/api/comments/{top}/like/')
+        self.assertEqual(self.client.patch(f'/api/comments/{top}/', {'body': 'Hacked'}, format='json').status_code, 404)
+        self.assertEqual(self.client.delete(f'/api/comments/{top}/').status_code, 204)
+        self.assertEqual(self.client.delete(f'/api/comments/{alone}/').status_code, 204)
+        self.assertEqual(self.thread(), [(None, '', [('amy', 'Thanks')])])
+        self.assertEqual(Like.objects.count(), 0)
+        self.assertEqual(self.client.delete(f'/api/comments/{reply}/').status_code, 204)
+        self.assertEqual(self.thread(), [])
+
+        mine = self.comment().data['id']
+        self.as_('sam')
+        self.assertEqual(self.client.delete(f'/api/comments/{mine}/').status_code, 404)
+
+    def test_losing_access_keeps_what_you_wrote(self):
+        top = self.comment().data['id']
+        self.client.delete('/api/pilots/amy/follow/')
+        self.assertEqual(self.thread(), 404)
+        self.assertEqual(self.client.patch(f'/api/comments/{top}/', {'body': 'Edit'}, format='json').status_code, 404)
+        self.assertEqual(self.client.delete(f'/api/comments/{top}/').status_code, 404)
+        self.as_('amy')
+        self.assertEqual(self.thread(), [('pilot', 'Nice landing', [])])
+        self.client.patch(f'/api/flights/{self.flight}/', {'hidden_from_followers': True}, format='json')
+        self.as_('pilot')
+        self.client.post('/api/pilots/amy/follow/')
+        self.assertEqual((self.thread(), self.client.post(f'/api/flights/{self.flight}/like/').status_code), (404, 404))
+        self.as_('amy')
+        self.assertEqual(self.client.delete(f'/api/comments/{top}/').status_code, 204)
+
+    def test_likes_toggle_and_show_in_the_feed(self):
+        self.comment()
+        self.as_('amy')
+        self.comment('Own comment')
+        self.as_('pilot')
+        for _ in range(2):
+            self.assertEqual(self.client.post(f'/api/flights/{self.flight}/like/').data, {'liked': True, 'like_count': 1})
+        [entry] = self.client.get('/api/feed/').data['results']
+        self.assertEqual((entry['like_count'], entry['liked'], entry['comment_count']), (1, True, 2))
+        self.assertEqual(self.client.get(f'/api/feed/{self.flight}/').data['id'], self.flight)
+        self.assertEqual(self.client.delete(f'/api/flights/{self.flight}/like/').data, {'liked': False, 'like_count': 0})
+
+        comment = self.client.get(f'/api/flights/{self.flight}/comments/').data[1]
+        res = self.client.post(f'/api/comments/{comment["id"]}/like/')
+        self.assertEqual(res.data, {'liked': True, 'like_count': 1})
+        self.assertEqual(self.client.get(f'/api/flights/{self.flight}/comments/').data[1]['liked'], True)
+        self.as_('sam')
+        self.assertEqual(self.client.get(f'/api/feed/{self.flight}/').status_code, 404)
+
+    def test_notifications(self):
+        self.as_('sam')
+        self.client.post('/api/pilots/pilot/follow/')
+        self.as_('pilot')
+        self.assertEqual(self.notifications(), [('follow_request', 'sam')])
+        self.as_('sam')
+        self.client.delete('/api/pilots/pilot/follow/')
+        self.client.post('/api/pilots/pilot/follow/')
+        self.as_('pilot')
+        self.assertEqual(self.unread(), 1)
+        self.client.post('/api/pilots/sam/follower/')
+        self.assertEqual((self.notifications(), self.unread()), ([('follow', 'sam')], 0))
+
+        self.as_('sam')
+        self.assertEqual(self.notifications(), [('approved', 'pilot')])
+        self.as_('amy')
+        self.assertEqual(self.notifications(), [('follow', 'pilot')])
+
+        self.as_('pilot')
+        top = self.comment().data['id']
+        self.client.post(f'/api/flights/{self.flight}/like/')
+        self.comment('Own reply', parent=top)
+        self.as_('amy')
+        self.assertEqual(self.notifications()[:3], [('comment', 'pilot'), ('flight_like', 'pilot'), ('comment', 'pilot')])
+        self.client.post(f'/api/comments/{top}/like/')
+        self.comment('Thanks', parent=top)
+        self.client.post(f'/api/flights/{self.flight}/like/')
+        self.client.post('/api/pilots/pilot/follow/')
+        self.as_('pilot')
+        self.assertEqual(self.unread(), 3)
+        self.assertEqual(self.notifications()[:3], [('follow_request', 'amy'), ('reply', 'amy'), ('comment_like', 'amy')])
+        self.assertEqual(self.unread(), 0)
+
+        self.client.delete(f'/api/flights/{self.flight}/like/')
+        self.as_('amy')
+        self.assertNotIn(('flight_like', 'pilot'), self.notifications())
+        self.client.post('/api/pilots/pilot/block/')
+        self.assertEqual(self.notifications(), [])
+
+        Notification.objects.update(created_at=timezone.now() - timedelta(days=91))
+        self.as_('sam')
+        self.assertEqual(self.notifications(), [])
+        self.assertFalse(Notification.objects.filter(recipient__username='sam').exists())
+
+    def test_unread_count_clears_however_many_there_are(self):
+        for n in range(60):
+            self.comment(f'Note {n}')
+        self.as_('amy')
+        self.assertEqual(self.unread(), 61)
+        self.assertEqual(len(self.notifications()), 61)
+        self.assertEqual(self.unread(), 0)
+
+    def test_reply_notifies_the_parent_author_and_the_owner_once(self):
+        self.as_('sam')
+        self.client.patch('/api/me/', {'is_public': True}, format='json')
+        self.client.post('/api/pilots/amy/follow/')
+        self.as_('pilot')
+        top = self.comment().data['id']
+        self.as_('sam')
+        self.comment('Agreed', parent=top)
+        self.as_('pilot')
+        self.assertEqual(self.notifications()[0], ('reply', 'sam'))
+        self.as_('amy')
+        self.assertEqual(self.notifications()[:2], [('comment', 'sam'), ('comment', 'pilot')])
+        self.as_('pilot')
+        self.client.delete(f'/api/comments/{top}/')
+        self.assertEqual(self.notifications(), [])
+
+    def test_notifications_inside_a_hidden_thread_are_hidden(self):
+        top = self.comment().data['id']
+        self.as_('sam')
+        self.client.patch('/api/me/', {'is_public': True}, format='json')
+        self.client.post('/api/pilots/amy/follow/')
+        reply = self.comment('Agreed', parent=top).data['id']
+        self.as_('amy')
+        self.client.post(f'/api/comments/{reply}/like/')
+        self.assertIn(('comment', 'sam'), self.notifications())
+        self.client.post('/api/pilots/pilot/block/')
+        self.assertEqual((self.notifications(), self.unread()), ([('follow', 'sam')], 0))
+        self.as_('sam')
+        self.assertIn(('comment_like', 'amy'), self.notifications())
+        self.client.post('/api/pilots/pilot/block/')
+        self.assertNotIn(('comment_like', 'amy'), self.notifications())
+        self.assertEqual(self.unread(), 0)
+
+    def test_blocked_pilots_comments_are_hidden(self):
+        self.comment()
+        self.as_('sam')
+        self.client.patch('/api/me/', {'is_public': True}, format='json')
+        self.client.post('/api/pilots/amy/follow/')
+        self.comment('Sam here')
+        self.client.post('/api/pilots/pilot/block/')
+        self.assertEqual(self.thread(), [('sam', 'Sam here', [])])
+        self.as_('pilot')
+        self.assertEqual(self.thread(), [('pilot', 'Nice landing', [])])
+        self.assertEqual(self.client.get('/api/feed/').data['results'][0]['comment_count'], 1)
+
+    def test_deleting_an_account_runs_its_comments_through_the_delete_rule(self):
+        top = self.comment().data['id']
+        self.comment('Gone')
+        self.client.post(f'/api/flights/{self.flight}/like/')
+        self.as_('amy')
+        self.comment('Thanks', parent=top)
+        self.as_('pilot')
+        self.assertEqual(self.client.delete('/api/me/', {'confirm': 'pilot', 'password': PASSWORD}, format='json').status_code, 204)
+        self.client.credentials()
+        self.as_('amy')
+        self.assertEqual(self.thread(), [(None, '', [('amy', 'Thanks')])])
+        self.assertEqual((Like.objects.count(), Notification.objects.count()), (0, 0))
+
+        self.as_('sam')
+        self.client.patch('/api/me/', {'is_public': True}, format='json')
+        self.client.post('/api/pilots/amy/follow/')
+        self.comment('From sam', parent=top)
+        get_user_model().objects.filter(username='sam').delete()
+        self.client.credentials()
+        self.as_('amy')
+        self.assertEqual(self.thread(), [(None, '', [('amy', 'Thanks')])])
+
+    def test_comments_and_edits_are_throttled_but_reading_is_not(self):
+        with mock.patch.dict(views.CommentThrottle.THROTTLE_RATES, {'comment': '2/hour'}):
+            top = self.comment().data['id']
+            self.client.patch(f'/api/comments/{top}/', {'body': 'Edited'}, format='json')
+            self.assertEqual(self.comment().status_code, 429)
+            self.assertEqual(len(self.thread()), 1)

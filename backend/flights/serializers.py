@@ -5,7 +5,7 @@ from django.utils import timezone
 from rest_framework import serializers
 
 from . import airports, insights, realism
-from .models import Aircraft, CrewSeat, Flight
+from .models import Aircraft, Comment, CrewSeat, Flight, Follow, Notification
 
 MAX_PHOTO_BYTES = 10 * 1024 * 1024
 ALLOWED_PHOTO_FORMATS = {'JPEG', 'PNG', 'WEBP', 'GIF', 'HEIF', 'MPO'}
@@ -227,16 +227,81 @@ class FeedFlightSerializer(serializers.ModelSerializer):
     pilot_is_public = serializers.BooleanField(source='user.is_public', read_only=True)
     aircraft_type = serializers.CharField(source='aircraft.type_code', read_only=True, default='')
     notes = serializers.SerializerMethodField()
+    like_count = serializers.IntegerField(read_only=True)
+    liked = serializers.BooleanField(read_only=True)
+    comment_count = serializers.IntegerField(read_only=True)
 
     class Meta:
         model = Flight
         fields = (
             'id', 'pilot', 'pilot_is_public', 'departure_airport', 'arrival_airport', 'departure_time',
-            'total_time', 'distance', 'registration_number', 'aircraft_type', 'notes',
+            'total_time', 'distance', 'registration_number', 'aircraft_type', 'notes', 'like_count', 'liked', 'comment_count',
         )
 
     def get_notes(self, obj):
         return None if obj.hide_notes else obj.notes
+
+
+class ReplySerializer(serializers.ModelSerializer):
+    author = serializers.CharField(source='author.username', read_only=True, default=None)
+    like_count = serializers.SerializerMethodField()
+    liked = serializers.SerializerMethodField()
+    mine = serializers.SerializerMethodField()
+    can_delete = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Comment
+        fields = ('id', 'author', 'body', 'edited', 'created_at', 'like_count', 'liked', 'mine', 'can_delete')
+
+    def get_like_count(self, obj):
+        return getattr(obj, 'like_count', 0)
+
+    def get_liked(self, obj):
+        return getattr(obj, 'liked', False)
+
+    def get_mine(self, obj):
+        return obj.author_id == self.context['request'].user.pk
+
+    def get_can_delete(self, obj):
+        return obj.author_id is not None and (self.get_mine(obj) or obj.flight.user_id == self.context['request'].user.pk)
+
+
+class CommentSerializer(ReplySerializer):
+    replies = ReplySerializer(many=True, read_only=True)
+
+    class Meta(ReplySerializer.Meta):
+        fields = ReplySerializer.Meta.fields + ('replies',)
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    kind = serializers.SerializerMethodField()
+    actor = serializers.SerializerMethodField()
+    flight = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Notification
+        fields = ('id', 'kind', 'actor', 'flight', 'read', 'created_at')
+
+    def get_kind(self, obj):
+        if obj.follow:
+            if obj.recipient_id != obj.follow.pilot_id:
+                return 'approved'
+            return 'follow_request' if obj.follow.status == Follow.PENDING else 'follow'
+        if obj.comment:
+            return 'reply' if obj.comment.parent and obj.comment.parent.author_id == obj.recipient_id else 'comment'
+        return 'comment_like' if obj.like.comment_id else 'flight_like'
+
+    def get_actor(self, obj):
+        if obj.follow:
+            return (obj.follow.follower if obj.recipient_id == obj.follow.pilot_id else obj.follow.pilot).username
+        return (obj.comment.author if obj.comment else obj.like.user).username
+
+    def get_flight(self, obj):
+        flight = obj.comment.flight if obj.comment else obj.like.flight if obj.like else None
+        if flight is None:
+            return None
+        route = f'{flight.departure_airport} → {flight.arrival_airport}'
+        return {'id': flight.id, 'route': route, 'mine': flight.user_id == obj.recipient_id}
 
 
 class CrewSeatSerializer(serializers.ModelSerializer):

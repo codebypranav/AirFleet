@@ -1,19 +1,21 @@
 "use client";
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { useAction } from '@/components/Crew';
 import { PilotList } from '@/components/Follow';
 import { PlaneIcon } from '@/components/Icons';
+import { Comments, LikeButton } from '@/components/Social';
 import { EmptyState, ErrorState, PageHeader, PageShell, Section, Spinner } from '@/components/PageShell';
 import type { FeedFlight } from '@/types/flight';
-import { followPilot, getFeed, getFollows, unfollowPilot } from '@/utils/api';
+import { followPilot, getFeed, getFeedEntry, getFollows, likeFlight, unfollowPilot } from '@/utils/api';
 import { formatDate, formatDuration } from '@/utils/format';
 import { useApi } from '@/utils/useApi';
 
 const PAGE_SIZE = 20;
 
-function FeedRow({ flight }: { flight: FeedFlight }) {
+function FeedRow({ flight, open = false }: { flight: FeedFlight; open?: boolean }) {
     const body = (
         <>
             <p className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
@@ -32,17 +34,41 @@ function FeedRow({ flight }: { flight: FeedFlight }) {
         </>
     );
     return (
-        <li>
+        <li className="px-4 py-3">
             {flight.pilot_is_public ? (
-                <Link href={`/share/flights/${flight.id}`} className="block px-4 py-3 transition-colors hover:bg-graphite/50">{body}</Link>
+                <Link href={`/share/flights/${flight.id}`} className="-mx-2 block rounded-lg px-2 py-1 transition-colors hover:bg-graphite/50">{body}</Link>
             ) : (
-                <div className="px-4 py-3">{body}</div>
+                <div className="py-1">{body}</div>
             )}
+            <div className="mt-2 flex flex-col gap-1">
+                <LikeButton liked={flight.liked} count={flight.like_count} toggle={(on) => likeFlight(flight.id, on)} />
+                <Comments flightId={flight.id} count={flight.comment_count} startOpen={open} />
+            </div>
         </li>
     );
 }
 
+function FeedEntry({ id }: { id: string }) {
+    const { data: flight, error } = useApi(() => getFeedEntry(id), `entry-${id}`);
+    if (error) return <ErrorState message={error} />;
+    if (!flight) return <Spinner label="Fetching the flight" />;
+    return (
+        <ul className="rounded-xl border border-line">
+            <FeedRow flight={flight} open />
+        </ul>
+    );
+}
+
 export default function FollowingPage() {
+    return (
+        <Suspense>
+            <Following />
+        </Suspense>
+    );
+}
+
+function Following() {
+    const entry = useSearchParams().get('flight');
     const [page, setPage] = useState(1);
     const feed = useApi(() => getFeed(page), `feed-${page}`);
     const { data: follows, reload } = useApi(getFollows, 'follows');
@@ -93,7 +119,13 @@ export default function FollowingPage() {
                 </Section>
             )}
 
-            <Section title="Their flights">
+            {entry && (
+                <Section title="Flight" action={<Link href="/following" className="text-xs text-ash hover:text-bone">All their flights</Link>}>
+                    <FeedEntry id={entry} />
+                </Section>
+            )}
+
+            <Section title="Their flights" className={entry ? 'hidden' : ''}>
                 {feed.error ? (
                     <ErrorState message={feed.error} onRetry={feed.reload} />
                 ) : !feed.data ? (

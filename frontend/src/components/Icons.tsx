@@ -116,3 +116,19 @@ export function MedalIcon({ className = '' }: IconProps) {
         </svg>
     );
 }
+
+export function BellIcon({ className = '' }: IconProps) {
+    return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+            <path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15ZM10 21h4" />
+        </svg>
+    );
+}
+
+export function HeartIcon({ className = '', filled = false }: IconProps & { filled?: boolean }) {
+    return (
+        <svg aria-hidden="true" viewBox="0 0 24 24" className={className} fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round">
+            <path d="M12 20s-7-4.4-7-10a4 4 0 0 1 7-2.6A4 4 0 0 1 19 10c0 5.6-7 10-7 10Z" />
+        </svg>
+    );
+}
