@@ -40,6 +40,7 @@ export interface Flight {
     is_simulator: boolean;
     /** Started from a flight plan and not flown yet; left out of totals, currency and rankings. */
     is_draft: boolean;
+    in_flight: boolean;
     weather_conditions: string;
     signature: Signature | null;
     created_at: string;
@@ -248,6 +249,27 @@ export interface CrewInvite {
     invited_by: string;
     flight: PublicFlight;
     created_at: string;
+}
+
+export interface LiveFlight {
+    id: number;
+    pilot: string;
+    departure_airport: string;
+    arrival_airport: string;
+    registration_number: string;
+    departure_time: string;
+    eta: string;
+    is_mine: boolean;
+    unconfirmed: boolean;
+}
+
+export interface StartFlight {
+    role: CrewRole;
+    departure_airport: string;
+    arrival_airport: string;
+    registration_number: string;
+    ete_minutes: number;
+    crew: { username: string; role: CrewRole }[];
 }
 
 export interface PublicPilot {

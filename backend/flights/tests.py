@@ -7,6 +7,7 @@ from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.cache import cache
 from django.test import SimpleTestCase, override_settings
+from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from . import airports, external, flight_plans, insights, patterns, plan_review, quick_log
@@ -1460,3 +1461,123 @@ class AvatarTests(ApiTestCase):
         self.assertIn('avatars/', self.client.get('/api/pilots/pilot/').data['avatar'])
         self.client.delete('/api/me/', {'confirm': 'pilot', 'password': PASSWORD}, format='json')
         self.assertFalse(avatar.storage.exists(avatar.name))
+
+
+class LiveFlightTests(ApiTestCase):
+    START = {'departure_airport': 'KPAO', 'arrival_airport': 'KSQL', 'registration_number': 'N123AB', 'ete_minutes': 45}
+
+    def setUp(self):
+        super().setUp()
+        self.register('maria')
+        self.register('sam')
+        self.authenticate()
+
+    def start(self, **overrides):
+        return self.client.post('/api/live/', {**self.START, 'crew': [{'username': 'maria', 'role': 'SIC'}], **overrides}, format='json')
+
+    def shift(self, flight_id, **delta):
+        flight = Flight.objects.get(pk=flight_id)
+        Flight.objects.filter(pk=flight_id).update(
+            departure_time=flight.departure_time - timedelta(**delta), arrival_time=flight.arrival_time - timedelta(**delta),
+        )
+
+    def live_as(self, username):
+        self.authenticate(username)
+        return self.client.get('/api/live/').data
+
+    def test_crew_see_a_started_flight_and_strangers_dont(self):
+        res = self.start(role='SIC', crew=[{'username': 'maria', 'role': 'PIC'}, {'username': 'sam', 'role': 'PIC'}])
+        self.assertEqual(res.status_code, 201, res.data)
+        flight = Flight.objects.get(pk=res.data['id'])
+        self.assertTrue(flight.is_draft and flight.in_flight)
+        self.assertEqual(flight.arrival_time - flight.departure_time, timedelta(minutes=45))
+        self.assertEqual(self.client.get('/api/stats/').data['totals']['flights'], 0)
+        self.assertEqual(
+            {(m['username'], m['role']) for m in self.client.get(f"/api/flights/{flight.pk}/crew/").data},
+            {('pilot', 'SIC'), ('maria', 'PIC'), ('sam', 'PIC')},
+        )
+
+        [seen] = self.live_as('maria')
+        self.assertEqual(
+            (seen['pilot'], seen['departure_airport'], seen['arrival_airport'], seen['is_mine'], seen['unconfirmed']),
+            ('pilot', 'KPAO', 'KSQL', False, False),
+        )
+        [invite] = self.client.get('/api/crew/invites/').data
+        self.assertEqual(self.client.post(f"/api/crew/{invite['id']}/accept/").status_code, 400)
+
+        self.authenticate('sam')
+        [invite] = self.client.get('/api/crew/invites/').data
+        self.assertEqual(self.client.delete(f"/api/crew/{invite['id']}/").status_code, 204)
+        self.assertEqual(self.client.get('/api/live/').data, [])
+        self.assertEqual(self.live_as('dana'), [])
+
+    def test_landing_early_on_a_long_route(self):
+        flight_id = self.start(arrival_airport='KJFK', ete_minutes=330).data['id']
+        self.shift(flight_id, minutes=10)
+        res = self.client.post(f'/api/live/{flight_id}/land/')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertFalse(res.data['in_flight'])
+        next_id = self.start().data['id']
+        future = (timezone.now() + timedelta(hours=3)).isoformat()
+        res = self.client.post(f'/api/live/{next_id}/land/', {'arrival_time': future}, format='json')
+        self.assertEqual(res.status_code, 400)
+
+    def test_one_live_flight_at_a_time_and_not_in_a_grounded_aircraft(self):
+        self.assertEqual(self.start().status_code, 201)
+        self.assertEqual(self.start(registration_number='N999ZZ').status_code, 400)
+
+        self.authenticate('sam')
+        Aircraft.objects.create(user=get_user_model().objects.get(username='sam'), registration='N123AB', grounded=True)
+        res = self.client.post('/api/live/', self.START, format='json')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('grounded', str(res.data))
+
+    def test_check_in_after_the_eta_and_still_flying(self):
+        flight_id = self.start().data['id']
+        self.shift(flight_id, minutes=80)
+        self.assertTrue(self.client.get('/api/live/').data[0]['unconfirmed'])
+        self.assertTrue(self.live_as('maria')[0]['unconfirmed'])
+
+        self.authenticate()
+        res = self.client.post(f'/api/live/{flight_id}/still-flying/')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertFalse(res.data['unconfirmed'])
+        flight = Flight.objects.get(pk=flight_id)
+        self.assertEqual(flight.total_time, flight.arrival_time - flight.departure_time)
+        self.assertLess(abs((flight.arrival_time - flight.updated_at).total_seconds()), 5)
+
+    def test_unanswered_check_in_lands_at_the_last_deadline(self):
+        flight_id = self.start().data['id']
+        self.shift(flight_id, hours=3)
+        eta = Flight.objects.get(pk=flight_id).arrival_time
+
+        self.assertEqual(self.client.get('/api/live/').data, [])
+        flight = Flight.objects.get(pk=flight_id)
+        self.assertEqual((flight.in_flight, flight.is_draft, flight.arrival_time), (False, True, eta))
+        self.assertEqual(self.client.post(f'/api/live/{flight_id}/land/').status_code, 404)
+        self.assertEqual(self.start().status_code, 201)
+
+    def test_land_log_and_crew_accept(self):
+        flight_id = self.start().data['id']
+        self.assertEqual(self.client.patch(f'/api/flights/{flight_id}/', {'is_draft': False}, format='json').status_code, 400)
+        self.assertEqual(self.live_as('sam'), [])
+        self.assertEqual(self.client.post(f'/api/live/{flight_id}/land/').status_code, 404)
+
+        self.authenticate()
+        self.shift(flight_id, minutes=50)
+        landed_at = Flight.objects.get(pk=flight_id).departure_time + timedelta(minutes=40)
+        res = self.client.post(f'/api/live/{flight_id}/land/', {'arrival_time': landed_at.isoformat()}, format='json')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual((res.data['in_flight'], res.data['is_draft'], res.data['total_time']), (False, True, '00:40:00'))
+        self.assertEqual(self.client.get('/api/live/').data, [])
+
+        res = self.client.patch(f'/api/flights/{flight_id}/', {'is_draft': False, 'pic_time': '00:40:00'}, format='json')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.authenticate('maria')
+        [invite] = self.client.get('/api/crew/invites/').data
+        self.assertEqual(self.client.post(f"/api/crew/{invite['id']}/accept/").status_code, 201)
+
+    def test_discarding_ends_it_for_the_crew(self):
+        flight_id = self.start().data['id']
+        self.assertEqual(self.client.delete(f'/api/flights/{flight_id}/').status_code, 204)
+        self.assertEqual(self.live_as('maria'), [])

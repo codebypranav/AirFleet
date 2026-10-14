@@ -18,10 +18,11 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
-from . import airports, crew, external, flight_plans, insights, logbook_io, patterns, plan_review, quick_log
+from . import airports, crew, external, flight_plans, insights, live, logbook_io, patterns, plan_review, quick_log
 from .models import Aircraft, CrewSeat, Flight
 from .serializers import (
-    AddCrewSerializer, AircraftSerializer, CrewInviteSerializer, CrewRoleSerializer, CrewSeatSerializer, FlightSerializer, PublicFlightSerializer,
+    AddCrewSerializer, AircraftSerializer, CrewInviteSerializer, CrewRoleSerializer, CrewSeatSerializer, FlightSerializer, LandSerializer,
+    LiveFlightSerializer, PublicFlightSerializer, StartFlightSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -71,6 +72,7 @@ class UserFlightsMixin:
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        live.settle()
         return Flight.objects.filter(user=self.request.user).select_related('aircraft').prefetch_related('signatures')
 
 
@@ -131,6 +133,47 @@ class CrewView(APIView):
 def crew_invites(request):
     seats = CrewSeat.objects.filter(pilot=request.user, status=CrewSeat.PENDING).select_related('flight__user', 'flight__aircraft')
     return Response(CrewInviteSerializer(seats, many=True, context={'request': request}).data)
+
+
+class LiveFlightsView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def get_throttles(self):
+        return [CrewInviteThrottle()] if self.request.method == 'POST' else []
+
+    def get(self, request):
+        live.settle()
+        return Response(LiveFlightSerializer(live.visible_to(request.user), many=True, context={'request': request}).data)
+
+    def post(self, request):
+        serializer = StartFlightSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        data = serializer.validated_data
+        flight = live.start(request, crew_members=data.pop('crew', []), **data)
+        return Response(LiveFlightSerializer(flight, context={'request': request}).data, status=201)
+
+
+def my_live_flight(request, pk):
+    live.settle()
+    return get_object_or_404(Flight.objects.select_for_update(), pk=pk, user=request.user, in_flight=True)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def still_flying(request, pk):
+    flight = live.still_flying(my_live_flight(request, pk))
+    return Response(LiveFlightSerializer(flight, context={'request': request}).data)
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@transaction.atomic
+def land_flight(request, pk):
+    serializer = LandSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+    flight = live.land(my_live_flight(request, pk), serializer.validated_data.get('arrival_time'))
+    return Response(FlightSerializer(flight, context={'request': request}).data)
 
 
 @api_view(['POST'])

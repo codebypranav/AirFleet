@@ -20,7 +20,7 @@ def own_seat(flight):
 
 
 def logger_seat(flight):
-    if flight.is_draft:
+    if flight.is_draft and not flight.in_flight:
         raise ValidationError({'username': ["Log the flight before adding crew."]})
     Flight.objects.select_for_update().filter(pk=flight.pk).first()
     seat = own_seat(flight)
@@ -67,7 +67,7 @@ def invite(flight, username, role):
 def accept(seat, request):
     original = seat.flight
     if original.is_draft:
-        raise ValidationError({'error': ["This flight has gone back to being a draft. Ask the pilot to log it again."]})
+        raise ValidationError({'error': ["The pilot hasn't logged this flight yet. Accept it once they have."]})
     data = {field: getattr(original, field) for field in COPIED_FIELDS}
     data['pic_time' if seat.role == CrewSeat.PIC else 'sic_time'] = original.total_time
     serializer = FlightSerializer(data=data, context={'request': request})
