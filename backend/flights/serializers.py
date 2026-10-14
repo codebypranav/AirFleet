@@ -222,6 +222,23 @@ class PublicFlightSerializer(serializers.ModelSerializer):
         return airport_info(obj.arrival_airport)
 
 
+class FeedFlightSerializer(serializers.ModelSerializer):
+    pilot = serializers.CharField(source='user.username', read_only=True)
+    pilot_is_public = serializers.BooleanField(source='user.is_public', read_only=True)
+    aircraft_type = serializers.CharField(source='aircraft.type_code', read_only=True, default='')
+    notes = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Flight
+        fields = (
+            'id', 'pilot', 'pilot_is_public', 'departure_airport', 'arrival_airport', 'departure_time',
+            'total_time', 'distance', 'registration_number', 'aircraft_type', 'notes',
+        )
+
+    def get_notes(self, obj):
+        return None if obj.hide_notes else obj.notes
+
+
 class CrewSeatSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='pilot.username', read_only=True)
     avatar = serializers.SerializerMethodField()
@@ -264,6 +281,7 @@ class StartFlightSerializer(serializers.Serializer):
     registration_number = serializers.CharField(max_length=10)
     ete_minutes = serializers.IntegerField(min_value=1, max_value=realism.MAX_FLIGHT_HOURS * 60)
     crew = AddCrewSerializer(many=True, required=False, max_length=8)
+    hidden_from_followers = serializers.BooleanField(default=False)
 
 
 class LandSerializer(serializers.Serializer):

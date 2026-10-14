@@ -4,6 +4,7 @@ import { use } from 'react';
 import Link from 'next/link';
 import Avatar from '@/components/Avatar';
 import RouteMap from '@/components/RouteMap';
+import { countLabel, FollowButton } from '@/components/Follow';
 import { AchievementGrid } from '@/components/Insights';
 import { PlaneIcon } from '@/components/Icons';
 import { EmptyState, PageHeader, PageShell, Section, Spinner, StatGrid } from '@/components/PageShell';
@@ -14,7 +15,7 @@ import { useApi } from '@/utils/useApi';
 export default function PilotPage({ params }: { params: Promise<{ username: string }> }) {
     const { username } = use(params);
     const name = decodeURIComponent(username);
-    const { data: pilot, error } = useApi(() => getPublicPilot(name), name);
+    const { data: pilot, error, reload } = useApi(() => getPublicPilot(name), name);
 
     return (
         <PageShell variant="public">
@@ -29,8 +30,13 @@ export default function PilotPage({ params }: { params: Promise<{ username: stri
                     <PageHeader
                         eyebrow={`Pilot${pilot.home_airport ? ` · based at ${pilot.home_airport}` : ''} · since ${formatDate(pilot.member_since, 'long')}`}
                         title={pilot.username}
-                        description={pilot.bio || undefined}
-                        action={pilot.avatar && <Avatar username={pilot.username} avatar={pilot.avatar} size={96} />}
+                        description={[pilot.bio, `${countLabel(pilot.followers, 'follower')} · following ${pilot.following.toLocaleString()}`].filter(Boolean).join(' · ')}
+                        action={
+                            <div className="flex items-center gap-4">
+                                <FollowButton username={pilot.username} onChange={reload} />
+                                {pilot.avatar && <Avatar username={pilot.username} avatar={pilot.avatar} size={96} />}
+                            </div>
+                        }
                     />
                     <StatGrid
                         stats={[

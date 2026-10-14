@@ -1,6 +1,7 @@
 import Cookies from 'js-cookie';
 import type {
-    Achievement, Aircraft, Airport, CrewInvite, CrewRole, CrewSeat, Currency, Endorsement, EndorsementKind, Flight, FlightPlanDraft, ImportResult,
+    Achievement, Aircraft, Airport, CrewInvite, CrewRole, CrewSeat, Currency, Endorsement, EndorsementKind, FeedFlight, Flight, FlightPlanDraft, Follows,
+    FollowStatus, ImportResult,
     InstructorLink, LiveFlight, NoteThemes, Paginated, Patterns, PlanReview, Profile, PublicFlight, PublicPilot, QuickLogDraft, RouteMapData,
     Signature, StartFlight, Stats, StudentFlight,
 } from '@/types/flight';
@@ -191,6 +192,17 @@ export const startFlight = (data: StartFlight) => apiJson<LiveFlight>('/live/', 
 export const stillFlying = (id: number) => apiJson<LiveFlight>(`/live/${id}/still-flying/`, { method: 'POST' });
 export const landFlight = (id: number, arrival_time?: string) =>
     apiJson<Flight>(`/live/${id}/land/`, { method: 'POST', json: arrival_time ? { arrival_time } : {} });
+
+const pilotPath = (username: string, edge: 'follow' | 'follower' | 'block') => `/pilots/${encodeURIComponent(username)}/${edge}/`;
+export const getFollows = () => apiJson<Follows>('/follows/');
+export const followPilot = (username: string) =>
+    apiJson<{ username: string; status: FollowStatus }>(pilotPath(username, 'follow'), { method: 'POST' });
+export const unfollowPilot = (username: string) => apiJson<void>(pilotPath(username, 'follow'), { method: 'DELETE' });
+export const approveFollower = (username: string) => apiJson<void>(pilotPath(username, 'follower'), { method: 'POST' });
+export const removeFollower = (username: string) => apiJson<void>(pilotPath(username, 'follower'), { method: 'DELETE' });
+export const blockPilot = (username: string) => apiJson<void>(pilotPath(username, 'block'), { method: 'POST' });
+export const unblockPilot = (username: string) => apiJson<void>(pilotPath(username, 'block'), { method: 'DELETE' });
+export const getFeed = (page = 1) => apiJson<Paginated<FeedFlight>>(`/feed/${query({ page })}`);
 
 export const getFleet = () => apiJson<Aircraft[]>('/aircraft/');
 export const getAircraft = (id: number | string) => apiJson<Aircraft>(`/aircraft/${id}/`);

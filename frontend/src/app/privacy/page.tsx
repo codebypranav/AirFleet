@@ -30,6 +30,7 @@ export default function PrivacyPage() {
                         <Item title="Flights">airports, dates and times, aircraft registrations, logbook times, weather, notes, flight plans and photos. Together these are a record of where and when you flew.</Item>
                         <Item title="Aircraft">registrations, types, hours and maintenance dates you enter.</Item>
                         <Item title="Instruction">who your instructors and students are; each sign-off, with the instructor&apos;s name, certificate number and expiry, their remarks and a copy of the flight&apos;s logbook fields as signed; and endorsements, with their wording, dates and the same instructor details. Withdrawn sign-offs and endorsements are kept, marked withdrawn, with the reason given.</Item>
+                        <Item title="Following">who you follow or have asked to follow, who follows you, and who you have blocked.</Item>
                         <Item title="Quick log descriptions">read once to fill in the new-flight form, then discarded. Only the fields you save are kept.</Item>
                         <Item title="Flight plan PDFs">read once to fill in a draft flight, then discarded. The PDF isn&apos;t stored and isn&apos;t sent to anyone else; only the fields you save are kept.</Item>
                         <Item title="Cookies">only the sign-in tokens that keep you logged in. No advertising or tracking cookies.</Item>
@@ -73,6 +74,20 @@ export default function PrivacyPage() {
                     </p>
                 </Section>
 
+                <Section title="Followers">
+                    <p className="text-stone">
+                        Anyone can follow a public profile without asking; for a private one you approve or deny each request,
+                        and you can remove a follower at any time. Making your profile public approves any requests still
+                        waiting, and making it private keeps the followers you already have. Approved followers see your live
+                        flights the way crew do, and a feed of your logged flights: route, date, aircraft, block time and
+                        distance. Your notes are shown only on flights where you untick <em>Keep my write-up to myself</em>,
+                        which is ticked by default; photos, gates and flight plans never are. Drafts never appear, and you can
+                        hide any flight from followers. Blocking a pilot ends follows both ways, stops new ones and hides each
+                        of you from the other&apos;s banner and feed; it doesn&apos;t change flights you share as crew. If your
+                        profile is public, your follower and following counts appear on it and your follower count in rankings.
+                    </p>
+                </Section>
+
                 <Section title="Public profiles">
                     <p className="text-stone">
                         Your logbook is private unless you turn on <em>Public profile</em>. Then anyone with the link can see
@@ -86,7 +101,7 @@ export default function PrivacyPage() {
                     <ul className="list-disc space-y-2 pl-5">
                         <Item title="See and correct">edit your profile and any flight at any time.</Item>
                         <Item title="Take it with you">export your logbook as CSV from the logbook page.</Item>
-                        <Item title="Erase it">delete your account from your profile page. Your profile, flights, aircraft and photos are deleted straight away; database backups expire on their own shortly after.</Item>
+                        <Item title="Erase it">delete your account from your profile page. Your profile, flights, aircraft, photos, follows and blocks are deleted straight away; database backups expire on their own shortly after.</Item>
                     </ul>
                     {CONTACT && (
                         <p className="mt-4 text-stone">

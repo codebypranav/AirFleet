@@ -41,6 +41,8 @@ export interface Flight {
     /** Started from a flight plan and not flown yet; left out of totals, currency and rankings. */
     is_draft: boolean;
     in_flight: boolean;
+    hidden_from_followers: boolean;
+    hide_notes: boolean;
     weather_conditions: string;
     signature: Signature | null;
     created_at: string;
@@ -270,6 +272,7 @@ export interface StartFlight {
     registration_number: string;
     ete_minutes: number;
     crew: { username: string; role: CrewRole }[];
+    hidden_from_followers: boolean;
 }
 
 export interface PublicPilot {
@@ -278,6 +281,8 @@ export interface PublicPilot {
     bio: string;
     home_airport: string;
     member_since: string;
+    followers: number;
+    following: number;
     stats: Totals;
     achievements: Achievement[];
     recent_flights: PublicFlight[];
@@ -350,4 +355,32 @@ export interface PlanCheck {
 export interface PlanReview {
     checks: PlanCheck[];
     simulator: boolean;
+}
+
+export type FollowStatus = 'PENDING' | 'APPROVED';
+
+export interface PilotCard {
+    username: string;
+    avatar: string | null;
+}
+
+export interface Follows {
+    following: (PilotCard & { status: FollowStatus })[];
+    followers: PilotCard[];
+    requests: PilotCard[];
+    blocked: PilotCard[];
+}
+
+export interface FeedFlight {
+    id: number;
+    pilot: string;
+    pilot_is_public: boolean;
+    departure_airport: string;
+    arrival_airport: string;
+    departure_time: string;
+    total_time: string;
+    distance: number;
+    registration_number: string;
+    aircraft_type: string;
+    notes: string | null;
 }

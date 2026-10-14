@@ -23,7 +23,8 @@ def settle():
 
 def visible_to(user):
     crewed = CrewSeat.objects.filter(pilot=user).exclude(status=CrewSeat.DECLINED).values('flight')
-    return Flight.objects.filter(Q(user=user) | Q(pk__in=crewed), in_flight=True).select_related('user')
+    mine = Flight.objects.filter(Q(user=user) | Q(pk__in=crewed))
+    return (mine | Flight.objects.followed_by(user)).filter(in_flight=True).select_related('user')
 
 
 @transaction.atomic

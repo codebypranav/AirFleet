@@ -20,6 +20,7 @@ export default function StartFlightPage() {
     const [ete, setEte] = useState('');
     const [role, setRole] = useState<CrewRole>('PIC');
     const [crew, setCrew] = useState<Crewmate[]>([]);
+    const [hidden, setHidden] = useState(false);
 
     const setCrewmate = (index: number, change: Partial<Crewmate>) =>
         setCrew((rows) => rows.map((row, i) => (i === index ? { ...row, ...change } : row)));
@@ -36,6 +37,7 @@ export default function StartFlightPage() {
                 registration_number: registration,
                 ete_minutes: minutes,
                 crew: crew.filter((row) => row.username.trim()).map((row) => ({ ...row, username: row.username.trim() })),
+                hidden_from_followers: hidden,
             });
             router.push('/flights');
         });
@@ -46,7 +48,7 @@ export default function StartFlightPage() {
             <PageHeader
                 eyebrow="Logbook · Live"
                 title="Start a flight"
-                description="The timer starts now. Your crew see the flight while it's in the air, and you finish the details after you land."
+                description="The timer starts now. Your crew and followers see the flight while it's in the air, and you finish the details after you land."
             />
             <form onSubmit={submit} className="card grid max-w-2xl grid-cols-1 gap-4 p-6 sm:grid-cols-2">
                 <AirportInput id="live-departure" label="From" value={departure} onChange={setDeparture} />
@@ -78,6 +80,10 @@ export default function StartFlightPage() {
                     ))}
                     <button type="button" onClick={() => setCrew((rows) => [...rows, { username: '', role: 'SIC' }])} className="btn btn-ghost text-sm">Add crewmate</button>
                 </fieldset>
+                <label htmlFor="live-hidden" className="flex cursor-pointer items-start gap-3 text-sm text-bone sm:col-span-2">
+                    <input type="checkbox" id="live-hidden" checked={hidden} onChange={(e) => setHidden(e.target.checked)} className="mt-1 h-4 w-4 accent-[var(--color-moss)]" />
+                    <span>Only my crew can see this flight<span className="block text-xs text-ash">Your followers won&apos;t see it in the air or in their feed.</span></span>
+                </label>
                 {error && <p className="alert-error sm:col-span-2" role="alert">{error}</p>}
                 <button type="submit" disabled={busy} className="btn btn-primary sm:col-span-2">{busy ? 'Starting…' : 'Start flight'}</button>
             </form>

@@ -19,6 +19,7 @@ from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 from rest_framework_simplejwt.tokens import RefreshToken
 
+from flights import follows
 from flights.models import Flight
 from .serializers import (
     ChangePasswordSerializer, DeleteAccountSerializer, PasswordResetConfirmSerializer, ProfileSerializer, UserSerializer,
@@ -241,8 +242,7 @@ class RankingsView(APIView):
         names = dict(User.objects.filter(pk__in=visited).values_list('pk', 'username'))
         airports_ranking = sorted(visited.items(), key=lambda kv: (-len(kv[1]), names[kv[0]]))[:10]
 
-        return Response({
-            'period': period,
+        boards = {
             'flights': [row(u, total_flights=u.total_flights) for u in users.order_by('-total_flights', 'username')[:10]],
             'time': [
                 row(u, total_time=str(u.total_time or timedelta(0)))
@@ -260,4 +260,9 @@ class RankingsView(APIView):
                 {'username': names[pk], 'is_public': public[pk], 'airports_visited': len(codes)}
                 for pk, codes in airports_ranking
             ],
-        })
+        }
+        followers = follows.follower_counts({r['username'] for board in boards.values() for r in board})
+        for board in boards.values():
+            for r in board:
+                r['followers'] = followers.get(r['username'], 0) if r['is_public'] else None
+        return Response({'period': period, **boards})

@@ -18,11 +18,11 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
-from . import airports, crew, external, flight_plans, insights, live, logbook_io, patterns, plan_review, quick_log
-from .models import Aircraft, CrewSeat, Flight
+from . import airports, crew, external, flight_plans, follows, insights, live, logbook_io, patterns, plan_review, quick_log
+from .models import Aircraft, Block, CrewSeat, Flight, Follow
 from .serializers import (
     AddCrewSerializer, AircraftSerializer, CrewInviteSerializer, CrewRoleSerializer, CrewSeatSerializer, FlightSerializer, LandSerializer,
-    LiveFlightSerializer, PublicFlightSerializer, StartFlightSerializer,
+    FeedFlightSerializer, LiveFlightSerializer, PublicFlightSerializer, StartFlightSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -41,6 +41,10 @@ class LookupThrottle(UserRateThrottle):
 
 class CrewInviteThrottle(UserRateThrottle):
     scope = 'invite'
+
+
+class FollowThrottle(UserRateThrottle):
+    scope = 'follow'
 
 
 class FlightPagination(PageNumberPagination):
@@ -151,6 +155,61 @@ class LiveFlightsView(APIView):
         data = serializer.validated_data
         flight = live.start(request, crew_members=data.pop('crew', []), **data)
         return Response(LiveFlightSerializer(flight, context={'request': request}).data, status=201)
+
+
+def pilot_card(request, user, avatar=True, **extra):
+    url = request.build_absolute_uri(user.avatar.url) if avatar and user.avatar else None
+    return {'username': user.username, 'avatar': url, **extra}
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def follow_list(request):
+    following = Follow.objects.filter(follower=request.user, pilot__is_active=True).select_related('pilot')
+    followers = Follow.objects.filter(pilot=request.user, follower__is_active=True).select_related('follower')
+    blocked = Block.objects.filter(blocker=request.user).select_related('blocked')
+    return Response({
+        'following': [pilot_card(request, f.pilot, f.status == Follow.APPROVED, status=f.status) for f in following],
+        'followers': [pilot_card(request, f.follower) for f in followers if f.status == Follow.APPROVED],
+        'requests': [pilot_card(request, f.follower) for f in followers if f.status == Follow.PENDING],
+        'blocked': [pilot_card(request, b.blocked, False) for b in blocked],
+    })
+
+
+@api_view(['POST', 'DELETE'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([FollowThrottle])
+def follow_pilot(request, username):
+    if request.method == 'DELETE':
+        follows.unfollow(request.user, username)
+        return Response(status=204)
+    follow = follows.follow(request.user, username)
+    return Response({'username': follow.pilot.username, 'status': follow.status})
+
+
+@api_view(['POST', 'DELETE'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([FollowThrottle])
+def follower(request, username):
+    (follows.approve if request.method == 'POST' else follows.remove)(request.user, username)
+    return Response(status=204)
+
+
+@api_view(['POST', 'DELETE'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([FollowThrottle])
+def block_pilot(request, username):
+    (follows.block if request.method == 'POST' else follows.unblock)(request.user, username)
+    return Response(status=204)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def feed(request):
+    flights = Flight.objects.logged().followed_by(request.user).select_related('user', 'aircraft').order_by('-departure_time', '-pk')
+    paginator = FlightPagination()
+    page = paginator.paginate_queryset(flights, request)
+    return paginator.get_paginated_response(FeedFlightSerializer(page, many=True).data)
 
 
 def my_live_flight(request, pk):
@@ -450,6 +509,8 @@ def public_pilot(request, username):
         'bio': pilot.bio,
         'home_airport': pilot.home_airport,
         'member_since': pilot.date_joined.date().isoformat(),
+        'followers': follows.follower_counts([pilot.username]).get(pilot.username, 0),
+        'following': Follow.objects.filter(follower=pilot, status=Follow.APPROVED, pilot__is_active=True).count(),
         'stats': insights.summary(flights)['totals'],
         'achievements': [a for a in insights.achievements(flights) if a['earned']],
         'recent_flights': PublicFlightSerializer(flights[:10], many=True, context={'request': request}).data,
