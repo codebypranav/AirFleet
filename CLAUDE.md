@@ -32,7 +32,7 @@ Full stack: `docker compose up --build` (Postgres, Django :8000, Next :3000).
 
 ## Backend architecture
 
-- `AirFleet_api/settings.py`: `AUTH_USER_MODEL = 'users.CustomUser'`, JWT-only auth (simplejwt), `DEBUG = False` hard-coded, DB from `DATABASE_URL` via dj-database-url. Throttle scopes (`quick_log`, `lookup`, `invite`, `auth`) are defined here and applied per view. Photos go to S3-compatible Neon Object Storage when `AWS_*` env vars are set, otherwise local disk. New frontend origins must be added to `CORS_ALLOWED_ORIGINS`/`CORS_ALLOWED_ORIGIN_REGEXES`.
+- `AirFleet_api/settings.py`: `AUTH_USER_MODEL = 'users.CustomUser'`, JWT-only auth (simplejwt), `DEBUG = False` hard-coded, DB from `DATABASE_URL` via dj-database-url. Throttle scopes (`quick_log`, `lookup`, `invite`, `follow`, `comment`, `like`, `auth`) are defined here and applied per view. Photos go to S3-compatible Neon Object Storage when `AWS_*` env vars are set, otherwise local disk. New frontend origins must be added to `CORS_ALLOWED_ORIGINS`/`CORS_ALLOWED_ORIGIN_REGEXES`.
 - URLs: `users` and `flights` both mount at `/api/`; `instruction` at `/api/instruction/`. `GET /api/rankings/` is public and used as the health check (Render, Playwright).
 - `flights/` is the core app; logic is split into plain modules beside the views:
   - `airports.py` — loads the bundled OurAirports extract `data/airports.csv.gz` (ICAO validation, search, great-circle distance).
