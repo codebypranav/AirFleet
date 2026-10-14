@@ -68,6 +68,8 @@ export default function PrivacyPage() {
                         columns and photo). Once they accept they get their own copy in their logbook, with its gates, weather and
                         flight plan but without your notes, photo, landings or approaches. That copy stays theirs if
                         you later edit or delete the flight or your account. Crewmates see each other&apos;s username and profile picture.
+                        While a flight is live, you and anyone you invited who hasn&apos;t declined see that it&apos;s in the air:
+                        route, aircraft, take-off time and expected landing.
                     </p>
                 </Section>
 

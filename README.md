@@ -50,10 +50,16 @@ due dates and route maps, and lets an instructor sign lessons and give endorseme
   CSVs or ForeFlight logbook exports. Duplicates are skipped and bad rows reported.
 - **Accounts:** profile editing with a profile picture, password change, password reset by email, optional Google
   sign-in, and opt-in public pilot profiles and shareable flight pages.
-- **Flying with friends:** invite crewmates to a logged flight by username as Captain (PIC) or
+- **Flying with friends:** invite crewmates to a logged or live flight by username as Captain (PIC) or
   First officer (SIC). Each crewmate accepts from the Flights page and gets their own copy in their
   logbook, with the block time credited to their role. Notes, photos, landings, approaches,
   simulated instrument and dual received time are not copied, and copies don't sync after accept.
+- **Live flights:** start a flight from the Flights page with the route, registration, estimated
+  time en route, your role and any crew to invite. A timer runs from take-off, and you and your crew
+  see the flight in a banner on every page (refreshed every 30 seconds) until you land. Landing
+  ends the leg and leaves a draft to finish and log. If you haven't landed 30 minutes past your ETA
+  you're asked whether you're still flying; with no answer 2 hours past it, the flight lands itself
+  at the ETA. AirFleet is not a search-and-rescue service: a missed check-in alerts nobody.
 - **Rankings:** by flights, time, distance, longest flight and airports visited, for all
   time, this year or this month.
 - **Instructor sign-off:** a pilot links with their instructor by invitation (either side
