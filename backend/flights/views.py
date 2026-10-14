@@ -18,11 +18,11 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
-from . import airports, crew, external, flight_plans, follows, insights, live, logbook_io, patterns, plan_review, quick_log
+from . import airports, crew, external, flight_plans, follows, insights, live, logbook_io, patterns, plan_review, quick_log, social
 from .models import Aircraft, Block, CrewSeat, Flight, Follow
 from .serializers import (
-    AddCrewSerializer, AircraftSerializer, CrewInviteSerializer, CrewRoleSerializer, CrewSeatSerializer, FlightSerializer, LandSerializer,
-    FeedFlightSerializer, LiveFlightSerializer, PublicFlightSerializer, StartFlightSerializer,
+    AddCrewSerializer, AircraftSerializer, CommentSerializer, CrewInviteSerializer, CrewRoleSerializer, CrewSeatSerializer, FlightSerializer,
+    LandSerializer, FeedFlightSerializer, LiveFlightSerializer, NotificationSerializer, PublicFlightSerializer, StartFlightSerializer,
 )
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,17 @@ class CrewInviteThrottle(UserRateThrottle):
 
 class FollowThrottle(UserRateThrottle):
     scope = 'follow'
+
+
+class CommentThrottle(UserRateThrottle):
+    scope = 'comment'
+
+    def allow_request(self, request, view):
+        return request.method not in ('POST', 'PATCH') or super().allow_request(request, view)
+
+
+class LikeThrottle(UserRateThrottle):
+    scope = 'like'
 
 
 class FlightPagination(PageNumberPagination):
@@ -206,10 +217,68 @@ def block_pilot(request, username):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def feed(request):
-    flights = Flight.objects.logged().followed_by(request.user).select_related('user', 'aircraft').order_by('-departure_time', '-pk')
     paginator = FlightPagination()
-    page = paginator.paginate_queryset(flights, request)
+    page = paginator.paginate_queryset(feed_flights(request.user).order_by('-departure_time', '-pk'), request)
     return paginator.get_paginated_response(FeedFlightSerializer(page, many=True).data)
+
+
+def feed_flights(user):
+    return social.with_counts(user, Flight.objects.logged().followed_by(user).select_related('user', 'aircraft'))
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def feed_entry(request, pk):
+    return Response(FeedFlightSerializer(get_object_or_404(feed_flights(request.user), pk=pk)).data)
+
+
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([CommentThrottle])
+def flight_comments(request, pk):
+    flight = social.flight_for(request.user, pk)
+    if request.method == 'POST':
+        comment = social.comment(request.user, flight, request.data.get('body'), request.data.get('parent'))
+        return Response(CommentSerializer(comment, context={'request': request}).data, status=201)
+    return Response(CommentSerializer(social.thread(request.user, flight), many=True, context={'request': request}).data)
+
+
+@api_view(['PATCH', 'DELETE'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([CommentThrottle])
+def comment_detail(request, pk):
+    if request.method == 'DELETE':
+        social.delete(request.user, pk)
+        return Response(status=204)
+    comment = social.edit(request.user, pk, request.data.get('body'))
+    return Response(CommentSerializer(comment, context={'request': request}).data)
+
+
+@api_view(['POST', 'DELETE'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([LikeThrottle])
+def like_flight(request, pk):
+    return Response(social.set_like(request.user, social.flight_for(request.user, pk), request.method == 'POST'))
+
+
+@api_view(['POST', 'DELETE'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([LikeThrottle])
+def like_comment(request, pk):
+    flight, comment = social.comment_for_like(request.user, pk)
+    return Response(social.set_like(request.user, flight, request.method == 'POST', comment))
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def notification_list(request):
+    return Response(NotificationSerializer(social.notifications(request.user), many=True).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def unread_notifications(request):
+    return Response({'count': social.unread_count(request.user)})
 
 
 def my_live_flight(request, pk):

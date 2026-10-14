@@ -3,7 +3,9 @@
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Wordmark } from '@/components/Brand';
-import { clearTokens } from '@/utils/api';
+import { BellIcon } from '@/components/Icons';
+import { clearTokens, getUnreadCount } from '@/utils/api';
+import { useApi, usePoll } from '@/utils/useApi';
 
 const LINKS = [
     { href: '/flights', label: 'Logbook' },
@@ -14,6 +16,27 @@ const LINKS = [
     { href: '/rankings', label: 'Rankings' },
     { href: '/profile', label: 'Profile' },
 ];
+
+function Bell({ active }: { active: boolean }) {
+    const { data, reload } = useApi(getUnreadCount, 'unread');
+    usePoll(reload);
+    const count = active ? 0 : data?.count ?? 0;
+    return (
+        <Link
+            href="/notifications"
+            aria-label={count ? `Notifications, ${count} unread` : 'Notifications'}
+            aria-current={active ? 'page' : undefined}
+            className={`relative rounded-full p-2 transition-colors ${active ? 'bg-graphite text-paper' : 'text-ash hover:text-bone'}`}
+        >
+            <BellIcon className="h-5 w-5" />
+            {count > 0 && (
+                <span className="absolute -right-0.5 -top-0.5 min-w-[1.1rem] rounded-full bg-clay px-1 text-center text-[10px] font-medium leading-[1.1rem] text-ink">
+                    {count > 99 ? '99+' : count}
+                </span>
+            )}
+        </Link>
+    );
+}
 
 export default function Navbar({ variant = 'app' }: { variant?: 'app' | 'public' }) {
     const router = useRouter();
@@ -66,9 +89,12 @@ export default function Navbar({ variant = 'app' }: { variant?: 'app' | 'public'
                         </Link>
                     ))}
                 </div>
-                <button onClick={handleLogout} className="btn btn-ghost px-4 py-1.5 text-ash hover:text-bone">
-                    Log out
-                </button>
+                <div className="flex items-center gap-2">
+                    <Bell active={isActive('/notifications')} />
+                    <button onClick={handleLogout} className="btn btn-ghost px-4 py-1.5 text-ash hover:text-bone">
+                        Log out
+                    </button>
+                </div>
             </div>
         </nav>
     );

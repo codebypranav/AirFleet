@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { CrewSection } from '@/components/Crew';
 import RouteMap from '@/components/RouteMap';
+import { CommentList } from '@/components/Social';
 import { EditIcon, ShareIcon, TrashIcon } from '@/components/Icons';
 import { ErrorState, PageHeader, PageShell, Section, Spinner, StatGrid } from '@/components/PageShell';
 import { InsightList } from '@/components/Insights';
@@ -196,6 +197,11 @@ export default function FlightDetail({ params }: { params: Promise<{ id: string 
             </div>
 
             {!flight.is_draft && <CrewSection flightId={flight.id} />}
+            {!flight.is_draft && (
+                <Section title="Comments">
+                    <CommentList flightId={flight.id} />
+                </Section>
+            )}
 
             {(flight.signature || durationToSeconds(flight.dual_received_time) > 0) && (
                 <Section title="Instructor sign-off">

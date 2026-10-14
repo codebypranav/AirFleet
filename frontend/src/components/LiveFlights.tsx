@@ -6,7 +6,7 @@ import { useAction } from '@/components/Crew';
 import type { LiveFlight } from '@/types/flight';
 import { deleteFlight, getLiveFlights, landFlight, stillFlying } from '@/utils/api';
 import { fromLocalInput, toLocalInput } from '@/utils/format';
-import { useApi } from '@/utils/useApi';
+import { useApi, usePoll } from '@/utils/useApi';
 
 const elapsed = (from: string, now: number) => {
     const minutes = Math.max(0, Math.floor((now - Date.parse(from)) / 60000));
@@ -57,15 +57,7 @@ export default function LiveFlights() {
     const [now, setNow] = useState(Date.now);
     const live = Boolean(flights?.length);
 
-    useEffect(() => {
-        const poll = () => document.visibilityState === 'visible' && reload();
-        const timer = setInterval(poll, 30_000);
-        document.addEventListener('visibilitychange', poll);
-        return () => {
-            clearInterval(timer);
-            document.removeEventListener('visibilitychange', poll);
-        };
-    }, [reload]);
+    usePoll(reload);
 
     useEffect(() => {
         if (!live) return;

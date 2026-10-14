@@ -383,4 +383,36 @@ export interface FeedFlight {
     registration_number: string;
     aircraft_type: string;
     notes: string | null;
+    like_count: number;
+    liked: boolean;
+    comment_count: number;
+}
+
+export interface Reply {
+    id: number;
+    author: string | null;
+    body: string;
+    edited: boolean;
+    created_at: string;
+    like_count: number;
+    liked: boolean;
+    mine: boolean;
+    can_delete: boolean;
+}
+
+export interface FlightComment extends Reply {
+    replies: Reply[];
+}
+
+export type Liked = { liked: boolean; like_count: number };
+
+export type NotificationKind = 'follow_request' | 'follow' | 'approved' | 'comment' | 'reply' | 'flight_like' | 'comment_like';
+
+export interface AppNotification {
+    id: number;
+    kind: NotificationKind;
+    actor: string;
+    flight: { id: number; route: string; mine: boolean } | null;
+    read: boolean;
+    created_at: string;
 }

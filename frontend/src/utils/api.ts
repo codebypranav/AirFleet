@@ -1,7 +1,7 @@
 import Cookies from 'js-cookie';
 import type {
-    Achievement, Aircraft, Airport, CrewInvite, CrewRole, CrewSeat, Currency, Endorsement, EndorsementKind, FeedFlight, Flight, FlightPlanDraft, Follows,
-    FollowStatus, ImportResult,
+    Achievement, Aircraft, Airport, AppNotification, CrewInvite, CrewRole, CrewSeat, Currency, Endorsement, EndorsementKind, FeedFlight, Flight, FlightPlanDraft, Follows,
+    FlightComment, FollowStatus, ImportResult, Liked,
     InstructorLink, LiveFlight, NoteThemes, Paginated, Patterns, PlanReview, Profile, PublicFlight, PublicPilot, QuickLogDraft, RouteMapData,
     Signature, StartFlight, Stats, StudentFlight,
 } from '@/types/flight';
@@ -203,6 +203,17 @@ export const removeFollower = (username: string) => apiJson<void>(pilotPath(user
 export const blockPilot = (username: string) => apiJson<void>(pilotPath(username, 'block'), { method: 'POST' });
 export const unblockPilot = (username: string) => apiJson<void>(pilotPath(username, 'block'), { method: 'DELETE' });
 export const getFeed = (page = 1) => apiJson<Paginated<FeedFlight>>(`/feed/${query({ page })}`);
+export const getFeedEntry = (id: number | string) => apiJson<FeedFlight>(`/feed/${id}/`);
+
+export const getComments = (flightId: number) => apiJson<FlightComment[]>(`/flights/${flightId}/comments/`);
+export const addComment = (flightId: number, body: string, parent?: number) =>
+    apiJson<FlightComment>(`/flights/${flightId}/comments/`, { method: 'POST', json: { body, parent } });
+export const editComment = (id: number, body: string) => apiJson<FlightComment>(`/comments/${id}/`, { method: 'PATCH', json: { body } });
+export const deleteComment = (id: number) => apiJson<void>(`/comments/${id}/`, { method: 'DELETE' });
+export const likeFlight = (id: number, on: boolean) => apiJson<Liked>(`/flights/${id}/like/`, { method: on ? 'POST' : 'DELETE' });
+export const likeComment = (id: number, on: boolean) => apiJson<Liked>(`/comments/${id}/like/`, { method: on ? 'POST' : 'DELETE' });
+export const getNotifications = () => apiJson<AppNotification[]>('/notifications/');
+export const getUnreadCount = () => apiJson<{ count: number }>('/notifications/unread/');
 
 export const getFleet = () => apiJson<Aircraft[]>('/aircraft/');
 export const getAircraft = (id: number | string) => apiJson<Aircraft>(`/aircraft/${id}/`);

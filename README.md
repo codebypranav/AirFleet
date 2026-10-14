@@ -69,6 +69,15 @@ due dates and route maps, and lets an instructor sign lessons and give endorseme
   with followers only when the pilot unticks *Keep my write-up to myself* (ticked by default), and a
   flight can be hidden from followers altogether. Follower counts show on pilot pages, the profile and
   rankings.
+- **Comments and likes:** followers who can see a flight, and its pilot, can like it and leave plain-text
+  comments (up to 500 characters) under the feed entry and on the pilot's flight page. Replies go one
+  level deep, and comments can be liked too. Authors can edit their own comments (shown as *edited*)
+  and delete them; the flight's pilot can delete any comment on it. A deleted comment with replies
+  stays as *Comment deleted*. Losing access to a flight leaves your comments on it, but you can no
+  longer see or edit them.
+- **Notifications:** a bell in the nav counts unread follows, follow requests and approvals, comments,
+  replies and likes, refreshed every 30 seconds. Opening the list marks them read, and AirFleet keeps
+  them for 90 days. AirFleet emails nothing, and your own actions and blocked pilots never notify you.
 - **Rankings:** by flights, time, distance, longest flight and airports visited, for all
   time, this year or this month.
 - **Instructor sign-off:** a pilot links with their instructor by invitation (either side
@@ -78,7 +87,8 @@ due dates and route maps, and lets an instructor sign lessons and give endorseme
   to their profile can be invited as one and still logs their own flights. See
   [Instructor sign-off](#instructor-sign-off).
 - **Privacy:** a `/privacy` notice of what is stored and which services see it, and account
-  deletion from the profile page that erases the pilot's flights, aircraft and photos.
+  deletion from the profile page that erases the pilot's flights, aircraft, photos, likes, notifications
+  and comments (a comment with replies stays as *Comment deleted*).
 
 ## Technical architecture
 
