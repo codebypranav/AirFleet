@@ -1888,6 +1888,23 @@ class SocialTests(ApiTestCase):
         self.client.delete(f'/api/comments/{top}/')
         self.assertEqual(self.notifications(), [])
 
+    def test_notifications_inside_a_hidden_thread_are_hidden(self):
+        top = self.comment().data['id']
+        self.as_('sam')
+        self.client.patch('/api/me/', {'is_public': True}, format='json')
+        self.client.post('/api/pilots/amy/follow/')
+        reply = self.comment('Agreed', parent=top).data['id']
+        self.as_('amy')
+        self.client.post(f'/api/comments/{reply}/like/')
+        self.assertIn(('comment', 'sam'), self.notifications())
+        self.client.post('/api/pilots/pilot/block/')
+        self.assertEqual((self.notifications(), self.unread()), ([('follow', 'sam')], 0))
+        self.as_('sam')
+        self.assertIn(('comment_like', 'amy'), self.notifications())
+        self.client.post('/api/pilots/pilot/block/')
+        self.assertNotIn(('comment_like', 'amy'), self.notifications())
+        self.assertEqual(self.unread(), 0)
+
     def test_blocked_pilots_comments_are_hidden(self):
         self.comment()
         self.as_('sam')

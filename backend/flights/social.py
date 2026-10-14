@@ -147,7 +147,9 @@ def _visible_notifications(viewer):
         .filter(created_at__gte=timezone.now() - RETENTION)
         .filter(Q(follow__isnull=False) | Q(comment__flight__in=flights) | Q(like__flight__in=flights))
         .exclude(blocked_with(viewer, 'comment__author'))
+        .exclude(blocked_with(viewer, 'comment__parent__author'))
         .exclude(blocked_with(viewer, 'like__user'))
+        .exclude(blocked_with(viewer, 'like__comment__parent__author'))
     )
 
 
