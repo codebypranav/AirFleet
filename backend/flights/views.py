@@ -149,12 +149,12 @@ def end_crew_seat(request, pk):
     seat = get_object_or_404(
         CrewSeat.objects.filter(Q(pilot=request.user) | Q(flight__user=request.user)), pk=pk, status=CrewSeat.PENDING,
     )
+    pending = CrewSeat.objects.filter(pk=seat.pk, status=CrewSeat.PENDING)
     if seat.pilot_id == request.user.pk:
-        seat.status = CrewSeat.DECLINED
-        seat.save(update_fields=['status'])
+        changed = pending.update(status=CrewSeat.DECLINED)
     else:
-        seat.delete()
-    return Response(status=204)
+        changed, _ = pending.delete()
+    return Response(status=204 if changed else 404)
 
 
 @api_view(['GET'])

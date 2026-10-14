@@ -10,7 +10,7 @@ from django.test import SimpleTestCase, override_settings
 from rest_framework.test import APITestCase
 
 from . import airports, external, flight_plans, insights, patterns, plan_review, quick_log
-from .models import Aircraft, Flight
+from .models import Aircraft, CrewSeat, Flight
 
 FLIGHT = {
     'departure_airport': 'KJFK',
@@ -1362,6 +1362,17 @@ class CrewTests(ApiTestCase):
         self.assertEqual(self.client.delete(f"/api/crew/{pending['id']}/").status_code, 204)
         self.authenticate('maria')
         self.assertEqual(self.client.get('/api/crew/invites/').data, [])
+
+    def test_decline_or_cancel_after_accept_leaves_the_seat(self):
+        self.invite()
+        stale = CrewSeat.objects.get(status=CrewSeat.PENDING)
+        copy = self.accept_as('maria').data
+        for user in ('maria', 'pilot'):
+            self.authenticate(user)
+            with mock.patch('flights.views.get_object_or_404', return_value=stale):
+                self.assertEqual(self.client.delete(f'/api/crew/{stale.pk}/').status_code, 404)
+        self.assertEqual(self.crew(self.flight['id']), {('pilot', 'PIC', 'LOGGER'), ('maria', 'SIC', 'ACCEPTED')})
+        self.assertEqual(CrewSeat.objects.get(pk=stale.pk).flight_id, copy['id'])
 
     def test_my_role_is_a_label(self):
         res = self.client.patch(f"/api/flights/{self.flight['id']}/crew/", {'role': 'SIC'}, format='json')
