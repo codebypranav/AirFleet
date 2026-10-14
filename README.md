@@ -48,8 +48,12 @@ due dates and route maps, and lets an instructor sign lessons and give endorseme
   the actual times and untick *Draft*. The PDF itself isn't stored.
 - **Import/export:** CSV export of the logbook (or a filtered slice), and import of AirFleet
   CSVs or ForeFlight logbook exports. Duplicates are skipped and bad rows reported.
-- **Accounts:** profile editing, password change, password reset by email, optional Google
+- **Accounts:** profile editing with a profile picture, password change, password reset by email, optional Google
   sign-in, and opt-in public pilot profiles and shareable flight pages.
+- **Flying with friends:** invite crewmates to a logged flight by username as Captain (PIC) or
+  First officer (SIC). Each crewmate accepts from the Flights page and gets their own copy in their
+  logbook, with the block time credited to their role. Notes, photos, landings, approaches,
+  simulated instrument and dual received time are not copied, and copies don't sync after accept.
 - **Rankings:** by flights, time, distance, longest flight and airports visited, for all
   time, this year or this month.
 - **Instructor sign-off:** a pilot links with their instructor by invitation (either side

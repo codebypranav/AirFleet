@@ -26,7 +26,7 @@ export default function PrivacyPage() {
             <div className="max-w-3xl space-y-4 text-sm leading-relaxed">
                 <Section title="What we store">
                     <ul className="list-disc space-y-2 pl-5">
-                        <Item title="Account">username, email, name, bio and home airport, plus a hashed password (never the password itself).</Item>
+                        <Item title="Account">username, email, name, profile picture, bio and home airport, plus a hashed password (never the password itself).</Item>
                         <Item title="Flights">airports, dates and times, aircraft registrations, logbook times, weather, notes, flight plans and photos. Together these are a record of where and when you flew.</Item>
                         <Item title="Aircraft">registrations, types, hours and maintenance dates you enter.</Item>
                         <Item title="Instruction">who your instructors and students are; each sign-off, with the instructor&apos;s name, certificate number and expiry, their remarks and a copy of the flight&apos;s logbook fields as signed; and endorsements, with their wording, dates and the same instructor details. Withdrawn sign-offs and endorsements are kept, marked withdrawn, with the reason given.</Item>
@@ -59,6 +59,15 @@ export default function PrivacyPage() {
                         stops that straight away. They also see the endorsements they have given you, and no one else&apos;s.
                         Sign-offs and endorsements stay on your record, with the instructor&apos;s name and certificate
                         number, even if they later delete their account. Your CSV export includes who signed each flight.
+                    </p>
+                </Section>
+
+                <Section title="Crew">
+                    <p className="text-stone">
+                        A pilot you invite to a flight sees what a public profile would show of it (route, times, aircraft, logbook
+                        columns and photo). Once they accept they get their own copy in their logbook, with its gates, weather and
+                        flight plan but without your notes, photo, landings or approaches. That copy stays theirs if
+                        you later edit or delete the flight or your account. Crewmates see each other&apos;s username and profile picture.
                     </p>
                 </Section>
 
