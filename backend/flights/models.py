@@ -53,6 +53,15 @@ class FlightQuerySet(models.QuerySet):
         """Flights in the logbook proper. Drafts (planned, not yet flown) don't count towards anything."""
         return self.filter(is_draft=False)
 
+    def followed_by(self, viewer):
+        pilots = (
+            Follow.objects.filter(follower=viewer, status=Follow.APPROVED)
+            .exclude(pilot__in=Block.objects.filter(blocked=viewer).values('blocker'))
+            .exclude(pilot__in=Block.objects.filter(blocker=viewer).values('blocked'))
+            .values('pilot')
+        )
+        return self.filter(user__in=pilots, user__is_active=True, hidden_from_followers=False)
+
 
 class Flight(models.Model):
     objects = FlightQuerySet.as_manager()
@@ -108,6 +117,8 @@ class Flight(models.Model):
     # Started from a flight plan before the flight; finalised once the actual times are in.
     is_draft = models.BooleanField(default=False)
     in_flight = models.BooleanField(default=False)
+    hidden_from_followers = models.BooleanField(default=False)
+    hide_notes = models.BooleanField(default=True)
 
     weather_conditions = models.TextField(blank=True, help_text="Usually the departure METAR")
 
@@ -151,3 +162,39 @@ class CrewSeat(models.Model):
 
     def __str__(self):
         return f"{self.pilot} as {self.role} ({self.get_status_display()})"
+
+
+class Follow(models.Model):
+    PENDING, APPROVED = 'PENDING', 'APPROVED'
+    STATUS_CHOICES = [(PENDING, 'Pending'), (APPROVED, 'Approved')]
+
+    follower = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='following')
+    pilot = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='followers')
+    status = models.CharField(max_length=8, choices=STATUS_CHOICES)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['follower', 'pilot'], name='one_follow_per_pair'),
+            models.CheckConstraint(condition=~models.Q(follower=models.F('pilot')), name='no_self_follow'),
+        ]
+
+    def __str__(self):
+        return f"{self.follower} follows {self.pilot} ({self.get_status_display()})"
+
+
+class Block(models.Model):
+    blocker = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='blocks')
+    blocked = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='+')
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['-created_at']
+        constraints = [
+            models.UniqueConstraint(fields=['blocker', 'blocked'], name='one_block_per_pair'),
+            models.CheckConstraint(condition=~models.Q(blocker=models.F('blocked')), name='no_self_block'),
+        ]
+
+    def __str__(self):
+        return f"{self.blocker} blocked {self.blocked}"

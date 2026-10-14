@@ -11,7 +11,7 @@ from django.utils import timezone
 from rest_framework.test import APITestCase
 
 from . import airports, external, flight_plans, insights, patterns, plan_review, quick_log
-from .models import Aircraft, CrewSeat, Flight
+from .models import Aircraft, Block, CrewSeat, Flight, Follow
 
 FLIGHT = {
     'departure_airport': 'KJFK',
@@ -177,7 +177,7 @@ class ApiFlowTests(ApiTestCase):
         self.client.credentials()
         res = self.client.get('/api/rankings/')
         self.assertEqual(res.status_code, 200)
-        self.assertEqual(res.data['flights'][0], {'username': 'pilot', 'is_public': False, 'total_flights': 1})
+        self.assertEqual(res.data['flights'][0], {'username': 'pilot', 'is_public': False, 'total_flights': 1, 'followers': None})
         self.assertEqual(res.data['distance'][0]['total_distance'], 2145)
         self.assertEqual(res.data['longest'][0]['longest_flight'], '5:30:00')
         self.assertEqual(res.data['airports'][0]['airports_visited'], 2)
@@ -1581,3 +1581,139 @@ class LiveFlightTests(ApiTestCase):
         flight_id = self.start().data['id']
         self.assertEqual(self.client.delete(f'/api/flights/{flight_id}/').status_code, 204)
         self.assertEqual(self.live_as('maria'), [])
+
+
+class FollowTests(ApiTestCase):
+    START = LiveFlightTests.START
+
+    def setUp(self):
+        super().setUp()
+        self.authenticate('amy')
+        self.client.patch('/api/me/', {'is_public': True}, format='json')
+        self.register('sam')
+        self.authenticate()
+
+    def as_(self, username):
+        self.authenticate(username)
+        return self
+
+    def follow(self, username):
+        return self.client.post(f'/api/pilots/{username}/follow/')
+
+    def live(self):
+        return [(f['pilot'], f['is_mine'], f['unconfirmed']) for f in self.client.get('/api/live/').data]
+
+    def feed(self):
+        return [(f['pilot'], f['departure_airport'], f['notes']) for f in self.client.get('/api/feed/').data['results']]
+
+    def test_following_a_public_pilot_shows_their_live_and_logged_flights(self):
+        self.as_('amy')
+        self.add_flight(notes='Smooth')
+        self.add_flight(departure_airport='KBOS', is_draft=True)
+        self.assertEqual(self.client.post('/api/live/', self.START, format='json').status_code, 201)
+
+        self.as_('pilot')
+        self.assertEqual((self.live(), self.feed()), ([], []))
+        res = self.follow('amy')
+        self.assertEqual((res.status_code, res.data['status']), (200, 'APPROVED'))
+        self.assertEqual(self.follow('amy').data['status'], 'APPROVED')
+        self.assertEqual(self.live(), [('amy', False, False)])
+        self.assertEqual(self.feed(), [('amy', 'KJFK', None)])
+
+        self.client.credentials()
+        self.assertEqual(self.client.get('/api/pilots/amy/').data['followers'], 1)
+        [amy] = self.client.get('/api/rankings/').data['flights']
+        self.assertEqual(amy['followers'], 1)
+
+        self.as_('pilot')
+        self.assertEqual(self.client.delete('/api/pilots/amy/follow/').status_code, 204)
+        self.assertEqual((self.live(), self.feed()), ([], []))
+
+    def test_a_private_pilot_approves_requests(self):
+        self.as_('sam')
+        self.add_flight()
+        self.as_('pilot')
+        self.assertEqual(self.follow('sam').data['status'], 'PENDING')
+        self.assertEqual(self.feed(), [])
+        self.assertEqual(self.client.get('/api/follows/').data['following'][0]['status'], 'PENDING')
+
+        self.as_('sam')
+        self.assertEqual([r['username'] for r in self.client.get('/api/follows/').data['requests']], ['pilot'])
+        self.assertEqual(self.client.post('/api/pilots/amy/follower/').status_code, 404)
+        self.assertEqual(self.client.post('/api/pilots/pilot/follower/').status_code, 204)
+        self.assertEqual([r['username'] for r in self.client.get('/api/follows/').data['followers']], ['pilot'])
+
+        self.as_('pilot')
+        self.assertEqual(len(self.feed()), 1)
+
+        self.as_('sam')
+        self.assertEqual(self.client.delete('/api/pilots/pilot/follower/').status_code, 204)
+        self.as_('pilot')
+        self.assertEqual(self.feed(), [])
+        self.assertEqual(self.follow('sam').data['status'], 'PENDING')
+
+    def test_going_public_approves_waiting_requests_and_going_private_keeps_followers(self):
+        self.follow('sam')
+        self.as_('sam')
+        self.client.patch('/api/me/', {'is_public': True}, format='json')
+        self.client.patch('/api/me/', {'is_public': False}, format='json')
+        self.assertEqual([r['username'] for r in self.client.get('/api/follows/').data['followers']], ['pilot'])
+
+    def test_hidden_flights_and_notes(self):
+        self.follow('amy')
+        self.as_('amy')
+        self.add_flight(notes='Shared', hide_notes=False)
+        self.add_flight(departure_airport='KBOS', hidden_from_followers=True)
+        res = self.client.post('/api/live/', {**self.START, 'hidden_from_followers': True, 'crew': [{'username': 'pilot', 'role': 'SIC'}]}, format='json')
+        self.assertEqual(res.status_code, 201, res.data)
+
+        self.as_('pilot')
+        self.assertEqual(self.feed(), [('amy', 'KJFK', 'Shared')])
+        self.assertEqual(self.live(), [('amy', False, False)])
+        self.as_('sam')
+        self.client.patch('/api/me/', {'is_public': True}, format='json')
+        self.follow('amy')
+        self.assertEqual(self.live(), [])
+
+    def test_crew_who_also_follow_see_a_live_flight_once(self):
+        self.follow('amy')
+        self.as_('amy')
+        self.client.post('/api/live/', {**self.START, 'crew': [{'username': 'pilot', 'role': 'SIC'}]}, format='json')
+        self.as_('pilot')
+        self.assertEqual(self.live(), [('amy', False, False)])
+
+    def test_blocking(self):
+        self.as_('amy')
+        self.add_flight()
+        self.as_('pilot')
+        self.follow('amy')
+        self.as_('amy')
+        self.follow('pilot')
+        self.assertEqual(self.client.post('/api/pilots/pilot/block/').status_code, 204)
+        self.assertEqual(self.client.post('/api/pilots/pilot/block/').status_code, 204)
+        follows = self.client.get('/api/follows/').data
+        self.assertEqual((follows['following'], follows['followers'], [b['username'] for b in follows['blocked']]), ([], [], ['pilot']))
+
+        self.as_('pilot')
+        self.assertEqual(self.feed(), [])
+        nobody = "No AirFleet pilot is called {}."
+        for name in ('amy', 'pilot', 'nobody'):
+            res = self.follow(name)
+            self.assertEqual((res.status_code, res.data['username']), (400, [nobody.format(name)]))
+        self.assertEqual(self.client.post('/api/pilots/amy/block/').status_code, 204)
+        self.assertEqual(self.client.delete('/api/pilots/amy/block/').status_code, 204)
+
+        Follow.objects.create(follower=get_user_model().objects.get(username='pilot'), pilot=get_user_model().objects.get(username='amy'), status=Follow.APPROVED)
+        self.assertEqual(self.feed(), [])
+
+        self.as_('amy')
+        self.assertEqual(self.client.delete('/api/pilots/pilot/block/').status_code, 204)
+        self.as_('pilot')
+        self.assertEqual(len(self.feed()), 1)
+
+    def test_deleting_an_account_removes_its_follows(self):
+        self.follow('amy')
+        self.as_('amy')
+        self.client.post('/api/pilots/pilot/block/')
+        self.client.delete('/api/me/', {'confirm': 'amy', 'password': PASSWORD}, format='json')
+        self.assertEqual((Follow.objects.count(), Block.objects.count()), (0, 0))

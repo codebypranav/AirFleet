@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { countLabel } from '@/components/Follow';
 import { PageShell, PageHeader, EmptyState, ErrorState, Spinner } from '@/components/PageShell';
 import { apiJson } from '@/utils/api';
 import { durationToSeconds, formatDuration } from '@/utils/format';
@@ -10,6 +11,7 @@ import { useApi } from '@/utils/useApi';
 interface Ranking {
     username: string;
     is_public: boolean;
+    followers: number | null;
     total_flights?: number;
     total_time?: string;
     total_distance?: number;
@@ -107,13 +109,18 @@ export default function RankingsPage() {
                         </span>
                         <div className="min-w-0 flex-1">
                             <div className="flex items-baseline justify-between gap-4">
-                                {rank.is_public ? (
-                                    <Link href={`/pilots/${encodeURIComponent(rank.username)}`} className="truncate text-lg text-paper underline-offset-4 hover:text-fern hover:underline">
-                                        {rank.username}
-                                    </Link>
-                                ) : (
-                                    <span className="truncate text-lg text-paper">{rank.username}</span>
-                                )}
+                                <span className="min-w-0 truncate">
+                                    {rank.is_public ? (
+                                        <Link href={`/pilots/${encodeURIComponent(rank.username)}`} className="text-lg text-paper underline-offset-4 hover:text-fern hover:underline">
+                                            {rank.username}
+                                        </Link>
+                                    ) : (
+                                        <span className="text-lg text-paper">{rank.username}</span>
+                                    )}
+                                    {rank.followers !== null && (
+                                        <span className="ml-2 text-xs text-ash">{countLabel(rank.followers, 'follower')}</span>
+                                    )}
+                                </span>
                                 <span className="shrink-0 font-mono text-sm text-bone">{display(activeTab, rank)}</span>
                             </div>
                             <div className="mt-2 h-1 overflow-hidden rounded-full bg-graphite">

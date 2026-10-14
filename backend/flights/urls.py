@@ -31,5 +31,10 @@ urlpatterns = [
     path('weather/', views.weather, name='weather'),
     path('simbrief/', views.simbrief, name='simbrief'),
     path('public/flights/<int:pk>/', views.public_flight, name='public-flight'),
+    path('follows/', views.follow_list, name='follows'),
+    path('feed/', views.feed, name='feed'),
+    path('pilots/<str:username>/follow/', views.follow_pilot, name='follow-pilot'),
+    path('pilots/<str:username>/follower/', views.follower, name='follower'),
+    path('pilots/<str:username>/block/', views.block_pilot, name='block-pilot'),
     path('pilots/<str:username>/', views.public_pilot, name='public-pilot'),
 ]

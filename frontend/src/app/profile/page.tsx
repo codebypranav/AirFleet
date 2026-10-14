@@ -4,6 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Avatar from '@/components/Avatar';
+import { FollowersSection } from '@/components/Follow';
 import { CheckIcon, ShareIcon } from '@/components/Icons';
 import { ErrorState, PageHeader, PageShell, Section, Spinner } from '@/components/PageShell';
 import type { Profile } from '@/types/flight';
@@ -86,7 +87,8 @@ function ProfileForm({ profile, onSaved }: { profile: Profile; onSaved: (p: Prof
                     <span className="block text-sm text-bone">Public profile</span>
                     <span className="block text-xs text-ash">
                         Anyone with the link can see your profile, totals, achievements, route map and flights
-                        (route, times, aircraft and photo). Notes, gates and flight plans stay private.
+                        (route, times, aircraft and photo). Anyone can follow you without asking. Notes, gates and
+                        flight plans stay private, unless you share a flight&apos;s notes with your followers.
                     </span>
                 </span>
             </label>
@@ -267,6 +269,7 @@ export default function ProfilePage() {
             ) : (
                 <>
                     <ProfileForm profile={profile} onSaved={(saved) => setData(() => saved)} />
+                    <FollowersSection key={String(profile.is_public)} />
                     <Section title="Profile picture">
                         <AvatarForm profile={profile} onSaved={(saved) => setData(() => saved)} />
                     </Section>

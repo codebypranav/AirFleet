@@ -39,6 +39,8 @@ type FormState = {
     is_simulator: boolean;
     cross_country: boolean;
     is_draft: boolean;
+    hidden_from_followers: boolean;
+    hide_notes: boolean;
     weather_conditions: string;
     notes: string;
 } & Record<TimeField, string> & Record<CountField, string>;
@@ -71,6 +73,8 @@ function initialState(flight?: Flight): FormState {
         is_simulator: flight?.is_simulator ?? false,
         cross_country: flight?.cross_country ?? false,
         is_draft: flight?.is_draft ?? false,
+        hidden_from_followers: flight?.hidden_from_followers ?? false,
+        hide_notes: flight?.hide_notes ?? true,
         weather_conditions: flight?.weather_conditions ?? '',
         notes: flight?.notes ?? '',
         pic_time: durationInput(flight?.pic_time),
@@ -265,6 +269,8 @@ export default function FlightForm({
         data.append('is_simulator', String(form.is_simulator));
         data.append('cross_country', String(form.cross_country));
         data.append('is_draft', String(form.is_draft));
+        data.append('hidden_from_followers', String(form.hidden_from_followers));
+        data.append('hide_notes', String(form.hide_notes));
         for (const [key, label] of TIME_FIELDS) {
             const parsed = parseDurationInput(form[key]);
             if (parsed === null) {
@@ -292,7 +298,7 @@ export default function FlightForm({
         </div>
     );
 
-    const toggle = (name: 'is_simulator' | 'cross_country' | 'is_draft', label: string, hint: string) => (
+    const toggle = (name: 'is_simulator' | 'cross_country' | 'is_draft' | 'hidden_from_followers' | 'hide_notes', label: string, hint: string) => (
         <label htmlFor={name} className="flex cursor-pointer items-start gap-3 rounded-lg border border-line px-4 py-3 transition-colors hover:border-ash/60">
             <input type="checkbox" id={name} name={name} checked={form[name]} onChange={handleChange} className="mt-1 h-4 w-4 accent-[var(--color-moss)]" />
             <span>
@@ -468,6 +474,8 @@ export default function FlightForm({
                 <div className="mt-5 grid grid-cols-1 gap-3 md:grid-cols-2">
                     {toggle('is_simulator', 'Simulator session', 'Flown in a sim. Doesn’t count towards passenger currency.')}
                     {toggle('cross_country', 'Cross-country', 'Counts towards cross-country time.')}
+                    {toggle('hidden_from_followers', 'Hide from followers', 'Keeps this flight out of your followers’ feed and in-flight banner.')}
+                    {toggle('hide_notes', 'Keep my write-up to myself', 'Followers see the route and times, not what you wrote.')}
                     {(form.is_draft || flight?.is_draft) && toggle('is_draft', 'Draft', 'Planned, not flown yet. Left out of your totals until you untick this.')}
                 </div>
 

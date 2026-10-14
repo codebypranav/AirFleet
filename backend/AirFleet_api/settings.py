@@ -222,6 +222,7 @@ REST_FRAMEWORK = {
         'quick_log': os.environ.get('QUICK_LOG_RATE', '30/hour'),
         'lookup': '120/hour',
         'invite': '30/hour',
+        'follow': '60/hour',
         'auth': '30/minute',
     },
 }

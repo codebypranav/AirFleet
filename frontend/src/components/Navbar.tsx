@@ -7,6 +7,7 @@ import { clearTokens } from '@/utils/api';
 
 const LINKS = [
     { href: '/flights', label: 'Logbook' },
+    { href: '/following', label: 'Following' },
     { href: '/aircraft', label: 'Fleet' },
     { href: '/stats', label: 'Stats' },
     { href: '/instruction', label: 'Instruction' },

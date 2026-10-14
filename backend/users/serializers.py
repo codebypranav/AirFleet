@@ -1,7 +1,7 @@
 from django.contrib.auth.password_validation import validate_password
 from rest_framework import serializers
 
-from flights import airports
+from flights import airports, follows
 from flights.serializers import check_image
 from .models import CustomUser
 
@@ -53,6 +53,7 @@ class ProfileSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         old = instance.avatar.name if 'avatar' in validated_data else None
         user = super().update(instance, validated_data)
+        follows.approve_waiting(user)
         if old and old != user.avatar.name:
             user.avatar.storage.delete(old)
         return user
