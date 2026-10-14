@@ -55,11 +55,20 @@ due dates and route maps, and lets an instructor sign lessons and give endorseme
   logbook, with the block time credited to their role. Notes, photos, landings, approaches,
   simulated instrument and dual received time are not copied, and copies don't sync after accept.
 - **Live flights:** start a flight from the Flights page with the route, registration, estimated
-  time en route, your role and any crew to invite. A timer runs from take-off, and you and your crew
-  see the flight in a banner on every page (refreshed every 30 seconds) until you land. Landing
+  time en route, your role and any crew to invite. A timer runs from take-off, and you, your crew
+  and your followers see the flight in a banner on every page (refreshed every 30 seconds) until you
+  land. Tick *Only my crew can see this flight* to keep it from followers. Landing
   ends the leg and leaves a draft to finish and log. If you haven't landed 30 minutes past your ETA
   you're asked whether you're still flying; with no answer 2 hours past it, the flight lands itself
   at the ETA. AirFleet is not a search-and-rescue service: a missed check-in alerts nobody.
+- **Following:** follow other pilots from their public page or by username on the Following page.
+  Public pilots are followed straight away; a private pilot approves or denies the request from their
+  profile, where they can also remove followers and block pilots (blocking ends follows both ways and
+  stops new ones). Followers see the pilot's live flights in the banner and a feed of their logged
+  flights, newest first: route, date, aircraft, block time and distance. A flight's notes are shared
+  with followers only when the pilot unticks *Keep my write-up to myself* (ticked by default), and a
+  flight can be hidden from followers altogether. Follower counts show on pilot pages, the profile and
+  rankings.
 - **Rankings:** by flights, time, distance, longest flight and airports visited, for all
   time, this year or this month.
 - **Instructor sign-off:** a pilot links with their instructor by invitation (either side
