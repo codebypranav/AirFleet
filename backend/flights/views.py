@@ -18,6 +18,7 @@ from rest_framework.response import Response
 from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
+from groups.models import Group
 from . import airports, crew, external, flight_plans, follows, insights, live, logbook_io, patterns, plan_review, quick_log, social
 from .models import Aircraft, Block, CrewSeat, Flight, Follow
 from .serializers import (
@@ -584,4 +585,5 @@ def public_pilot(request, username):
         'achievements': [a for a in insights.achievements(flights) if a['earned']],
         'recent_flights': PublicFlightSerializer(flights[:10], many=True, context={'request': request}).data,
         'routes': insights.routes(flights),
+        'groups': list(Group.objects.filter(memberships__user=pilot, memberships__status='active').values('slug', 'name', 'kind', 'is_official')),
     })

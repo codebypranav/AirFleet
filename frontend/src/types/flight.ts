@@ -287,6 +287,37 @@ export interface PublicPilot {
     achievements: Achievement[];
     recent_flights: PublicFlight[];
     routes: RouteMapData;
+    groups: GroupBadge[];
+}
+
+export type GroupKind = 'airline' | 'operator' | 'school' | 'alliance' | 'community';
+
+export interface GroupBadge {
+    slug: string;
+    name: string;
+    kind: GroupKind;
+    is_official: boolean;
+}
+
+export interface GroupMember {
+    id: number;
+    username: string;
+    role: 'admin' | 'member';
+    status: 'active' | 'pending';
+}
+
+export interface Group extends GroupBadge {
+    description: string;
+    member_count: number;
+    my_membership: Omit<GroupMember, 'username'> | null;
+}
+
+export interface GroupDetail extends Group {
+    parent: { slug: string; name: string } | null;
+    children: { slug: string; name: string; member_count: number }[];
+    members: GroupMember[];
+    private_count: number;
+    pending: GroupMember[];
 }
 
 export interface ImportResult {

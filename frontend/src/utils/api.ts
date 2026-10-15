@@ -1,7 +1,7 @@
 import Cookies from 'js-cookie';
 import type {
     Achievement, Aircraft, Airport, AppNotification, CrewInvite, CrewRole, CrewSeat, Currency, Endorsement, EndorsementKind, FeedFlight, Flight, FlightPlanDraft, Follows,
-    FlightComment, FollowStatus, ImportResult, Liked,
+    FlightComment, FollowStatus, Group, GroupDetail, GroupMember, ImportResult, Liked,
     InstructorLink, LiveFlight, NoteThemes, Paginated, Patterns, PlanReview, Profile, PublicFlight, PublicPilot, QuickLogDraft, RouteMapData,
     Signature, StartFlight, Stats, StudentFlight,
 } from '@/types/flight';
@@ -269,6 +269,19 @@ export const giveEndorsement = (linkId: number | string, data: EndorsementInput)
     apiJson<Endorsement>(`/instruction/links/${linkId}/endorsements/`, { method: 'POST', json: data });
 export const withdrawEndorsement = (id: number, data: { reason: string; password: string }) =>
     apiJson<Endorsement>(`/instruction/endorsements/${id}/withdraw/`, { method: 'POST', json: data });
+
+export const getGroups = (params: { q?: string; mine?: string } = {}) => apiJson<Group[]>(`/groups/${query(params)}`);
+export const getGroup = (slug: string) => apiJson<GroupDetail>(`/groups/${encodeURIComponent(slug)}/`);
+export type GroupInput = Pick<Group, 'name' | 'kind' | 'description'>;
+export const createGroup = (data: GroupInput) => apiJson<GroupDetail>('/groups/', { method: 'POST', json: data });
+export const updateGroup = (slug: string, data: Partial<GroupInput>) =>
+    apiJson<GroupDetail>(`/groups/${encodeURIComponent(slug)}/`, { method: 'PATCH', json: data });
+export const deleteGroup = (slug: string) => apiJson<void>(`/groups/${encodeURIComponent(slug)}/`, { method: 'DELETE' });
+export const joinGroup = (slug: string) => apiJson<GroupMember>(`/groups/${encodeURIComponent(slug)}/members/`, { method: 'POST' });
+export const updateMember = (slug: string, id: number, data: Partial<Pick<GroupMember, 'role' | 'status'>>) =>
+    apiJson<GroupMember>(`/groups/${encodeURIComponent(slug)}/members/${id}/`, { method: 'PATCH', json: data });
+export const removeMember = (slug: string, id: number) =>
+    apiJson<void>(`/groups/${encodeURIComponent(slug)}/members/${id}/`, { method: 'DELETE' });
 
 export const getPublicPilot = (username: string) => apiJson<PublicPilot>(`/pilots/${encodeURIComponent(username)}/`, { auth: false });
 export const getPublicFlight = (id: number | string) => apiJson<PublicFlight>(`/public/flights/${id}/`, { auth: false });

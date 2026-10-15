@@ -21,6 +21,7 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from flights import follows
 from flights.models import Flight
+from groups.models import hand_over_admin
 from .serializers import (
     ChangePasswordSerializer, DeleteAccountSerializer, PasswordResetConfirmSerializer, ProfileSerializer, UserSerializer,
 )
@@ -133,6 +134,7 @@ class ProfileView(APIView):
             except Exception:
                 logger.exception("Could not delete avatar of user %s", user.pk)
         user_id = user.pk
+        hand_over_admin(user)
         user.delete()
         logger.info("Deleted user %s", user_id)
         return Response(status=status.HTTP_204_NO_CONTENT)

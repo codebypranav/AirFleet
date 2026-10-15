@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import Avatar from '@/components/Avatar';
 import { FollowersSection } from '@/components/Follow';
+import GroupBadges from '@/components/GroupBadges';
 import { CheckIcon, ShareIcon } from '@/components/Icons';
 import { ErrorState, PageHeader, PageShell, Section, Spinner } from '@/components/PageShell';
 import type { Profile } from '@/types/flight';
-import { changePassword, clearTokens, deleteAccount, downloadExport, getProfile, saveTokens, updateAvatar, updateProfile } from '@/utils/api';
+import { changePassword, clearTokens, deleteAccount, downloadExport, getGroups, getProfile, saveTokens, updateAvatar, updateProfile } from '@/utils/api';
 import { formatDate } from '@/utils/format';
 import { useApi } from '@/utils/useApi';
 
@@ -235,6 +236,8 @@ function DeleteAccountForm({ username }: { username: string }) {
 
 export default function ProfilePage() {
     const { data: profile, error, reload, setData } = useApi(getProfile);
+    const { data: myGroups } = useApi(() => getGroups({ mine: '1' }), 'mine');
+    const groups = myGroups?.filter((g) => g.my_membership?.status === 'active') ?? [];
     const [copied, setCopied] = useState(false);
 
     const copyLink = async () => {
@@ -270,6 +273,9 @@ export default function ProfilePage() {
                 <>
                     <ProfileForm profile={profile} onSaved={(saved) => setData(() => saved)} />
                     <FollowersSection key={String(profile.is_public)} />
+                    <Section title="Groups" action={<Link href="/groups" className="text-sm text-fern hover:underline">Find groups</Link>}>
+                        {groups.length > 0 ? <GroupBadges groups={groups} /> : <p className="text-sm text-ash">You&apos;re not in any groups yet.</p>}
+                    </Section>
                     <Section title="Profile picture">
                         <AvatarForm profile={profile} onSaved={(saved) => setData(() => saved)} />
                     </Section>
