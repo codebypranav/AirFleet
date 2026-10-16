@@ -83,8 +83,10 @@ def members(request, slug):
     group = get_object_or_404(Group, slug=slug)
     if group.kind == 'alliance':
         return Response({'error': "Alliances are joined through their member airlines."}, status=400)
+    unclaimed = not group.is_official and not group.memberships.filter(role='admin').exists()
     membership, created = Membership.objects.get_or_create(
-        user=request.user, group=group, defaults={'status': 'pending' if group.is_official else 'active'},
+        user=request.user, group=group,
+        defaults={'status': 'pending' if group.is_official else 'active', 'role': 'admin' if unclaimed else 'member'},
     )
     return Response(MembershipSerializer(membership).data, status=201 if created else 200)
 

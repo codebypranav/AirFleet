@@ -56,7 +56,7 @@ Full stack: `docker compose up --build` (Postgres, Django :8000, Next :3000).
 - `groups/` — pilot groups (airline, operator, school, alliance, community) and memberships:
   - The slug is generated from the name on create and never changes on rename. `is_official` and `parent` are staff-only, set in Django admin, never writable through the API.
   - Nobody joins an alliance directly: its pilots sit in the child airlines (`parent` FK). Community groups join instantly; official groups queue a pending membership a group admin approves or declines.
-  - The last admin can't leave or step down. `hand_over_admin`, a `pre_delete` receiver on the user model (like `social.forget`), passes each group the deleted user solely administered to its oldest active member.
+  - A group with active members always has an admin: the last admin can't leave or step down, and `keep_an_admin`, a `post_delete` receiver on `Membership`, promotes the oldest active member whenever an admin row goes by any path (account deletion, Django admin bulk delete). Joining a community group with no admin makes you its admin; an official group with no admin waits for staff (Django admin filter "Needs an admin").
 - Container entrypoint `launcher.sh` runs migrate + collectstatic + gunicorn; migrations run on every Render start.
 
 ## Frontend architecture

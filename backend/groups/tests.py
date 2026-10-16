@@ -199,6 +199,44 @@ class GroupTests(GroupTestCase):
         get_user_model().objects.filter(username='squatter').delete()
         self.assertEqual(Membership.objects.get(group__slug='bay-area-gliders').role, 'admin')
 
+    def test_deleting_every_admin_at_once_promotes_the_oldest_member(self):
+        self.login('owner')
+        self.create()
+        for username in ('cohost', 'first', 'second'):
+            self.login(username)
+            self.client.post('/api/groups/bay-area-gliders/members/')
+        Membership.objects.filter(user__username='cohost').update(role='admin')
+        get_user_model().objects.filter(username__in=['owner', 'cohost']).delete()
+        roles = dict(Membership.objects.values_list('user__username', 'role'))
+        self.assertEqual(roles, {'first': 'admin', 'second': 'member'})
+
+    def test_joining_an_empty_community_group_claims_it(self):
+        self.login('owner')
+        self.create()
+        get_user_model().objects.filter(username='owner').delete()
+        self.login('pilot')
+        res = self.client.post('/api/groups/bay-area-gliders/members/')
+        self.assertEqual((res.data['role'], res.data['status']), ('admin', 'active'))
+
+    def test_an_official_group_without_admins_waits_for_staff(self):
+        self.login('owner')
+        self.create('Delta Air Lines', 'airline')
+        self.create('Bay Area Gliders')
+        self.make_official('delta-air-lines')
+        get_user_model().objects.filter(username='owner').delete()
+        self.login('pilot')
+        res = self.client.post('/api/groups/delta-air-lines/members/')
+        self.assertEqual((res.data['role'], res.data['status']), ('member', 'pending'))
+
+        staff = get_user_model().objects.create_superuser('staff', 'staff@example.com', PASSWORD)
+        self.client.force_login(staff)
+        page = self.client.get('/admin/groups/group/?admin=none').content.decode()
+        self.assertIn('Delta Air Lines', page)
+        self.assertIn('Bay Area Gliders', page)
+        Membership.objects.create(user=staff, group=Group.objects.get(slug='bay-area-gliders'), role='admin')
+        page = self.client.get('/admin/groups/group/?admin=none').content.decode()
+        self.assertNotIn('Bay Area Gliders', page)
+
     def test_public_profile_shows_active_groups_only(self):
         self.login('owner')
         self.create('Bay Area Gliders')
