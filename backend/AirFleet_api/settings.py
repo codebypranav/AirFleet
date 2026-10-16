@@ -57,6 +57,7 @@ INSTALLED_APPS = [
     'flights',
     'users',
     'instruction',
+    'groups',
     'rest_framework_simplejwt',
 ]
 

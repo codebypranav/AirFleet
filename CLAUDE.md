@@ -33,7 +33,7 @@ Full stack: `docker compose up --build` (Postgres, Django :8000, Next :3000).
 ## Backend architecture
 
 - `AirFleet_api/settings.py`: `AUTH_USER_MODEL = 'users.CustomUser'`, JWT-only auth (simplejwt), `DEBUG = False` hard-coded, DB from `DATABASE_URL` via dj-database-url. Throttle scopes (`quick_log`, `lookup`, `invite`, `follow`, `comment`, `like`, `auth`) are defined here and applied per view. Photos go to S3-compatible Neon Object Storage when `AWS_*` env vars are set, otherwise local disk. New frontend origins must be added to `CORS_ALLOWED_ORIGINS`/`CORS_ALLOWED_ORIGIN_REGEXES`.
-- URLs: `users` and `flights` both mount at `/api/`; `instruction` at `/api/instruction/`. `GET /api/rankings/` is public and used as the health check (Render, Playwright).
+- URLs: `users` and `flights` both mount at `/api/`; `instruction` at `/api/instruction/`; `groups` at `/api/groups/`. `GET /api/rankings/` is public and used as the health check (Render, Playwright).
 - `flights/` is the core app; logic is split into plain modules beside the views:
   - `airports.py` — loads the bundled OurAirports extract `data/airports.csv.gz` (ICAO validation, search, great-circle distance).
   - `external.py` — aviationweather.gov METAR and SimBrief lookups (raise `ExternalLookupError` carrying the HTTP status to return).
@@ -53,6 +53,10 @@ Full stack: `docker compose up --build` (Postgres, Django :8000, Next :3000).
   - Signatures/endorsements are never deleted, only marked withdrawn. Signing requires an active link, dual received time, an unexpired instructor certificate, attestation and the instructor's password.
   - `endorsements.py` holds the endorsement kinds, starter text and expiry rules.
   - "Instructor" is a capability (a certificate on the profile), not an account type.
+- `groups/` — pilot groups (airline, operator, school, alliance, community) and memberships:
+  - The slug is generated from the name on create and never changes on rename. `is_official` and `parent` are staff-only, set in Django admin, never writable through the API.
+  - Nobody joins an alliance directly: its pilots sit in the child airlines (`parent` FK). Community groups join instantly; official groups queue a pending membership a group admin approves or declines.
+  - A group with active members always has an admin: the last admin can't leave or step down, and `keep_an_admin`, a `post_delete` receiver on `Membership`, promotes the oldest active member whenever an admin row goes by any path (account deletion, Django admin bulk delete). Joining a community group with no admin makes you its admin; an official group with no admin waits for staff (Django admin filter "Needs an admin").
 - Container entrypoint `launcher.sh` runs migrate + collectstatic + gunicorn; migrations run on every Render start.
 
 ## Frontend architecture

@@ -3,6 +3,7 @@
 import { use } from 'react';
 import Link from 'next/link';
 import Avatar from '@/components/Avatar';
+import GroupBadges from '@/components/GroupBadges';
 import RouteMap from '@/components/RouteMap';
 import { countLabel, FollowButton } from '@/components/Follow';
 import { AchievementGrid } from '@/components/Insights';
@@ -46,6 +47,12 @@ export default function PilotPage({ params }: { params: Promise<{ username: stri
                             { label: 'Airports', value: pilot.stats.airports.toLocaleString() },
                         ]}
                     />
+
+                    {pilot.groups.length > 0 && (
+                        <Section title="Groups">
+                            <GroupBadges groups={pilot.groups} />
+                        </Section>
+                    )}
 
                     <Section title="Where they've flown">
                         <RouteMap data={pilot.routes} className="h-96" />

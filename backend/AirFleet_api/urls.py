@@ -8,4 +8,5 @@ urlpatterns = [
     path('api/', include('users.urls')),
     path('api/', include('flights.urls')),
     path('api/instruction/', include('instruction.urls')),
+    path('api/groups/', include('groups.urls')),
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

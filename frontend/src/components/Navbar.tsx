@@ -13,6 +13,7 @@ const LINKS = [
     { href: '/aircraft', label: 'Fleet' },
     { href: '/stats', label: 'Stats' },
     { href: '/instruction', label: 'Instruction' },
+    { href: '/groups', label: 'Groups' },
     { href: '/rankings', label: 'Rankings' },
     { href: '/profile', label: 'Profile' },
 ];

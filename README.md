@@ -78,6 +78,14 @@ due dates and route maps, and lets an instructor sign lessons and give endorseme
 - **Notifications:** a bell in the nav counts unread follows, follow requests and approvals, comments,
   replies and likes, refreshed every 30 seconds. Opening the list marks them read, and AirFleet keeps
   them for 90 days. AirFleet emails nothing, and your own actions and blocked pilots never notify you.
+- **Groups:** join the airline, operator, flight school or community you fly with, and wear it as a
+  badge on your profile and your public pilot page. Any pilot can create up to five groups and becomes
+  their admin; official organizations are set up by AirFleet staff, who also gather airlines into
+  alliances (Star Alliance and the like). A community group is joined on the spot, and joining one
+  that has been left without an admin makes you its admin, while an official group's admins approve
+  or decline each request, promote, demote and remove members, and edit the group. A group page lists
+  its members, counting without naming the ones whose profile is private, and an alliance page lists
+  its member airlines with their pilot counts.
 - **Rankings:** by flights, time, distance, longest flight and airports visited, for all
   time, this year or this month.
 - **Instructor sign-off:** a pilot links with their instructor by invitation (either side
@@ -107,6 +115,7 @@ The backend is organized around Django apps:
   SimBrief lookups, flight plan parsing
 - `users/` — accounts, profiles, password reset, public pilot pages
 - `instruction/` — instructor links, lesson signatures and endorsements
+- `groups/` — pilot groups (airlines, operators, flight schools, alliances, communities) and their memberships
 
 ### Frontend (`frontend/`)
 - Next.js 16 (App Router), React 19, TypeScript
@@ -205,6 +214,7 @@ detection, not tamper-proofing against someone with database access.
 backend/
   AirFleet_api/
   flights/
+  groups/
   instruction/
   users/
   flights/data/airports.csv.gz
@@ -315,7 +325,7 @@ GOOGLE_CLIENT_ID=...                      # with GOOGLE_CLIENT_SECRET, shows "Co
 GOOGLE_CLIENT_SECRET=...
 API_URL=...                               # API origin for server-side calls, if it differs from NEXT_PUBLIC_API_URL
 NEXT_PUBLIC_ENABLE_DEBUG=true             # turns on the /debug connection page
-NEXT_PUBLIC_PRIVACY_CONTACT=you@example.com  # shown on /privacy for data requests
+NEXT_PUBLIC_PRIVACY_CONTACT=you@example.com  # shown on /privacy for data requests, and on a group page for making it official
 NEXT_PUBLIC_ARCGIS_API_KEY=...            # optional: high-res Esri satellite view (free tier, 2M tiles/month); without it satellite uses NASA Blue Marble
 NEXT_PUBLIC_CARTO_API_KEY=...             # dark basemap tiles (free key from carto.com/basemaps/apikey); without it the map falls back to OpenStreetMap
 ```
