@@ -10,6 +10,12 @@ import type { Group, GroupKind } from '@/types/flight';
 import { createGroup, getGroups } from '@/utils/api';
 import { useApi } from '@/utils/useApi';
 
+function tally(group: Group) {
+    const n = group.kind === 'alliance' ? group.child_count : group.member_count;
+    const noun = group.kind === 'alliance' ? 'airline' : 'member';
+    return `${n.toLocaleString()} ${n === 1 ? noun : `${noun}s`}`;
+}
+
 function GroupList({ groups }: { groups: Group[] }) {
     return (
         <ul className="divide-y divide-line rounded-xl border border-line">
@@ -21,7 +27,7 @@ function GroupList({ groups }: { groups: Group[] }) {
                             {g.name}
                         </span>
                         <span className="text-ash">
-                            {KIND_LABELS[g.kind]} · {g.is_official ? 'Official' : 'Community group'} · {g.member_count.toLocaleString()} {g.member_count === 1 ? 'member' : 'members'}
+                            {KIND_LABELS[g.kind]} · {g.is_official ? 'Official' : 'Community group'} · {tally(g)}
                             {g.my_membership?.status === 'pending' && ' · Requested'}
                         </span>
                     </Link>

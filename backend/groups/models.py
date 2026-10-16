@@ -2,6 +2,8 @@ from django.conf import settings
 from django.db import models
 from django.db.models import Q
 from django.db.models.functions import Lower
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
 from django.utils.text import slugify
 
 
@@ -57,9 +59,10 @@ class Membership(models.Model):
         ]
 
 
-def hand_over_admin(user):
-    for membership in user.group_memberships.filter(role='admin').select_related('group'):
-        others = membership.group.memberships.exclude(user=user)
+@receiver(pre_delete, sender=settings.AUTH_USER_MODEL)
+def hand_over_admin(sender, instance, **kwargs):
+    for membership in instance.group_memberships.filter(role='admin').select_related('group'):
+        others = membership.group.memberships.exclude(user=instance)
         successor = others.filter(status='active', user__is_active=True).first()
         if successor and not others.filter(role='admin').exists():
             successor.role = 'admin'

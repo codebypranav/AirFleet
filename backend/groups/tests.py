@@ -149,6 +149,10 @@ class GroupTests(GroupTestCase):
         self.assertEqual(res.data['children'], [{'slug': 'united', 'name': 'United', 'member_count': 1}])
         self.assertEqual(self.client.get('/api/groups/united/').data['parent'], {'slug': 'star-alliance', 'name': 'Star Alliance'})
 
+        listed = self.client.get('/api/groups/?q=alliance').data
+        self.assertEqual([(g['slug'], g['member_count'], g['child_count']) for g in listed], [('star-alliance', 0, 1)])
+        self.assertEqual(self.client.get('/api/groups/?q=united').data[0]['child_count'], 0)
+
     def test_admins_remove_members_but_not_other_admins(self):
         self.login('owner')
         self.create()
@@ -185,6 +189,14 @@ class GroupTests(GroupTestCase):
         self.client.post('/api/groups/bay-area-gliders/members/')
         self.login('owner')
         self.assertEqual(self.client.delete('/api/me/', {'confirm': 'owner', 'password': PASSWORD}, format='json').status_code, 204)
+        self.assertEqual(Membership.objects.get(group__slug='bay-area-gliders').role, 'admin')
+
+    def test_admin_deleted_outside_the_api_still_hands_the_group_on(self):
+        self.login('squatter')
+        self.create()
+        self.login('pilot')
+        self.client.post('/api/groups/bay-area-gliders/members/')
+        get_user_model().objects.filter(username='squatter').delete()
         self.assertEqual(Membership.objects.get(group__slug='bay-area-gliders').role, 'admin')
 
     def test_public_profile_shows_active_groups_only(self):

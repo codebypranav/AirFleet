@@ -7,7 +7,10 @@ ACTIVE = Q(memberships__status='active', memberships__user__is_active=True)
 
 
 def with_member_count(groups):
-    return groups.annotate(member_count=Count('memberships', filter=ACTIVE))
+    return groups.annotate(
+        member_count=Count('memberships', filter=ACTIVE, distinct=True),
+        child_count=Count('children', distinct=True),
+    )
 
 
 class MembershipSerializer(serializers.ModelSerializer):
@@ -25,11 +28,12 @@ class MembershipSerializer(serializers.ModelSerializer):
 
 class GroupSerializer(serializers.ModelSerializer):
     member_count = serializers.IntegerField(read_only=True)
+    child_count = serializers.IntegerField(read_only=True)
     my_membership = serializers.SerializerMethodField()
 
     class Meta:
         model = Group
-        fields = ('slug', 'name', 'kind', 'is_official', 'description', 'member_count', 'my_membership')
+        fields = ('slug', 'name', 'kind', 'is_official', 'description', 'member_count', 'child_count', 'my_membership')
         read_only_fields = ('slug', 'is_official')
 
     def mine(self, group):
@@ -56,7 +60,7 @@ class GroupSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         group = self.instance
-        if group and group.is_official and not self.context['request'].user.is_staff:
+        if group and group.is_official:
             if any(field in attrs and attrs[field] != getattr(group, field) for field in ('name', 'kind')):
                 raise serializers.ValidationError("Contact AirFleet to rename an official group or change its kind.")
         return attrs

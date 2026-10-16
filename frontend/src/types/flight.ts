@@ -309,6 +309,7 @@ export interface GroupMember {
 export interface Group extends GroupBadge {
     description: string;
     member_count: number;
+    child_count: number;
     my_membership: Omit<GroupMember, 'username'> | null;
 }
 
