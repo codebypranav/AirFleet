@@ -33,6 +33,7 @@ export default function PrivacyPage() {
                         <Item title="Following">who you follow or have asked to follow, who follows you, and who you have blocked.</Item>
                         <Item title="Comments and likes">the comments you write, when, and whether you edited them (not earlier versions), and which flights and comments you like.</Item>
                         <Item title="Notifications">who followed, commented on or liked something of yours, and whether you&apos;ve read it. Kept for 90 days.</Item>
+                        <Item title="Groups">which groups you belong to or have asked to join, and whether you are an admin or a member of each.</Item>
                         <Item title="Quick log descriptions">read once to fill in the new-flight form, then discarded. Only the fields you save are kept.</Item>
                         <Item title="Flight plan PDFs">read once to fill in a draft flight, then discarded. The PDF isn&apos;t stored and isn&apos;t sent to anyone else; only the fields you save are kept.</Item>
                         <Item title="Cookies">only the sign-in tokens that keep you logged in. No advertising or tracking cookies.</Item>
@@ -101,8 +102,8 @@ export default function PrivacyPage() {
                     <p className="text-stone">
                         Your logbook is private unless you turn on <em>Public profile</em>. Then anyone with the link can see
                         your profile, totals, route map and flights (route, times, aircraft and photo), which shows
-                        where you have flown and when. Notes, gates and flight plans stay private. Your username and totals
-                        appear in rankings either way.
+                        where you have flown and when, along with a badge for each group you are an active member of. Notes,
+                        gates and flight plans stay private. Your username and totals appear in rankings either way.
                     </p>
                 </Section>
 
@@ -110,7 +111,7 @@ export default function PrivacyPage() {
                     <ul className="list-disc space-y-2 pl-5">
                         <Item title="See and correct">edit your profile and any flight at any time.</Item>
                         <Item title="Take it with you">export your logbook as CSV from the logbook page.</Item>
-                        <Item title="Erase it">delete your account from your profile page. Your profile, flights, aircraft, photos, follows, blocks, likes and notifications are deleted straight away, and so are your comments, except that a comment someone replied to stays as &ldquo;Comment deleted&rdquo; with your name and words removed; database backups expire on their own shortly after.</Item>
+                        <Item title="Erase it">delete your account from your profile page. Your profile, flights, aircraft, photos, follows, blocks, likes, notifications and group memberships are deleted straight away, and so are your comments, except that a comment someone replied to stays as &ldquo;Comment deleted&rdquo; with your name and words removed; a group you were the only admin of passes to its oldest active member; database backups expire on their own shortly after.</Item>
                     </ul>
                     {CONTACT && (
                         <p className="mt-4 text-stone">
