@@ -81,10 +81,11 @@ due dates and route maps, and lets an instructor sign lessons and give endorseme
 - **Groups:** join the airline, operator, flight school or community you fly with, and wear it as a
   badge on your profile and your public pilot page. Any pilot can create up to five groups and becomes
   their admin; official organizations are set up by AirFleet staff, who also gather airlines into
-  alliances (Star Alliance and the like). A community group is joined on the spot, while an official
-  group's admins approve or decline each request, promote, demote and remove members, and edit the
-  group. A group page lists its members, counting without naming the ones whose profile is private,
-  and an alliance page lists its member airlines with their pilot counts.
+  alliances (Star Alliance and the like). A community group is joined on the spot, and joining one
+  that has been left without an admin makes you its admin, while an official group's admins approve
+  or decline each request, promote, demote and remove members, and edit the group. A group page lists
+  its members, counting without naming the ones whose profile is private, and an alliance page lists
+  its member airlines with their pilot counts.
 - **Rankings:** by flights, time, distance, longest flight and airports visited, for all
   time, this year or this month.
 - **Instructor sign-off:** a pilot links with their instructor by invitation (either side
