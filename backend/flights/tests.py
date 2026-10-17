@@ -1205,6 +1205,14 @@ class AskCleanTests(SimpleTestCase):
         self.assertEqual(reversed_range['filters'], {})
         self.assertEqual(len(reversed_range['warnings']), 1)
 
+    def test_bounds_model_text_in_warnings(self):
+        asked = ask.clean({'metric': 'hours', 'aircraft': 'Z' * 400, 'airport': 'Z' * 400}, self.fleet)
+        self.assertEqual(asked['filters'], {})
+        self.assertEqual(len(asked['warnings']), 2)
+        for warning in asked['warnings']:
+            self.assertIn('Z' * 12, warning)
+            self.assertNotIn('Z' * 13, warning)
+
     def test_currency_question(self):
         asked = ask.clean({'currency': 'passenger_night', 'metric': 'night_landings', 'from': '2026-01-01'}, self.fleet)
         self.assertEqual(asked['currency'], 'passenger_night')

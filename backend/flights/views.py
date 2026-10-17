@@ -417,7 +417,7 @@ def stats(request):
 def ask_logbook(request):
     fleet = list(Aircraft.objects.filter(user=request.user).values_list('registration', 'type_code'))
     try:
-        asked = ask.read(request.data.get('question'), quick_log._local_now(request.data.get('now')), fleet)
+        asked = ask.read(request.data.get('question'), request.data.get('now'), fleet)
     except ask.AskError as e:
         return Response({'error': str(e)}, status=422)
     except quick_log.QuickLogUnavailable:

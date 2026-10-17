@@ -89,14 +89,14 @@ def clean(data, fleet):
             filters['aircraft'] = aircraft
         else:
             registrations = None
-            warnings.append(f'{aircraft} isn’t one of your aircraft, so this covers all of them.')
+            warnings.append(f'{aircraft[:12]} isn’t one of your aircraft, so this covers all of them.')
 
     if isinstance(data.get('airport'), str) and data['airport'].strip():
         code = data['airport'].strip().upper()
         if airports.get(code):
             filters['airport'] = code
         else:
-            warnings.append(f'{code} isn’t an airport I know, so this covers all airports.')
+            warnings.append(f'{code[:12]} isn’t an airport I know, so this covers all airports.')
 
     if isinstance(data.get('simulator'), bool):
         filters['simulator'] = data['simulator']
@@ -112,7 +112,7 @@ def read(question, now, fleet):
         raise AskError(f'Keep the question under {MAX_QUESTION} characters.')
     if not quick_log.enabled():
         raise quick_log.QuickLogUnavailable
-    return clean(quick_log.complete(build_messages(question, now, fleet)), fleet)
+    return clean(quick_log.complete(build_messages(question, quick_log.local_now(now), fleet)), fleet)
 
 
 def answer(flights, asked):
