@@ -375,6 +375,17 @@ export interface NoteThemes {
     notes_read: number;
 }
 
+export type AskAnswer = { warnings: string[] } & (
+    | {
+        kind: 'total';
+        metric: string;
+        label: string;
+        value: number;
+        filters: { from?: string; to?: string; aircraft?: string; airport?: string; simulator?: boolean };
+    }
+    | { kind: 'currency'; currency: Currency }
+);
+
 /** A check on a planned (draft) flight against the pilot's own logbook; see flights/plan_review.py. */
 export interface PlanCheck {
     key: string;

@@ -10,7 +10,7 @@ from django.test import SimpleTestCase, override_settings
 from django.utils import timezone
 from rest_framework.test import APITestCase
 
-from . import airports, external, flight_plans, insights, patterns, plan_review, quick_log, views
+from . import airports, ask, external, flight_plans, insights, patterns, plan_review, quick_log, views
 from .models import Aircraft, Block, CrewSeat, Flight, Follow, Like, Notification
 
 FLIGHT = {
@@ -1180,6 +1180,100 @@ class NoteThemeTests(ApiTestCase):
         self.noted('a', 'b', 'c')
         self.assertEqual(self.client.post(self.url).status_code, 503)
         self.assertFalse(self.client.get('/api/insights/').data['themes_enabled'])
+
+
+class AskCleanTests(SimpleTestCase):
+    fleet = [('N172SP', 'C172'), ('N738CK', 'C172'), ('N44PA', 'PA28')]
+
+    def test_metric_keys_come_from_summary(self):
+        self.assertLessEqual(set(ask.METRICS), set(insights.summary(Flight.objects.none())['totals']))
+        self.assertEqual(set(ask.CURRENCY), {c['key'] for c in insights.currency(Flight.objects.none())})
+
+    def test_keeps_valid_filters(self):
+        asked = ask.clean({'metric': 'night_hours', 'from': '2026-03-01', 'to': '2026-10-17', 'aircraft': 'c172',
+                           'airport': 'ksql', 'simulator': False}, self.fleet)
+        self.assertEqual(asked['metric'], 'night_hours')
+        self.assertEqual(asked['filters'], {'from': '2026-03-01', 'to': '2026-10-17', 'aircraft': 'C172', 'airport': 'KSQL', 'simulator': False})
+        self.assertEqual(asked['registrations'], ['N172SP', 'N738CK'])
+        self.assertEqual(asked['warnings'], [])
+
+    def test_drops_what_it_cannot_check(self):
+        asked = ask.clean({'metric': 'hours', 'from': '2026-02-30', 'to': 'soon', 'aircraft': 'N999ZZ', 'airport': 'ZZZZ', 'simulator': 'yes'}, self.fleet)
+        self.assertEqual(asked['filters'], {})
+        self.assertEqual(len(asked['warnings']), 3)
+        reversed_range = ask.clean({'metric': 'hours', 'from': '2026-05-01', 'to': '2026-04-01'}, self.fleet)
+        self.assertEqual(reversed_range['filters'], {})
+        self.assertEqual(len(reversed_range['warnings']), 1)
+
+    def test_currency_question(self):
+        asked = ask.clean({'currency': 'passenger_night', 'metric': 'night_landings', 'from': '2026-01-01'}, self.fleet)
+        self.assertEqual(asked['currency'], 'passenger_night')
+        self.assertNotIn('metric', asked)
+        self.assertEqual(len(asked['warnings']), 1)
+        self.assertEqual(ask.clean({'currency': 'instrument'}, self.fleet)['warnings'], [])
+
+    def test_refuses_anything_else(self):
+        for data in ({}, {'metric': 'longest_flight'}, {'currency': 'medical'}, [], {'metric': None, 'currency': None}):
+            with self.assertRaises(ask.AskError):
+                ask.clean(data, self.fleet)
+
+
+class AskApiTests(ApiTestCase):
+    url = '/api/stats/ask/'
+
+    def setUp(self):
+        super().setUp()
+        self.authenticate()
+        self.user = get_user_model().objects.get(username='pilot')
+        Aircraft.objects.create(user=self.user, registration='N172SP', type_code='C172')
+        Aircraft.objects.create(user=self.user, registration='N44PA', type_code='PA28')
+
+    def ask(self, answer, question='How much night time in the C172 since March?'):
+        with mock.patch('flights.quick_log.OpenAI') as client_cls:
+            create = client_cls.return_value.chat.completions.create
+            create.return_value = completion(json.dumps(answer))
+            res = self.client.post(self.url, {'question': question, 'now': '2026-10-17T09:00'}, format='json')
+        return res, create
+
+    @override_settings(QUICK_LOG_PROVIDERS=[GEMINI])
+    def test_totals_come_from_the_logbook(self):
+        log(self.user, date(2026, 4, 1), registration_number='N172SP', night_time=timedelta(hours=1.5))
+        log(self.user, date(2026, 5, 1), registration_number='N172SP', night_time=timedelta(hours=0.5))
+        log(self.user, date(2026, 2, 1), registration_number='N172SP', night_time=timedelta(hours=4))
+        log(self.user, date(2026, 5, 2), registration_number='N44PA', night_time=timedelta(hours=4))
+        log(self.user, date(2026, 6, 1), registration_number='N172SP', night_time=timedelta(hours=4), is_draft=True)
+        res, create = self.ask({'metric': 'night_hours', 'from': '2026-03-01', 'aircraft': 'C172', 'value': 99})
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(res.data['kind'], 'total')
+        self.assertEqual(res.data['value'], 2.0)
+        self.assertEqual(res.data['label'], 'Night hours')
+        self.assertEqual(res.data['filters'], {'from': '2026-03-01', 'aircraft': 'C172'})
+        prompt = create.call_args.kwargs['messages'][1]['content']
+        self.assertIn('2026-10-17', prompt)
+        self.assertIn('N172SP (C172)', prompt)
+
+    @override_settings(QUICK_LOG_PROVIDERS=[GEMINI])
+    def test_currency_comes_from_insights(self):
+        today = timezone.now().date()
+        log(self.user, today - timedelta(days=10), night_landings=3)
+        res, _ = self.ask({'currency': 'passenger_night'}, 'Am I current for passengers at night?')
+        self.assertEqual(res.status_code, 200, res.data)
+        self.assertEqual(res.data['kind'], 'currency')
+        self.assertEqual(res.data['currency']['key'], 'passenger_night')
+        self.assertEqual(res.data['currency']['status'], 'current')
+
+    @override_settings(QUICK_LOG_PROVIDERS=[GEMINI])
+    def test_unsupported_and_empty_questions(self):
+        res, _ = self.ask({'metric': None, 'currency': None}, 'What was my longest flight?')
+        self.assertEqual(res.status_code, 422)
+        res, create = self.ask({'metric': 'hours'}, '  ')
+        self.assertEqual(res.status_code, 422)
+        self.assertEqual(create.call_count, 0)
+
+    @override_settings(QUICK_LOG_PROVIDERS=[])
+    def test_unavailable_without_a_provider(self):
+        res, _ = self.ask({'metric': 'hours'})
+        self.assertEqual(res.status_code, 503)
 
 
 class PlanReviewTests(ApiTestCase):

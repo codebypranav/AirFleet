@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import RouteMap from '@/components/RouteMap';
-import { AchievementGrid, CurrencyCards, InsightList, MonthlyHoursChart, NoteThemesPanel, RankedList } from '@/components/Insights';
+import { AchievementGrid, AskPanel, CurrencyCards, InsightList, MonthlyHoursChart, NoteThemesPanel, RankedList } from '@/components/Insights';
 import { EmptyState, ErrorState, PageHeader, PageShell, Section, Spinner, StatGrid } from '@/components/PageShell';
 import { getAchievements, getCurrency, getPatterns, getRoutes, getStats } from '@/utils/api';
 import { useApi } from '@/utils/useApi';
@@ -50,6 +50,12 @@ export default function StatsPage() {
                             ]}
                         />
                     </div>
+
+                    {patterns.data?.themes_enabled && (
+                        <Section title="Ask your logbook">
+                            <AskPanel />
+                        </Section>
+                    )}
 
                     <Section title="Currency">
                         {currency.data ? <CurrencyCards items={currency.data} /> : <p className="text-sm text-ash">Checking…</p>}
