@@ -69,7 +69,8 @@ def clean(data, fleet):
     if data.get('currency') in CURRENCY:
         ignored = any(data.get(k) for k in ('from', 'to', 'aircraft', 'airport'))
         return {'currency': data['currency'], 'warnings': ['Currency is as of today, across all your aircraft.'] if ignored else []}
-    if data.get('metric') not in METRICS:
+    metric = data.get('metric')
+    if not isinstance(metric, str) or metric not in METRICS:
         raise AskError('I can answer totals and currency, e.g. “How much night time in the C172 since March?” or “Am I current for passengers at night?”')
 
     filters, warnings, registrations = {}, [], None
@@ -101,7 +102,7 @@ def clean(data, fleet):
     if isinstance(data.get('simulator'), bool):
         filters['simulator'] = data['simulator']
 
-    return {'metric': data['metric'], 'filters': filters, 'registrations': registrations, 'warnings': warnings}
+    return {'metric': metric, 'filters': filters, 'registrations': registrations, 'warnings': warnings}
 
 
 def read(question, now, fleet):

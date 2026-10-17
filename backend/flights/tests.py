@@ -1221,7 +1221,7 @@ class AskCleanTests(SimpleTestCase):
         self.assertEqual(ask.clean({'currency': 'instrument'}, self.fleet)['warnings'], [])
 
     def test_refuses_anything_else(self):
-        for data in ({}, {'metric': 'longest_flight'}, {'currency': 'medical'}, [], {'metric': None, 'currency': None}):
+        for data in ({}, {'metric': 'longest_flight'}, {'currency': 'medical'}, [], {'metric': None, 'currency': None}, {'metric': ['night_hours']}):
             with self.assertRaises(ask.AskError):
                 ask.clean(data, self.fleet)
 
