@@ -2,10 +2,10 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import type { Achievement, Currency, InsightTone, NoteThemes, PatternFinding, PlanCheck, Stats } from '@/types/flight';
+import type { Achievement, AskAnswer, Currency, InsightTone, NoteThemes, PatternFinding, PlanCheck, Stats } from '@/types/flight';
 import { AlertIcon, CheckIcon, MedalIcon } from '@/components/Icons';
-import { readNoteThemes } from '@/utils/api';
-import { formatDate, formatDay } from '@/utils/format';
+import { askLogbook, readNoteThemes } from '@/utils/api';
+import { formatDate, formatDay, toLocalInput } from '@/utils/format';
 
 const niceMax = (value: number) => {
     if (value <= 0) return 1;
@@ -189,6 +189,71 @@ export function InsightList({ items }: { items: (PatternFinding | PlanCheck)[] }
                 </li>
             ))}
         </ul>
+    );
+}
+
+export function AskPanel() {
+    const [question, setQuestion] = useState('');
+    const [result, setResult] = useState<AskAnswer | null>(null);
+    const [status, setStatus] = useState('');
+    const [asking, setAsking] = useState(false);
+
+    const submit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setAsking(true);
+        setStatus('');
+        setResult(null);
+        try {
+            setResult(await askLogbook(question.trim(), toLocalInput(new Date().toISOString())));
+        } catch (err) {
+            setStatus(err instanceof Error ? err.message : 'Could not answer that');
+        } finally {
+            setAsking(false);
+        }
+    };
+
+    const f = result?.kind === 'total' ? result.filters : null;
+    const scope = f && [
+        f.aircraft,
+        f.airport && `at ${f.airport}`,
+        f.simulator !== undefined && (f.simulator ? 'simulator only' : 'no simulator'),
+        f.from || f.to ? `${f.from ? formatDay(f.from) : 'start'} → ${f.to ? formatDay(f.to) : 'today'}` : 'all time',
+    ].filter(Boolean).join(' · ');
+
+    return (
+        <div className="card p-5 sm:p-6">
+            <form onSubmit={submit} className="flex flex-col gap-3 sm:flex-row">
+                <label htmlFor="ask_logbook" className="sr-only">Ask your logbook</label>
+                <input
+                    id="ask_logbook"
+                    type="text"
+                    value={question}
+                    onChange={(e) => setQuestion(e.target.value)}
+                    maxLength={300}
+                    placeholder="e.g. How much night time in the C172 since March?"
+                    className="field-input"
+                />
+                <button type="submit" className="btn btn-ghost shrink-0" disabled={!question.trim() || asking}>
+                    {asking ? 'Asking…' : 'Ask'}
+                </button>
+            </form>
+            <div aria-live="polite">
+                {status && <p className="mt-3 text-sm text-stone">{status}</p>}
+                {result?.kind === 'total' && (
+                    <div className="mt-5 border-t border-line pt-4">
+                        <p className="eyebrow">{result.label}</p>
+                        <p className="mt-1 text-2xl text-bone">{result.value.toLocaleString()}</p>
+                        <p className="mt-1 text-xs text-ash">{scope}. AI read the question. The number comes from your logbook.</p>
+                    </div>
+                )}
+                {result?.kind === 'currency' && (
+                    <div className="mt-5">
+                        <CurrencyCards items={[result.currency]} />
+                    </div>
+                )}
+                {result?.warnings.map((w) => <p key={w} className="mt-2 text-xs text-sand">{w}</p>)}
+            </div>
+        </div>
     );
 }
 

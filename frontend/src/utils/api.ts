@@ -1,6 +1,6 @@
 import Cookies from 'js-cookie';
 import type {
-    Achievement, Aircraft, Airport, AppNotification, CrewInvite, CrewRole, CrewSeat, Currency, Endorsement, EndorsementKind, FeedFlight, Flight, FlightPlanDraft, Follows,
+    Achievement, Aircraft, Airport, AskAnswer, AppNotification, CrewInvite, CrewRole, CrewSeat, Currency, Endorsement, EndorsementKind, FeedFlight, Flight, FlightPlanDraft, Follows,
     FlightComment, FollowStatus, Group, GroupDetail, GroupMember, ImportResult, Liked,
     InstructorLink, LiveFlight, NoteThemes, Paginated, Patterns, PlanReview, Profile, PublicFlight, PublicPilot, QuickLogDraft, RouteMapData,
     Signature, StartFlight, Stats, StudentFlight,
@@ -169,6 +169,8 @@ export const readQuickLog = (text: string, now: string) =>
     apiJson<QuickLogDraft>('/flights/quick-log/', { method: 'POST', json: { text, now } });
 
 export const getStats = (filters: FlightFilters = {}) => apiJson<Stats>(`/stats/${query(filters)}`);
+export const askLogbook = (question: string, now: string) =>
+    apiJson<AskAnswer>('/stats/ask/', { method: 'POST', json: { question, now } });
 export const getRoutes = () => apiJson<RouteMapData>('/stats/routes/');
 export const getCurrency = () => apiJson<Currency[]>('/currency/');
 export const getAchievements = () => apiJson<Achievement[]>('/achievements/');

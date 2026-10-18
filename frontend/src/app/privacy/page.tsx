@@ -35,6 +35,7 @@ export default function PrivacyPage() {
                         <Item title="Notifications">who followed, commented on or liked something of yours, and whether you&apos;ve read it. Kept for 90 days.</Item>
                         <Item title="Groups">which groups you belong to or have asked to join, and whether you are an admin or a member of each.</Item>
                         <Item title="Quick log descriptions">read once to fill in the new-flight form, then discarded. Only the fields you save are kept.</Item>
+                        <Item title="Questions you ask">read once to work out the total or currency card you asked for, then discarded.</Item>
                         <Item title="Flight plan PDFs">read once to fill in a draft flight, then discarded. The PDF isn&apos;t stored and isn&apos;t sent to anyone else; only the fields you save are kept.</Item>
                         <Item title="Cookies">only the sign-in tokens that keep you logged in. No advertising or tracking cookies.</Item>
                     </ul>
@@ -49,7 +50,7 @@ export default function PrivacyPage() {
 
                 <Section title="Who else handles it">
                     <ul className="list-disc space-y-2 pl-5">
-                        <Item title="Google Gemini and Groq">only when you use quick log: the description you type, your local time and your aircraft&apos;s registrations and types, so an AI model can fill in the form. Nothing else from your logbook is sent. These services may keep what&apos;s sent and use it to improve their models, so leave out anything you wouldn&apos;t want shared.</Item>
+                        <Item title="Google Gemini and Groq">only when you use quick log, ask your logbook or note themes, so an AI model can read what you wrote: quick log sends the description you type, asking sends your question, and note themes sends the notes of your recent flights with each one&apos;s date and route. Quick log and asking also send your local time and your aircraft&apos;s registrations and types. Nothing else from your logbook is sent. These services may keep what&apos;s sent and use it to improve their models, so leave out anything you wouldn&apos;t want shared.</Item>
                         <Item title="Google">only if you sign in with Google, to confirm your email address.</Item>
                         <Item title="aviationweather.gov and SimBrief">when you fetch weather (airport code and date) or import a flight plan (your SimBrief username).</Item>
                         <Item title="Hosting">the app, database, photo storage and email are run by our hosting providers, who store data on our behalf.</Item>

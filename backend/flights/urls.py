@@ -24,6 +24,7 @@ urlpatterns = [
     path('crew/<int:pk>/accept/', views.accept_crew_invite, name='crew-accept'),
     path('crew/<int:pk>/', views.end_crew_seat, name='crew-end'),
     path('stats/', views.stats, name='stats'),
+    path('stats/ask/', views.ask_logbook, name='stats-ask'),
     path('stats/routes/', views.routes, name='routes'),
     path('insights/', views.flight_patterns, name='insights'),
     path('insights/themes/', views.note_themes, name='insight-themes'),

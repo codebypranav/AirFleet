@@ -19,7 +19,7 @@ from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
 from groups.models import Group
-from . import airports, crew, external, flight_plans, follows, insights, live, logbook_io, patterns, plan_review, quick_log, social
+from . import airports, ask, crew, external, flight_plans, follows, insights, live, logbook_io, patterns, plan_review, quick_log, social
 from .models import Aircraft, Block, CrewSeat, Flight, Follow
 from .serializers import (
     AddCrewSerializer, AircraftSerializer, CommentSerializer, CrewInviteSerializer, CrewRoleSerializer, CrewSeatSerializer, FlightSerializer,
@@ -409,6 +409,20 @@ class QuickLogView(APIView):
 def stats(request):
     flights = filter_flights(Flight.objects.logged().filter(user=request.user), request.query_params)
     return Response(insights.summary(flights))
+
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@throttle_classes([QuickLogThrottle])
+def ask_logbook(request):
+    fleet = list(Aircraft.objects.filter(user=request.user).values_list('registration', 'type_code'))
+    try:
+        asked = ask.read(request.data.get('question'), request.data.get('now'), fleet)
+    except ask.AskError as e:
+        return Response({'error': str(e)}, status=422)
+    except quick_log.QuickLogUnavailable:
+        return Response({'error': 'Asking isn’t available right now. Try again later.'}, status=503)
+    return Response(ask.answer(Flight.objects.logged().filter(user=request.user), asked))
 
 
 @api_view(['GET'])

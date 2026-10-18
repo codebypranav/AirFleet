@@ -25,7 +25,10 @@ due dates and route maps, and lets an instructor sign lessons and give endorseme
   flights in it until maintenance is logged. The next inspection is forecast from the last
   90 days of flying (hours left ÷ recent rate), alongside the annual.
 - **Stats:** totals, hours per month, most-flown routes and aircraft, a great-circle route
-  map (Leaflet, with a satellite view), passenger/night/IFR currency, and achievements.
+  map (Leaflet, with a satellite view), passenger/night/IFR currency, and achievements. With AI
+  configured, you can also ask in plain words ("How much night time in the C172 since March?",
+  "Am I current for passengers at night?"): the model only picks the filters, and the total or
+  currency card behind the answer is the same one the page computes from your logbook.
 - **Patterns:** what stands out across your flying (a long gap since your last flight, flying
   much less or more than before, night or instrument skills unused for months, most flying on one
   route, an aircraft's inspection or annual coming due). With AI configured, it can also read the
@@ -152,6 +155,17 @@ Providers are any OpenAI-compatible API, tried in order: Gemini (`GEMINI_API_KEY
 (`GROQ_API_KEY`). Both have free tiers, so the second takes over when the first is down or out of
 its daily quota. `GET /api/flights/quick-log/` returns `{"enabled": ...}`, and the form hides quick
 log when neither key is set. Requests are limited per user (`QUICK_LOG_RATE`, default `30/hour`).
+
+### Ask your logbook
+`POST /api/stats/ask/` takes `question` (up to 300 characters) and `now`, and answers with the
+filters it used plus one total from the stats page or one currency card. The model's only job is to
+turn the question into those filters — which stats total, a date range, an aircraft from the pilot's
+own fleet, an airport, whether simulator sessions count, or a currency check — so no wording or
+number from the model reaches the pilot. Filters it can't use are dropped with a warning (an aircraft
+that isn't in the fleet, an unknown airport, dates that don't read or run backwards), a currency
+question is answered as of today across all aircraft, and a question that fits none of the filters
+gets a 422 with examples rather than an approximation. Drafts stay out, as everywhere else. Asking
+shares the quick log providers and rate limit, and the panel is hidden when quick log is.
 
 ### Patterns and plan review
 `GET /api/insights/` returns findings computed from the logbook in `flights/patterns.py`, each with
@@ -314,7 +328,7 @@ EMAIL_HOST_USER=...
 EMAIL_HOST_PASSWORD=...
 DEFAULT_FROM_EMAIL="AirFleet <no-reply@example.com>"
 GOOGLE_CLIENT_ID=...                      # enables Google sign-in (same ID as the frontend)
-GEMINI_API_KEY=...                        # quick log and note themes, from aistudio.google.com (free tier)
+GEMINI_API_KEY=...                        # quick log, note themes and asking, from aistudio.google.com (free tier)
 GROQ_API_KEY=...                          # quick log fallback, from console.groq.com (free tier)
 GEMINI_MODEL=gemini-flash-lite-latest     # optional overrides of the quick log models
 GROQ_MODEL=openai/gpt-oss-20b

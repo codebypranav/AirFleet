@@ -80,7 +80,7 @@ def enabled():
     return bool(settings.QUICK_LOG_PROVIDERS)
 
 
-def _local_now(value):
+def local_now(value):
     """The pilot's current local time as sent by the browser ("YYYY-MM-DDTHH:MM"), or server time."""
     try:
         return datetime.strptime(str(value)[:16], LOCAL_FORMAT)
@@ -223,7 +223,7 @@ def read(text, now, fleet):
         raise QuickLogError(f'Keep the description under {MAX_TEXT} characters.')
     if not enabled():
         raise QuickLogUnavailable
-    result = clean(complete(build_messages(text, _local_now(now), fleet)), fleet)
+    result = clean(complete(build_messages(text, local_now(now), fleet)), fleet)
     if not result['flight']:
         raise QuickLogError('Couldn’t find any flight details in that. Try including the airports, times or hours.')
     return result
