@@ -2,7 +2,7 @@ import Cookies from 'js-cookie';
 import type {
     Achievement, Aircraft, Airport, AskAnswer, AppNotification, CrewInvite, CrewRole, CrewSeat, Currency, Endorsement, EndorsementKind, FeedFlight, Flight, FlightPlanDraft, Follows,
     FlightComment, FollowStatus, Group, GroupDetail, GroupMember, ImportResult, Liked,
-    InstructorLink, LiveFlight, NoteThemes, Paginated, Patterns, PlanReview, Profile, PublicFlight, PublicPilot, QuickLogDraft, RouteMapData,
+    InstructorDashboard, InstructorLink, LiveFlight, NoteThemes, Paginated, Patterns, PlanReview, Profile, PublicFlight, PublicPilot, QuickLogDraft, RouteMapData,
     Signature, StartFlight, Stats, StudentFlight,
 } from '@/types/flight';
 
@@ -261,6 +261,7 @@ export const signFlight = (flightId: number, data: { remarks: string; agree: boo
 export const withdrawSignature = (id: number, data: { reason: string; password: string }) =>
     apiJson<Signature>(`/instruction/signatures/${id}/withdraw/`, { method: 'POST', json: data });
 
+export const getInstructorDashboard = () => apiJson<InstructorDashboard>('/instruction/dashboard/');
 export const getEndorsementKinds = () => apiJson<EndorsementKind[]>('/instruction/endorsements/kinds/');
 export const getMyEndorsements = () => apiJson<Endorsement[]>('/instruction/endorsements/');
 export const getStudentEndorsements = (linkId: number | string) => apiJson<Endorsement[]>(`/instruction/links/${linkId}/endorsements/`);

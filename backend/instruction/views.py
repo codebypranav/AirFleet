@@ -1,4 +1,5 @@
 import logging
+from collections import defaultdict
 from datetime import timedelta
 
 from django.conf import settings
@@ -17,7 +18,7 @@ from rest_framework.views import APIView
 
 from flights.models import Flight
 from flights.views import FlightPagination
-from . import endorsements
+from . import endorsements, requirements
 from .models import Endorsement, InstructorLink, Signature, attestation, flight_snapshot, snapshot_hash
 from .serializers import (
     EndorsementSerializer, GiveEndorsementSerializer, InstructorLinkSerializer, InviteSerializer, SignatureSerializer,
@@ -224,6 +225,30 @@ def withdraw_signature(request, pk):
     if error := withdraw(request, signature):
         return error
     return Response(SignatureSerializer(signature, context={'request': request}).data)
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def dashboard(request):
+    links = list(
+        InstructorLink.objects.filter(instructor=request.user, status=InstructorLink.ACTIVE, student__is_active=True)
+        .select_related('student')
+    )
+    students = [link.student_id for link in links]
+    flights, received = defaultdict(list), defaultdict(list)
+    for flight in Flight.objects.logged().filter(user__in=students, is_simulator=False).prefetch_related('signatures'):
+        flights[flight.user_id].append(flight)
+    for endorsement in Endorsement.objects.filter(student__in=students, kind__in=requirements.ENDORSEMENTS):
+        received[endorsement.student_id].append(endorsement)
+    today = timezone.localdate()
+    return Response({'checks': requirements.CHECKS, 'students': [
+        {
+            'link_id': link.pk,
+            'student': {'username': link.student.username, 'name': display_name(link.student)},
+            **requirements.progress(flights[link.student_id], received[link.student_id], today),
+        }
+        for link in links
+    ]})
 
 
 @api_view(['GET'])
