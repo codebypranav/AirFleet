@@ -93,7 +93,9 @@ due dates and route maps, and lets an instructor sign lessons and give endorseme
   time, this year or this month.
 - **Instructor sign-off:** a pilot links with their instructor by invitation (either side
   invites, the other accepts), and the instructor signs lessons with dual received time, gives
-  endorsements (solo, checkride, flight review and so on), and can withdraw either.
+  endorsements (solo, checkride, flight review and so on), and can withdraw either. A student
+  progress page adds up each linked student's logged hours against the private pilot minimums of
+  14 CFR 61.109(a) and lists the endorsements and hours still missing.
   Instructing is a capability, not an account type: anyone who adds an instructor certificate
   to their profile can be invited as one and still logs their own flights. See
   [Instructor sign-off](#instructor-sign-off).
@@ -117,7 +119,7 @@ The backend is organized around Django apps:
 - `flights/` — flights, aircraft, insights, imports/exports, airport data, quick log, weather and
   SimBrief lookups, flight plan parsing
 - `users/` — accounts, profiles, password reset, public pilot pages
-- `instruction/` — instructor links, lesson signatures and endorsements
+- `instruction/` — instructor links, lesson signatures, endorsements and student progress
 - `groups/` — pilot groups (airlines, operators, flight schools, alliances, communities) and their memberships
 
 ### Frontend (`frontend/`)
@@ -211,7 +213,27 @@ has a plain-language starting draft (`instruction/endorsements.py`) that the ins
 signing; it is not the wording of AC 61-65. An endorsement records the same instructor details as a
 signature, the date given, and an expiry where the kind has one (solo: 90 days; practical test: 2
 calendar months; flight review: 24 calendar months). Students see theirs on the Instruction page, the
-instructor sees the ones they gave, and the instructor can withdraw one the same way as a signature.
+instructor sees in full the ones they gave, and the instructor can withdraw one the same way as a signature.
+
+**Student progress** (`GET /api/instruction/dashboard/`) shows an instructor every student on an
+active link, measured against the private pilot minimums of 14 CFR 61.109(a) for airplane
+single-engine land. The rows are a hard-coded table of one rule each in
+`instruction/requirements.py` — total, dual, dual cross-country, dual night, night landings with an
+instructor, dual simulated instrument, dual in the last two calendar months, solo and solo
+cross-country — summed over the student's logged flights, simulator sessions left out, with the
+signed share of the dual shown alongside it. The server writes the "missing" sentences, so the page
+holds no rules of its own. Three requirements a logbook can't express (the 100 nm night
+cross-country, the 150 nm solo cross-country, three solo full-stop landings at a towered airport)
+are listed as things to check in the logbook rather than counted, and the six endorsements the
+certificate needs are shown as current, expired or missing from **any** instructor, not only the one
+looking.
+
+The totals are a deliberate privacy trade, set out on `/privacy`: they cover all of the student's
+logged flights, including solo and other time not flown with this instructor, but the flights behind
+them stay hidden. The page names its approximations — solo is PIC time on a flight with no dual
+received, dual night and dual simulated instrument count the smaller of that time and the flight's
+dual, and aircraft class isn't filtered — and it is a guide to what to fly next, not a checkride
+sign-off.
 
 The **CSV export** adds `instructor_name`, `instructor_certificate`, `instructor_signed_at` and
 `signature_status` (`valid`, `invalidated` or `withdrawn`) from each flight's latest signature. They are
