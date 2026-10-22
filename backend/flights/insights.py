@@ -134,6 +134,10 @@ NOTES = (
     'Solo rows are your pilot-in-command time on flights with no dual received; AirFleet keeps no separate solo column.',
     'The form asks for night takeoffs as well as landings, and AirFleet records only landings.',
     'Simulator sessions stay out of the flight time rows and count as ground trainer instead.',
+    'Each column is the aircraft class recorded in your own fleet, and that starts as single-engine land until you '
+    'change it on the aircraft page, so check it there first if you fly anything else.',
+    'Night instruction received is the most of your instruction that could have been after dark, capped by the '
+    'flight’s night time, because AirFleet records the two totals separately and not which part of a lesson was at night.',
 )
 
 
