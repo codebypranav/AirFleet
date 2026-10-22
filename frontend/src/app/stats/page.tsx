@@ -15,6 +15,7 @@ export default function StatsPage() {
     const patterns = useApi(getPatterns);
 
     const totals = stats.data?.totals;
+    const form = stats.data?.faa_8710;
     const earned = achievements.data?.filter((a) => a.earned).length ?? 0;
 
     return (
@@ -60,6 +61,38 @@ export default function StatsPage() {
                     <Section title="Currency">
                         {currency.data ? <CurrencyCards items={currency.data} /> : <p className="text-sm text-ash">Checking…</p>}
                     </Section>
+
+                    {form && (
+                        <Section title="FAA 8710 / IACRA totals">
+                            <div className="card overflow-x-auto p-5 sm:p-6">
+                                <table className="w-full text-left">
+                                    <thead className="text-xs text-ash">
+                                        <tr>
+                                            <th className="py-1 font-normal">Pilot time</th>
+                                            {form.columns.map((column) => (
+                                                <th key={column.key} className="py-1 pl-4 text-right font-normal">{column.label}</th>
+                                            ))}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {form.rows.map((row) => (
+                                            <tr key={row.key} className="border-t border-line">
+                                                <td className="py-2 pr-4 text-bone">{row.label}</td>
+                                                {form.columns.map((column) => (
+                                                    <td key={column.key} className="py-2 pl-4 text-right font-mono text-bone">
+                                                        {row.values[column.key]}{row.unit && ` ${row.unit}`}
+                                                    </td>
+                                                ))}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                                <ul className="mt-4 space-y-1 text-xs text-ash">
+                                    {form.notes.map((note) => <li key={note}>{note}</li>)}
+                                </ul>
+                            </div>
+                        </Section>
+                    )}
 
                     <Section title="Patterns">
                         {!patterns.data ? (

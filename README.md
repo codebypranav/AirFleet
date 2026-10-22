@@ -29,6 +29,15 @@ due dates and route maps, and lets an instructor sign lessons and give endorseme
   configured, you can also ask in plain words ("How much night time in the C172 since March?",
   "Am I current for passengers at night?"): the model only picks the filters, and the total or
   currency card behind the answer is the same one the page computes from your logbook.
+- **FAA 8710 / IACRA totals:** the pilot time rows of FAA Form 8710-1, in the form's order, to read
+  off into IACRA before a checkride. One column per aircraft class you've flown (the class recorded
+  on your own fleet entry, an *Unspecified* column for flights whose aircraft you've deleted, and a
+  *Total* column once there is more than one), simulator sessions kept out of the flight time rows
+  and reported separately as ground trainer sessions and hours, and rows with nothing logged left
+  off. The grid names what it derives rather than records: solo is PIC time on a flight with no dual
+  received, night instruction received is capped by the flight's night time, and the night take-offs
+  the form also asks for aren't recorded at all. It is a transcription aid, not a checkride
+  sign-off.
 - **Patterns:** what stands out across your flying (a long gap since your last flight, flying
   much less or more than before, night or instrument skills unused for months, most flying on one
   route, an aircraft's inspection or annual coming due). With AI configured, it can also read the

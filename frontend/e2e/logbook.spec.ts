@@ -46,6 +46,8 @@ test('a pilot logs, edits, shares, exports and deletes flights', async ({ page, 
     await expect(page.getByText('Passengers (day)')).toBeVisible();
     await expect(page.getByText('First page')).toBeVisible();
     await expect(page.getByRole('img', { name: /Map of 2 routes between 2 airports/ })).toBeVisible();
+    await expect(page.getByRole('columnheader', { name: 'Single-engine land' })).toBeVisible();
+    await expect(page.getByRole('row', { name: 'Total time 3 h' })).toBeVisible();
 
     // Export a CSV and import it into a second account
     await page.goto('/flights');

@@ -324,6 +324,56 @@ class InsightTests(ApiTestCase):
         self.assertTrue(earned['first_flight']['earned_at'].startswith('2026-01-01'))
 
 
+class Faa8710Tests(ApiTestCase):
+    """The grid a student copies into IACRA. Capacity splits per class, simulator time apart, empty rows left off."""
+
+    def grid(self):
+        data = self.client.get('/api/stats/').data['faa_8710']
+        return data, {row['key']: row for row in data['rows']}
+
+    def test_splits_dual_from_solo_and_keeps_the_simulator_out_of_flight_time(self):
+        self.authenticate()
+        self.add_flight(dual_received_time='05:30:00', night_time='01:00:00', night_landings=2,
+                        day_landings=1, cross_country=True)
+        self.add_flight(departure_time='2026-01-02T10:00:00Z', arrival_time='2026-01-02T15:30:00Z',
+                        pic_time='05:30:00', night_landings=1, approaches=2, cross_country=True)
+        self.add_flight(departure_time='2026-01-03T10:00:00Z', arrival_time='2026-01-03T11:30:00Z',
+                        total_time='01:30:00', distance=0, is_simulator=True,
+                        dual_received_time='01:30:00', simulated_instrument_time='01:00:00')
+        data, rows = self.grid()
+
+        self.assertEqual([c['key'] for c in data['columns']], ['SEL'])
+        self.assertEqual(rows['flights']['values']['SEL'], 2)
+        self.assertEqual(rows['total']['values']['SEL'], 11.0)
+        self.assertEqual(rows['dual']['values']['SEL'], 5.5)
+        self.assertEqual(rows['solo']['values']['SEL'], 5.5)
+        self.assertEqual(rows['xc_dual']['values']['SEL'], 5.5)
+        self.assertEqual(rows['xc_solo']['values']['SEL'], 5.5)
+        self.assertEqual(rows['night']['values']['SEL'], 1.0)
+        self.assertEqual(rows['night_dual']['values']['SEL'], 1.0)
+        self.assertEqual(rows['night_landings_dual']['values']['SEL'], 2)
+        self.assertEqual(rows['night_landings_solo']['values']['SEL'], 1)
+        self.assertEqual(rows['approaches']['values']['SEL'], 2)
+        self.assertEqual(rows['trainer_flights']['values']['SEL'], 1)
+        self.assertEqual(rows['trainer_hours']['values']['SEL'], 1.5)
+        self.assertEqual(rows['instrument_trainer']['values']['SEL'], 1.0)
+        self.assertNotIn('sic', rows)
+
+    def test_one_column_per_class_flown(self):
+        self.authenticate()
+        self.add_flight(pic_time='05:30:00')
+        self.add_flight(registration_number='N99999', departure_time='2026-01-02T10:00:00Z',
+                        arrival_time='2026-01-02T15:30:00Z', pic_time='05:30:00')
+        Aircraft.objects.filter(registration='N99999').update(aircraft_class='MEL')
+        orphan = self.add_flight(departure_time='2026-01-03T10:00:00Z', arrival_time='2026-01-03T15:30:00Z',
+                                 pic_time='05:30:00')
+        Flight.objects.filter(pk=orphan['id']).update(aircraft=None)
+        data, rows = self.grid()
+
+        self.assertEqual([c['key'] for c in data['columns']], ['SEL', 'MEL', 'UNSPECIFIED', 'total'])
+        self.assertEqual(rows['pic']['values'], {'SEL': 5.5, 'MEL': 5.5, 'UNSPECIFIED': 5.5, 'total': 16.5})
+
+
 class MaintenanceForecastTests(SimpleTestCase):
     today = date(2026, 10, 1)
 
