@@ -206,6 +206,11 @@ export interface Stats {
     by_month: { month: string; flights: number; hours: number; distance: number }[];
     top_routes: { from: string; to: string; flights: number; hours: number }[];
     top_aircraft: { registration: string; type_code: string; flights: number; hours: number }[];
+    faa_8710: {
+        columns: { key: string; label: string }[];
+        rows: { key: string; label: string; unit: string; values: Record<string, number> }[];
+        notes: string[];
+    };
 }
 
 export interface RouteMapData {

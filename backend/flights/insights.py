@@ -4,10 +4,11 @@ import math
 from datetime import date, timedelta
 
 from django.db.models import Count, Q, Sum
-from django.db.models.functions import TruncMonth
+from django.db.models.functions import Least, TruncMonth
 from django.utils import timezone
 
 from . import airports
+from .models import Aircraft
 
 ZERO = timedelta(0)
 
@@ -97,6 +98,67 @@ def summary(flights):
         'top_routes': top_routes,
         'top_aircraft': top_aircraft,
     }
+
+
+REAL = Q(is_simulator=False)
+SIM = Q(is_simulator=True)
+XC = Q(cross_country=True)
+SOLO = Q(dual_received_time=ZERO)
+UNSPECIFIED = 'UNSPECIFIED'
+
+FORM_8710 = (
+    ('flights', 'Flights', '', Count('id', filter=REAL)),
+    ('total', 'Total time', 'h', Sum('total_time', filter=REAL)),
+    ('dual', 'Instruction received', 'h', Sum('dual_received_time', filter=REAL)),
+    ('solo', 'Solo', 'h', Sum('pic_time', filter=REAL & SOLO)),
+    ('pic', 'Pilot in command', 'h', Sum('pic_time', filter=REAL)),
+    ('sic', 'Second in command', 'h', Sum('sic_time', filter=REAL)),
+    ('xc_dual', 'Cross-country, instruction received', 'h', Sum('dual_received_time', filter=REAL & XC)),
+    ('xc_solo', 'Cross-country, solo', 'h', Sum('pic_time', filter=REAL & XC & SOLO)),
+    ('xc_pic', 'Cross-country, pilot in command', 'h', Sum('pic_time', filter=REAL & XC)),
+    ('xc_sic', 'Cross-country, second in command', 'h', Sum('sic_time', filter=REAL & XC)),
+    ('instrument_actual', 'Instrument, actual', 'h', Sum('instrument_time', filter=REAL)),
+    ('instrument_simulated', 'Instrument, simulated in flight', 'h', Sum('simulated_instrument_time', filter=REAL)),
+    ('instrument_trainer', 'Instrument, ground trainer', 'h', Sum('simulated_instrument_time', filter=SIM)),
+    ('approaches', 'Instrument approaches', '', Sum('approaches', filter=REAL)),
+    ('night', 'Night', 'h', Sum('night_time', filter=REAL)),
+    ('night_dual', 'Night, instruction received', 'h', Sum(Least('night_time', 'dual_received_time'), filter=REAL)),
+    ('night_solo', 'Night, solo', 'h', Sum('night_time', filter=REAL & SOLO)),
+    ('night_landings_dual', 'Night landings, instruction received', '', Sum('night_landings', filter=REAL & ~SOLO)),
+    ('night_landings_solo', 'Night landings, solo', '', Sum('night_landings', filter=REAL & SOLO)),
+    ('night_landings_pic', 'Night landings, pilot in command', '', Sum('night_landings', filter=REAL & Q(pic_time__gt=ZERO))),
+    ('trainer_flights', 'Ground trainer sessions', '', Count('id', filter=SIM)),
+    ('trainer_hours', 'Ground trainer time (FTD/FFS/ATD)', 'h', Sum('total_time', filter=SIM)),
+)
+NOTES = (
+    'Solo rows are your pilot-in-command time on flights with no dual received; AirFleet keeps no separate solo column.',
+    'The form asks for night takeoffs as well as landings, and AirFleet records only landings.',
+    'Simulator sessions stay out of the flight time rows and count as ground trainer instead.',
+)
+
+
+def faa_8710(flights):
+    """Pilot time for FAA Form 8710-1 / IACRA, one column per aircraft class flown."""
+    labels = dict(Aircraft.CLASS_CHOICES)
+    buckets = {
+        row['aircraft__aircraft_class'] or UNSPECIFIED: row
+        for row in flights.values('aircraft__aircraft_class').annotate(**{key: total for key, _, _, total in FORM_8710})
+    }
+    classes = [c for c in labels if c in buckets] + ([UNSPECIFIED] if UNSPECIFIED in buckets else [])
+    columns = [{'key': c, 'label': labels.get(c, 'Unspecified')} for c in classes]
+    if len(classes) > 1:
+        columns.append({'key': 'total', 'label': 'Total'})
+
+    rows = []
+    for key, label, unit, _ in FORM_8710:
+        logged = [buckets[c][key] or (ZERO if unit else 0) for c in classes]
+        if not any(logged):
+            continue
+        values = {c: hours(v) if unit else v for c, v in zip(classes, logged)}
+        if len(classes) > 1:
+            values['total'] = hours(sum(logged, ZERO)) if unit else sum(logged)
+        rows.append({'key': key, 'label': label, 'unit': unit, 'values': values})
+    return {'columns': columns, 'rows': rows, 'notes': list(NOTES)}
 
 
 def routes(flights):

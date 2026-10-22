@@ -408,7 +408,7 @@ class QuickLogView(APIView):
 @permission_classes([IsAuthenticated])
 def stats(request):
     flights = filter_flights(Flight.objects.logged().filter(user=request.user), request.query_params)
-    return Response(insights.summary(flights))
+    return Response(insights.summary(flights) | {'faa_8710': insights.faa_8710(flights)})
 
 
 @api_view(['POST'])
