@@ -1,15 +1,19 @@
 import csv
 import io
-from datetime import date
+from datetime import date, timedelta
 
+from django.contrib.auth import get_user_model
 from django.core import mail
 from django.core.files.uploadedfile import SimpleUploadedFile
+from django.db import connection
 from django.test import SimpleTestCase
+from django.test.utils import CaptureQueriesContext
+from django.utils import timezone
 
 from flights.models import Flight
-from flights.tests import FLIGHT, PASSWORD, ApiTestCase
+from flights.tests import FLIGHT, PASSWORD, ApiTestCase, log
 from .endorsements import add_calendar_months
-from .models import InstructorLink, Signature
+from .models import Endorsement, InstructorLink, Signature
 
 LESSON = {**FLIGHT, 'dual_received_time': '01:30:00', 'notes': 'Steep turns'}
 # An hour on the student's own, on a short route so that hour is a believable speed.
@@ -377,3 +381,135 @@ class DraftAndExportTests(InstructionTestCase):
         res = self.client.post('/api/flights/import/', {'file': upload}, format='multipart')
         self.assertEqual(res.data['created'], 2, res.data)
         self.assertEqual(Signature.objects.filter(flight__user__username='importer').count(), 0)
+
+
+class DashboardTests(InstructionTestCase):
+    def setUp(self):
+        super().setUp()
+        self.link_id = self.link()
+        self.student = get_user_model().objects.get(username='student')
+        self.today = timezone.localdate()
+
+    def dashboard(self):
+        res = self.client.get('/api/instruction/dashboard/')
+        self.assertEqual(res.status_code, 200, res.data)
+        return res.data
+
+    def card(self):
+        [card] = self.dashboard()['students']
+        return card
+
+    def endorse(self, kind, given_on, **extra):
+        return Endorsement.objects.create(
+            student=self.student, instructor_name='Other Cfi', certificate_number='999', kind=kind, title=kind,
+            text='Endorsed.', given_on=given_on, **extra,
+        )
+
+    def test_hours_count_logged_flights_toward_the_private_pilot_minimums(self):
+        h = lambda n: timedelta(hours=n)
+        lesson = log(self.student, self.today - timedelta(days=5), hours=2, dual_received_time=h(2), night_time=h(1),
+                     night_landings=3, cross_country=True, simulated_instrument_time=h(0.5))
+        log(self.student, self.today - timedelta(days=10), hours=2, dual_received_time=h(0.5), night_time=h(1.5))
+        log(self.student, self.today - timedelta(days=120), hours=1, dual_received_time=h(1))
+        log(self.student, self.today - timedelta(days=3), hours=1.5, pic_time=h(1.5), cross_country=True, night_landings=2)
+        log(self.student, self.today - timedelta(days=2), hours=1, pic_time=h(1))
+        log(self.student, self.today - timedelta(days=1), hours=5, dual_received_time=h(5), is_draft=True)
+        log(self.student, self.today - timedelta(days=1), hours=5, dual_received_time=h(5), is_simulator=True)
+        self.assertEqual(self.sign(lesson.pk).status_code, 201)
+
+        card = self.card()
+        self.assertEqual((card['link_id'], card['student']['username']), (self.link_id, 'student'))
+        rows = {r['key']: (r['have'], r['need'], r['short']) for r in card['hours']}
+        self.assertEqual(rows, {
+            'total': (7.5, 40, 32.5),
+            'dual': (3.5, 20, 16.5),
+            'dual_xc': (2.0, 3, 1.0),
+            'dual_night': (1.5, 3, 1.5),
+            'night_landings': (3, 10, 7),
+            'dual_instrument': (0.5, 3, 2.5),
+            'dual_recent': (2.5, 3, 0.5),
+            'solo': (2.5, 10, 7.5),
+            'solo_xc': (1.5, 5, 3.5),
+        })
+        [dual] = [r for r in card['hours'] if r['key'] == 'dual']
+        self.assertEqual(dual['signed'], 2.0)
+        self.assertIn('Total flight time: 32.5 h to go', card['missing'])
+        self.assertIn('Night takeoffs and landings with an instructor: 7 to go', card['missing'])
+        self.assertEqual(len(self.dashboard()['checks']), 3)
+
+    def test_met_minimums_drop_out_of_missing(self):
+        log(self.student, self.today - timedelta(days=3), hours=45, pic_time=timedelta(hours=45))
+        card = self.card()
+        [total] = [r for r in card['hours'] if r['key'] == 'total']
+        self.assertEqual(total['short'], 0)
+        self.assertFalse(any(m.startswith('Total flight time') for m in card['missing']))
+
+    def test_a_few_minutes_short_is_still_short(self):
+        log(self.student, self.today - timedelta(days=3), hours=39 + 57 / 60, pic_time=timedelta(hours=39, minutes=57))
+        [total] = [r for r in self.card()['hours'] if r['key'] == 'total']
+        self.assertEqual((total['have'], total['short']), (40.0, 0.1))
+
+    def test_future_flights_do_not_count_as_recent_dual(self):
+        log(self.student, self.today + timedelta(days=7), hours=3, dual_received_time=timedelta(hours=3))
+        [recent] = [r for r in self.card()['hours'] if r['key'] == 'dual_recent']
+        self.assertEqual(recent['have'], 0.0)
+
+    def test_deactivated_students_drop_off(self):
+        self.student.is_active = False
+        self.student.save(update_fields=['is_active'])
+        self.assertEqual(self.dashboard()['students'], [])
+
+    def test_endorsements_from_any_instructor(self):
+        self.endorse('solo', date(2025, 1, 10), expires_on=date(2025, 4, 10))
+        self.endorse('knowledge_test', self.today)
+        self.endorse('pre_solo_knowledge', self.today, withdrawn_at=timezone.now())
+        self.endorse('tailwheel', self.today)
+
+        card = self.card()
+        status = {e['kind']: e['status'] for e in card['endorsements']}
+        self.assertEqual(status, {
+            'pre_solo_knowledge': 'missing', 'pre_solo_flight': 'missing', 'solo': 'expired',
+            'solo_cross_country': 'missing', 'knowledge_test': 'current', 'practical_test': 'missing',
+        })
+        self.assertIn('Solo flight endorsement expired 2025-04-10', card['missing'])
+        self.assertIn('Pre-solo knowledge test endorsement missing', card['missing'])
+        self.assertFalse(any(m.startswith('Knowledge test') for m in card['missing']))
+
+    def test_a_current_endorsement_outranks_an_expired_one(self):
+        self.endorse('solo', date(2025, 1, 10), expires_on=date(2025, 4, 10))
+        self.endorse('solo', self.today, expires_on=self.today + timedelta(days=90))
+        [solo] = [e for e in self.card()['endorsements'] if e['kind'] == 'solo']
+        self.assertEqual(solo['status'], 'current')
+
+    def test_only_the_instructor_on_an_active_link_sees_the_student(self):
+        log(self.student, self.today, hours=1, pic_time=timedelta(hours=1))
+        self.login('student')
+        self.assertEqual(self.dashboard()['students'], [])
+        self.login('stranger')
+        self.assertEqual(self.dashboard()['students'], [])
+
+        self.login('cfi')
+        self.client.delete(f'/api/instruction/links/{self.link_id}/')
+        self.assertEqual(self.dashboard()['students'], [])
+        self.login('student')
+        self.client.post('/api/instruction/links/', {'invitee': 'cfi', 'invitee_role': 'instructor'}, format='json')
+        self.login('cfi')
+        self.assertEqual(self.dashboard()['students'], [])
+
+        self.client.credentials()
+        self.assertEqual(self.client.get('/api/instruction/dashboard/').status_code, 401)
+
+    def test_query_count_does_not_grow_with_students(self):
+        log(self.student, self.today, hours=1, dual_received_time=timedelta(hours=1))
+        with CaptureQueriesContext(connection) as one:
+            self.dashboard()
+        self.login('second')
+        self.client.post('/api/instruction/links/', {'invitee': 'cfi', 'invitee_role': 'instructor'}, format='json')
+        second = get_user_model().objects.get(username='second')
+        log(second, self.today, hours=1, dual_received_time=timedelta(hours=1))
+        self.login('cfi')
+        link = InstructorLink.objects.get(student=second)
+        self.client.post(f'/api/instruction/links/{link.pk}/accept/')
+        with CaptureQueriesContext(connection) as two:
+            self.assertEqual(len(self.dashboard()['students']), 2)
+        self.assertEqual(len(one), len(two))

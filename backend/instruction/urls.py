@@ -8,6 +8,7 @@ urlpatterns = [
     path('links/<int:pk>/accept/', views.accept_link, name='instructor-link-accept'),
     path('links/<int:pk>/flights/', views.student_flights, name='student-flights'),
     path('links/<int:pk>/endorsements/', views.student_endorsements, name='student-endorsements'),
+    path('dashboard/', views.dashboard, name='instruction-dashboard'),
     path('flights/<int:pk>/sign/', views.sign_flight, name='sign-flight'),
     path('signatures/<int:pk>/withdraw/', views.withdraw_signature, name='withdraw-signature'),
     path('endorsements/', views.my_endorsements, name='my-endorsements'),

@@ -76,3 +76,33 @@ test('an instructor signs, withdraws and endorses; editing a signed lesson inval
     await expect(student.getByText('Solo flight', { exact: true })).toBeVisible();
     await expect(student.getByText('14 CFR 61.87(n)')).toBeVisible();
 });
+
+test("an instructor sees each linked student's progress toward the private pilot certificate", async ({ browser }) => {
+    const stamp = Date.now();
+    const cfi = await (await browser.newContext()).newPage();
+    const student = await (await browser.newContext()).newPage();
+
+    await register(cfi, `prog${stamp}`);
+    await cfi.goto('/profile');
+    await cfi.getByLabel('Certificate number').fill('7654321cfi');
+    await cfi.getByRole('button', { name: 'Save profile' }).click();
+    await expect(cfi.getByText('Profile saved.')).toBeVisible();
+
+    await register(student, `learner${stamp}`);
+    await logFlight(student, { from: 'KPAO', to: 'KSQL', reg: 'N172SP', day: '2026-02-03', dual: '1:30' });
+    await logFlight(student, { from: 'KPAO', to: 'KSQL', reg: 'N172SP', day: '2026-02-04' });
+    await student.goto('/instruction');
+    await student.getByLabel('Username or email').fill(`prog${stamp}@example.com`);
+    await student.getByRole('button', { name: 'Send invitation' }).click();
+    await expect(student.getByText(`Invitation sent to prog${stamp}`)).toBeVisible();
+
+    await cfi.goto('/instruction');
+    await expect(cfi.getByRole('link', { name: 'Student progress' })).toHaveCount(0);
+    await cfi.getByRole('button', { name: 'Accept' }).click();
+    await cfi.getByRole('link', { name: 'Student progress' }).click();
+    await expect(cfi.getByRole('heading', { name: new RegExp(`learner${stamp}`) })).toBeVisible();
+    await expect(cfi.getByText('Total flight time: 37.0 h to go')).toBeVisible();
+    await expect(cfi.getByText('PIC without dual (counted as solo): 8.5 h to go')).toBeVisible();
+    await expect(cfi.getByText('Knowledge test endorsement missing', { exact: true })).toBeVisible();
+    await expect(cfi.getByText('· signed 0 h')).toBeVisible();
+});

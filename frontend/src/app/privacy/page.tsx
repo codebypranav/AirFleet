@@ -61,7 +61,11 @@ export default function PrivacyPage() {
                     <p className="text-stone">
                         An instructor you link with can see your flights that have dual received time: route, times, aircraft,
                         logbook columns, landings and approaches. Not your notes, photos or other flights. Unlinking
-                        stops that straight away. They also see the endorsements they have given you, and no one else&apos;s.
+                        stops that straight away. They also see the endorsements they have given you. While linked, they
+                        see your progress toward the private pilot certificate. That means totals of total, dual, cross-country,
+                        night, simulated instrument and solo time and night landings across all your logged flights,
+                        simulator sessions aside, but never the flights themselves. It also shows whether you hold each
+                        endorsement the certificate needs, from any instructor, and when it expires.
                         Sign-offs and endorsements stay on your record, with the instructor&apos;s name and certificate
                         number, even if they later delete their account. Your CSV export includes who signed each flight.
                     </p>

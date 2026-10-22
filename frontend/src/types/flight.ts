@@ -104,6 +104,19 @@ export interface InstructorLink {
     accepted_at: string | null;
 }
 
+export interface StudentProgress {
+    link_id: number;
+    student: { username: string; name: string };
+    hours: { key: string; label: string; regulation: string; unit: 'h' | ''; have: number; need: number; short: number; signed?: number }[];
+    endorsements: { kind: string; title: string; regulation: string; status: 'current' | 'expired' | 'missing'; expires_on: string | null }[];
+    missing: string[];
+}
+
+export interface InstructorDashboard {
+    checks: { label: string; regulation: string }[];
+    students: StudentProgress[];
+}
+
 /** A student's dual flight as their instructor sees it: only the fields that get signed. */
 export interface StudentFlight extends Pick<Flight,
     'id' | 'departure_airport' | 'arrival_airport' | 'departure_info' | 'arrival_info' | 'departure_time' | 'arrival_time' |

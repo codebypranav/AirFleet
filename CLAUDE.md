@@ -52,6 +52,7 @@ Full stack: `docker compose up --build` (Postgres, Django :8000, Next :3000).
   - `models.py` defines `SIGNED_FIELDS`, `flight_snapshot()` and `snapshot_hash()` (SHA-256 of sorted JSON). The flight API recomputes the hash on read; editing any signed field shows the signature as **invalidated** until re-signed or reverted. Adding a field to `SIGNED_FIELDS` changes the hash of existing signatures.
   - Signatures/endorsements are never deleted, only marked withdrawn. Signing requires an active link, dual received time, an unexpired instructor certificate, attestation and the instructor's password.
   - `endorsements.py` holds the endorsement kinds, starter text and expiry rules.
+  - `requirements.py` holds the private pilot hour rows of 61.109(a) and the endorsements behind `GET /api/instruction/dashboard/`. Each row is one rule, summed over an ACTIVE student's logged non-simulator flights. The instructor sees only the totals, never the non-dual flights.
   - "Instructor" is a capability (a certificate on the profile), not an account type.
 - `groups/` — pilot groups (airline, operator, school, alliance, community) and memberships:
   - The slug is generated from the name on create and never changes on rename. `is_official` and `parent` are staff-only, set in Django admin, never writable through the API.

@@ -147,6 +147,9 @@ export default function InstructionPage() {
                 eyebrow="Instruction"
                 title="Instructors & students"
                 description="Link with your instructor and they can sign the lessons in your logbook. If you instruct, your students can link with you too."
+                action={students.some((l) => l.status === 'ACTIVE') && (
+                    <Link href="/instruction/dashboard" className="btn btn-primary">Student progress</Link>
+                )}
             />
             <InviteForm canInstruct={Boolean(profile?.instructor_certificate_number)} onInvited={reload} />
 
