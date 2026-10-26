@@ -106,7 +106,6 @@ CORS_ALLOWED_ORIGIN_REGEXES = [
     r"^https://airfleet(-project)?-[a-z0-9-]+\.vercel\.app$",
 ]
 
-# Additional CORS settings for Railway
 CORS_ALLOW_ALL_ORIGINS = os.environ.get('CORS_ALLOW_ALL_ORIGINS', 'False') == 'True'
 CORS_ALLOW_CREDENTIALS = True
 
