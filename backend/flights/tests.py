@@ -579,9 +579,18 @@ class ImportExportTests(ApiTestCase):
 
     def test_import_reads_iso_datetime_takeoff(self):
         self.authenticate()
-        res = self.upload('Date,From,To,Aircraft,Total,Time Off\n2026-01-05,KJFK,KBOS,N1,1.0,2026-01-06T14:10:00Z\n')
-        self.assertEqual(res.data['created'], 1, res.data)
-        self.assertEqual(Flight.objects.get().departure_time, datetime(2026, 1, 6, 14, 10, tzinfo=dt_timezone.utc))
+        res = self.upload(
+            'Date,From,To,Aircraft,Total,Time Off\n'
+            '2026-01-05,KJFK,KBOS,N1,1.0,2026-01-06T14:10:00Z\n'
+            '2026-01-05,KJFK,KBOS,N1,1.0,2026-01-05T14:10:00-08:00\n'
+            '2026-01-07,KJFK,KBOS,N1,1.0,2026-01-07T23:30:00-08:00\n'
+        )
+        self.assertEqual(res.data['created'], 3, res.data)
+        self.assertEqual(sorted(Flight.objects.values_list('departure_time', flat=True)), [
+            datetime(2026, 1, 5, 22, 10, tzinfo=dt_timezone.utc),
+            datetime(2026, 1, 6, 14, 10, tzinfo=dt_timezone.utc),
+            datetime(2026, 1, 8, 7, 30, tzinfo=dt_timezone.utc),
+        ])
 
     def test_import_rejects_unreadable_text(self):
         self.authenticate()

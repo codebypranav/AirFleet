@@ -114,6 +114,13 @@ def _day(value):
 
 def _departure(day, *values):
     for value in values:
+        try:
+            parsed = datetime.fromisoformat((value or '').strip())
+            moment = parsed.astimezone(dt_timezone.utc) if parsed.tzinfo else None
+        except (ValueError, OverflowError):
+            moment = None
+        if moment and moment.date() < MAX_IMPORT_DATE:
+            return moment
         start = _clock(value)
         if start:
             return datetime.combine(_day(value) or day, start, tzinfo=dt_timezone.utc)
