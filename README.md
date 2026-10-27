@@ -6,7 +6,7 @@
 
 AirFleet keeps a pilot's flights, aircraft and training records in one place. Log a flight by
 hand, describe it in plain words and let AI fill in the form, pull it from SimBrief or a flight
-plan PDF, or import a ForeFlight logbook. AirFleet then works out totals, currency, maintenance
+plan PDF, or import a ForeFlight, LogTen Pro or MyFlightbook logbook. AirFleet then works out totals, currency, maintenance
 due dates and route maps, and lets an instructor sign lessons and give endorsements.
 
 > AirFleet is a personal project, not a certified logbook. It isn't meant to replace an official
@@ -59,7 +59,8 @@ due dates and route maps, and lets an instructor sign lessons and give endorseme
   read from the PDF (anchored on the ICAO `(FPL-...)` message). Drafts stay out of totals, currency, rankings and maintenance until you add
   the actual times and untick *Draft*. The PDF itself isn't stored.
 - **Import/export:** CSV export of the logbook (or a filtered slice), and import of AirFleet
-  CSVs or ForeFlight logbook exports. Duplicates are skipped and bad rows reported.
+  CSVs, ForeFlight and MyFlightbook CSV exports, LogTen Pro tab-delimited exports, or a spreadsheet
+  template (.xlsx or CSV, downloadable from the import page). Duplicates are skipped and bad rows reported.
 - **Accounts:** profile editing with a profile picture, password change, password reset by email, optional Google
   sign-in, and opt-in public pilot profiles and shareable flight pages.
 - **Flying with friends:** invite crewmates to a logged or live flight by username as Captain (PIC) or
@@ -408,7 +409,7 @@ short-lived signed photo URLs. Without them, photos fall back to local disk.
 Typical usage looks like this:
 
 1. user signs in or registers (password or Google)
-2. flights are logged by hand, by describing them (quick log), from SimBrief, or imported from ForeFlight/CSV
+2. flights are logged by hand, by describing them (quick log), from SimBrief, or imported from ForeFlight, LogTen Pro, MyFlightbook or a spreadsheet
 3. the logbook, fleet and stats pages show history, totals, currency and maintenance
 4. the user can edit flights over time and optionally share a public profile
 

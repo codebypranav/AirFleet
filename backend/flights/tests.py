@@ -401,7 +401,8 @@ class MaintenanceForecastTests(SimpleTestCase):
 class ImportExportTests(ApiTestCase):
     def upload(self, text, name='logbook.csv'):
         from django.core.files.uploadedfile import SimpleUploadedFile
-        return self.client.post('/api/flights/import/', {'file': SimpleUploadedFile(name, text.encode(), content_type='text/csv')}, format='multipart')
+        data = text if isinstance(text, bytes) else text.encode()
+        return self.client.post('/api/flights/import/', {'file': SimpleUploadedFile(name, data, content_type='text/csv')}, format='multipart')
 
     def test_export_then_import_round_trip(self):
         self.authenticate('alice')
@@ -434,6 +435,8 @@ class ImportExportTests(ApiTestCase):
         self.authenticate()
         res = self.upload('foo,bar\n1,2\n')
         self.assertEqual(res.status_code, 400)
+        self.assertIn('MyFlightbook', res.data['error'])
+        res = self.upload('departure_airport,arrival_airport\nKJFK,KBOS\n')
         self.assertIn('Missing columns', res.data['error'])
 
     def test_foreflight_import(self):
@@ -459,6 +462,94 @@ class ImportExportTests(ApiTestCase):
         self.assertEqual((flight.day_landings, flight.night_landings, flight.cross_country), (1, 1, True))
         self.assertEqual(flight.notes, 'Gusty')
         self.assertEqual((flight.aircraft.type_code, flight.aircraft.make_model), ('C172', 'Cessna 172S'))
+
+    def test_logten_import(self):
+        self.authenticate()
+        text = (
+            'flight_flightDate\taircraft_aircraftID\taircraftType_type\taircraftType_make\taircraftType_model\tflight_from\tflight_to\t'
+            'flight_takeoffTime\tflight_totalTime\tflight_pic\tflight_night\tflight_dayLandings\tflight_nightLandings\tflight_totalApproaches\tflight_remarks\n'
+            '1/5/2026\tN172SP\tC172\tCessna\t172S\tPAE\tAWO\t14:10\t1:30\t1:30\t0:30\t1\t1\t2\tPattern work\n'
+            '1/6/2026\tN172SP\tC172\tCessna\t172S\tPAE\t\t\t\t\t\t\t\t\t\n'
+        )
+        res = self.upload(text, name='logten.txt')
+        self.assertEqual(res.data['source'], 'logten', res.data)
+        self.assertEqual((res.data['created'], res.data['skipped']), (1, 1), res.data)
+        flight = Flight.objects.get()
+        self.assertEqual((flight.departure_airport, flight.arrival_airport), ('KPAE', 'KAWO'))
+        self.assertEqual(flight.departure_time, datetime(2026, 1, 5, 14, 10, tzinfo=dt_timezone.utc))
+        self.assertEqual((flight.total_time, flight.pic_time, flight.night_time), (timedelta(hours=1.5), timedelta(hours=1.5), timedelta(minutes=30)))
+        self.assertEqual((flight.day_landings, flight.night_landings, flight.approaches, flight.notes), (1, 1, 2, 'Pattern work'))
+        self.assertEqual((flight.aircraft.type_code, flight.aircraft.make_model), ('C172', 'Cessna 172S'))
+
+        self.assertEqual(self.upload(text, name='logten.txt').data['duplicates'], 1)
+
+    def test_myflightbook_import(self):
+        self.authenticate()
+        text = (
+            'Date,Flight ID,Model,ICAO Model,Tail Number,Display Tail,Aircraft ID,Category/Class,Approaches,Hold,Landings,FS Night Landings,'
+            'FS Day Landings,X-Country,Night,IMC,Simulated Instrument,Ground Simulator,Dual Received,CFI,SIC,PIC,Total Flight Time,Route,'
+            'Comments,Engine Start,Engine End,Flight Start,Flight End\n'
+            '2026-01-05,1234,C-172 S,C172,N172SP,N172SP,99,ASEL,1,,3,1,1,1.4,0.5,0.2,0.3,0,1.6,0,0,0,1.6,KPAE KBVS KAWO,'
+            'First solo XC,2026-01-05 14:00:00Z,2026-01-05 15:45:00Z,2026-01-05 14:10:00Z,2026-01-05 15:40:00Z\n'
+        )
+        res = self.upload(text)
+        self.assertEqual((res.data['source'], res.data['created']), ('myflightbook', 1), res.data)
+        flight = Flight.objects.get()
+        self.assertEqual((flight.departure_airport, flight.arrival_airport, flight.flight_plan), ('KPAE', 'KAWO', 'KPAE KBVS KAWO'))
+        self.assertEqual(flight.departure_time, datetime(2026, 1, 5, 14, 10, tzinfo=dt_timezone.utc))
+        self.assertEqual((flight.total_time, flight.dual_received_time, flight.instrument_time), (timedelta(hours=1.6), timedelta(hours=1.6), timedelta(hours=0.2)))
+        self.assertEqual((flight.day_landings, flight.night_landings, flight.approaches, flight.cross_country), (2, 1, 1, True))
+        self.assertEqual(flight.notes, 'First solo XC')
+        self.assertEqual((flight.aircraft.type_code, flight.aircraft.make_model, flight.aircraft.aircraft_class), ('C172', 'C-172 S', 'SEL'))
+
+    def test_template_xlsx_round_trip(self):
+        import openpyxl
+        res = self.client.get('/api/flights/import/template/')
+        self.assertEqual(res.status_code, 200)
+        book = openpyxl.load_workbook(io.BytesIO(res.content))
+        sheet = book.active
+        header = [cell.value for cell in sheet[1]]
+        values = {'Date': datetime(2026, 1, 5), 'From': 'KPAE', 'To': 'AWO', 'Aircraft': 'N172SP', 'Type': 'C172',
+                  'Time Off': '14:10', 'Total': 1.5, 'PIC': 1.5, 'Day Landings': 2, 'Remarks': 'Template'}
+        sheet.append([values.get(column) for column in header])
+        out = io.BytesIO()
+        book.save(out)
+
+        self.authenticate()
+        res = self.upload(out.getvalue(), name='logbook.xlsx')
+        self.assertEqual((res.data['source'], res.data['created']), ('template', 1), res.data)
+        flight = Flight.objects.get()
+        self.assertEqual((flight.departure_airport, flight.arrival_airport), ('KPAE', 'KAWO'))
+        self.assertEqual(flight.departure_time, datetime(2026, 1, 5, 14, 10, tzinfo=dt_timezone.utc))
+        self.assertEqual((flight.total_time, flight.day_landings, flight.notes), (timedelta(hours=1.5), 2, 'Template'))
+        self.assertEqual(flight.aircraft.type_code, 'C172')
+
+    def test_template_csv(self):
+        self.authenticate()
+        res = self.upload('Date,From,To,Aircraft,Total,Night\n2026-01-05,KJFK,KBOS,N1,1:15,0:45\n')
+        self.assertEqual((res.data['source'], res.data['created']), ('template', 1), res.data)
+        flight = Flight.objects.get()
+        self.assertEqual((flight.total_time, flight.night_time), (timedelta(minutes=75), timedelta(minutes=45)))
+        self.assertEqual(flight.departure_time, datetime(2026, 1, 5, 12, 0, tzinfo=dt_timezone.utc))
+
+    def test_import_reads_three_letter_codes(self):
+        self.authenticate()
+        res = self.upload(
+            'Date,From,To,Aircraft,Total\n'
+            '2026-01-05,LHR,CDG,G-ABCD,1.5\n'
+            '2026-01-06,PAE,BVS,N1,1.0\n'
+            '2026-01-07,KBOS,1B9,N1,1.0\n'
+        )
+        self.assertEqual((res.data['created'], res.data['skipped']), (1, 2), res.data)
+        self.assertEqual(Flight.objects.values_list('departure_airport', 'arrival_airport').get(), ('EGLL', 'LFPG'))
+        self.assertEqual(res.data['errors'][0], {'row': 2, 'errors': 'BVS could be KBVS or SNVS. Use the 4-letter ICAO code.'})
+        self.assertEqual(res.data['errors'][1]['row'], 3)
+
+    def test_import_rejects_unreadable_spreadsheet(self):
+        self.authenticate()
+        res = self.upload(b'PK\x03\x04 not really a workbook', name='logbook.xlsx')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn("Couldn't read this spreadsheet", res.data['error'])
 
 
 class LookupTests(ApiTestCase):
