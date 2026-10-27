@@ -201,12 +201,16 @@ def parse_foreflight(text):
 
     flights = []
     for row in tables['Flights Table']:
-        date_text = _text(row, 'Date')
-        day = _day(date_text)
         total = _hours(row.get('TotalTime'))
-        problem = _problem(date_text, day, total)
-        if problem:
-            flights.append({'_error': problem, '_raw': row})
+        if not row.get('Date') or total <= timedelta(0):
+            flights.append({'_error': 'Missing date or total time', '_raw': row})
+            continue
+        try:
+            day = datetime.strptime(row['Date'].strip(), '%Y-%m-%d').date()
+        except ValueError:
+            day = None
+        if not day or day >= MAX_IMPORT_DATE:
+            flights.append({'_error': f"Unrecognised date {row['Date']!r}", '_raw': row})
             continue
         night_landings = _int(row.get('NightLandingsFullStop'))
         all_landings = _int(row.get('AllLandings'))

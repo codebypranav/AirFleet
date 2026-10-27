@@ -452,10 +452,14 @@ class ImportExportTests(ApiTestCase):
             'Date,AircraftID,From,To,Route,TimeOut,TimeOff,TimeOn,TimeIn,TotalTime,PIC,Night,CrossCountry,DayLandingsFullStop,NightLandingsFullStop,AllLandings,ActualInstrument,Approach1,Approach2,SimulatedFlight,PilotComments\n'
             '2026-01-05,N172SP,KJFK,KBOS,DCT,1400,1410,,,1.5,1.5,0.5,1.5,1,1,2,0.2,1;ILS;4R;KBOS;;,,0,Gusty\n'
             '2026-01-06,N172SP,KBOS,1B9,,,,,,1.0,1.0,0,0,1,0,1,0,,,0,\n'
+            '03/04/2026,N172SP,KJFK,KBOS,,,,,,1.0,1.0,0,0,1,0,1,0,,,0,\n'
+            '9999-12-31,N172SP,KJFK,KBOS,,,,,,1.0,1.0,0,0,1,0,1,0,,,0,\n'
         )
         res = self.upload(text)
         self.assertEqual(res.data['source'], 'foreflight')
-        self.assertEqual((res.data['created'], res.data['skipped']), (1, 1), res.data)
+        self.assertEqual((res.data['created'], res.data['skipped']), (1, 3), res.data)
+        self.assertEqual(res.data['errors'][1], {'row': 3, 'errors': "Unrecognised date '03/04/2026'"})
+        self.assertEqual(res.data['errors'][2], {'row': 4, 'errors': "Unrecognised date '9999-12-31'"})
         flight = Flight.objects.get()
         self.assertEqual(flight.departure_time, datetime(2026, 1, 5, 14, 10, tzinfo=dt_timezone.utc))
         self.assertEqual((flight.total_time, flight.night_time, flight.approaches), (timedelta(hours=1.5), timedelta(hours=0.5), 1))
