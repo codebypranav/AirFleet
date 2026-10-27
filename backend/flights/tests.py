@@ -1,5 +1,6 @@
 import io
 import json
+import struct
 from datetime import date, datetime, timedelta, timezone as dt_timezone
 from unittest import mock
 
@@ -494,7 +495,7 @@ class ImportExportTests(ApiTestCase):
             'Date,Flight ID,Model,ICAO Model,Tail Number,Display Tail,Aircraft ID,Category/Class,Approaches,Hold,Landings,FS Night Landings,'
             'FS Day Landings,X-Country,Night,IMC,Simulated Instrument,Ground Simulator,Dual Received,CFI,SIC,PIC,Total Flight Time,Route,'
             'Comments,Engine Start,Engine End,Flight Start,Flight End\n'
-            '2026-01-05,1234,C-172 S,C172,N172SP,N172SP,99,ASEL,1,,3,1,1,1.4,0.5,0.2,0.3,0,1.6,0,0,0,1.6,KPAE KBVS KAWO,'
+            '2026-01-05,1234,C-172 S,C172,N172SP,N172SP,99,AMEL,1,,3,1,1,1.4,0.5,0.2,0.3,0,1.6,0,0,0,1.6,KPAE KBVS KAWO,'
             'First solo XC,2026-01-05 14:00:00Z,2026-01-05 15:45:00Z,2026-01-05 14:10:00Z,2026-01-05 15:40:00Z\n'
         )
         res = self.upload(text)
@@ -505,7 +506,7 @@ class ImportExportTests(ApiTestCase):
         self.assertEqual((flight.total_time, flight.dual_received_time, flight.instrument_time), (timedelta(hours=1.6), timedelta(hours=1.6), timedelta(hours=0.2)))
         self.assertEqual((flight.day_landings, flight.night_landings, flight.approaches, flight.cross_country), (2, 1, 1, True))
         self.assertEqual(flight.notes, 'First solo XC')
-        self.assertEqual((flight.aircraft.type_code, flight.aircraft.make_model, flight.aircraft.aircraft_class), ('C172', 'C-172 S', 'SEL'))
+        self.assertEqual((flight.aircraft.type_code, flight.aircraft.make_model, flight.aircraft.aircraft_class), ('C172', 'C-172 S', 'MEL'))
 
     def test_template_xlsx_round_trip(self):
         import openpyxl
@@ -557,9 +558,11 @@ class ImportExportTests(ApiTestCase):
 
     def test_import_rejects_unreadable_spreadsheet(self):
         self.authenticate()
-        res = self.upload(b'PK\x03\x04 not really a workbook', name='logbook.xlsx')
-        self.assertEqual(res.status_code, 400)
-        self.assertIn("Couldn't read this spreadsheet", res.data['error'])
+        crafted_eocd = b'PK\x05\x06' + struct.pack('<HHHHIIH', 0, 0, 1, 1, 100, 0xFFFFFF00, 0)
+        for payload in (b'PK\x03\x04 not really a workbook', crafted_eocd):
+            res = self.upload(payload, name='logbook.xlsx')
+            self.assertEqual(res.status_code, 400, payload)
+            self.assertIn("Couldn't read this spreadsheet", res.data['error'])
 
     def test_import_reports_absurd_numbers_per_row(self):
         self.authenticate()

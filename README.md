@@ -120,7 +120,7 @@ due dates and route maps, and lets an instructor sign lessons and give endorseme
 - PostgreSQL via `DATABASE_URL`
 - JWT authentication (`djangorestframework-simplejwt`), plus Google sign-in
 - OpenAI-compatible LLM client (Gemini, then Groq, free tiers) for quick log
-- `pypdf` for flight plan PDFs, `django-storages` for S3-compatible photo storage
+- `pypdf` for flight plan PDFs, `openpyxl` for the import template and .xlsx import, `django-storages` for S3-compatible photo storage
 - Gunicorn in a Docker container on Render
 
 The backend is organized around Django apps:
