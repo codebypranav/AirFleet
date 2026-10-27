@@ -90,7 +90,7 @@ export default function ImportPage() {
 
             <Section title="Supported formats">
                 <p className="mb-6 text-sm text-ash">
-                    Slash dates are read as month/day, so if your app writes day/month export ISO dates (YYYY-MM-DD) instead.
+                    Slash dates are read as month/day, so if your app writes day/month, export ISO dates (YYYY-MM-DD) instead.
                 </p>
                 <dl className="grid gap-6 text-sm md:grid-cols-2">
                     <div>

@@ -254,7 +254,6 @@ def parse_logten(rows):
             departure_airport=origin,
             arrival_airport=_text(row, 'flight_to').upper() or origin,
             registration_number=registration,
-            distance=_int(row.get('flight_distance')),
             pic_time=_hours(row.get('flight_pic')),
             sic_time=_hours(row.get('flight_sic')),
             dual_received_time=_hours(row.get('flight_dualReceived')),

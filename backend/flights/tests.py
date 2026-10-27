@@ -471,9 +471,9 @@ class ImportExportTests(ApiTestCase):
         self.authenticate()
         text = (
             'flight_flightDate\taircraft_aircraftID\taircraftType_type\taircraftType_make\taircraftType_model\tflight_from\tflight_to\t'
-            'flight_takeoffTime\tflight_totalTime\tflight_pic\tflight_night\tflight_dayLandings\tflight_nightLandings\tflight_totalApproaches\tflight_remarks\n'
-            '1/5/2026\tN172SP\tC172\tCessna\t172S\tPAE\tAWO\t14:10\t1:30\t1:30\t0:30\t1\t1\t2\tPattern work\n'
-            '1/6/2026\tN172SP\tC172\tCessna\t172S\tPAE\t\t\t\t\t\t\t\t\t\n'
+            'flight_takeoffTime\tflight_totalTime\tflight_pic\tflight_night\tflight_dayLandings\tflight_nightLandings\tflight_totalApproaches\tflight_remarks\tflight_distance\n'
+            '1/5/2026\tN172SP\tC172\tCessna\t172S\tPAE\tAWO\t14:10\t1:30\t1:30\t0:30\t1\t1\t2\tPattern work\t556\n'
+            '1/6/2026\tN172SP\tC172\tCessna\t172S\tPAE\t\t\t\t\t\t\t\t\t\t\n'
         )
         res = self.upload(text, name='logten.txt')
         self.assertEqual(res.data['source'], 'logten', res.data)
@@ -483,6 +483,7 @@ class ImportExportTests(ApiTestCase):
         self.assertEqual(flight.departure_time, datetime(2026, 1, 5, 14, 10, tzinfo=dt_timezone.utc))
         self.assertEqual((flight.total_time, flight.pic_time, flight.night_time), (timedelta(hours=1.5), timedelta(hours=1.5), timedelta(minutes=30)))
         self.assertEqual((flight.day_landings, flight.night_landings, flight.approaches, flight.notes), (1, 1, 2, 'Pattern work'))
+        self.assertAlmostEqual(flight.distance, 16, delta=2)
         self.assertEqual((flight.aircraft.type_code, flight.aircraft.make_model), ('C172', 'Cessna 172S'))
 
         self.assertEqual(self.upload(text, name='logten.txt').data['duplicates'], 1)
