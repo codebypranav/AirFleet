@@ -537,8 +537,9 @@ class ImportExportTests(ApiTestCase):
 
     def test_template_csv(self):
         self.authenticate()
-        res = self.upload('Date,From,To,Aircraft,Total,Night\n2026-01-05,KJFK,KBOS,N1,1:15,0:45\n')
+        res = self.upload('Date,From,To,Aircraft,Total,Night\n2026-01-05,KJFK,KBOS,N1,1:15,0:45\n,,,,,\n,,,,,\n')
         self.assertEqual((res.data['source'], res.data['created']), ('template', 1), res.data)
+        self.assertEqual((res.data['skipped'], res.data['errors']), (0, []), res.data)
         flight = Flight.objects.get()
         self.assertEqual((flight.total_time, flight.night_time), (timedelta(minutes=75), timedelta(minutes=45)))
         self.assertEqual(flight.departure_time, datetime(2026, 1, 5, 12, 0, tzinfo=dt_timezone.utc))

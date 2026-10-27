@@ -402,7 +402,8 @@ def _table(text):
     first_line = text.split('\n', 1)[0]
     reader = csv.DictReader(io.StringIO(text), delimiter='\t' if '\t' in first_line else ',')
     reader.fieldnames = [name.strip() for name in reader.fieldnames or []]
-    return set(reader.fieldnames), list(reader)
+    rows = [row for row in reader if any(str(v).strip() for v in row.values() if v is not None)]
+    return set(reader.fieldnames), rows
 
 
 def detect_and_parse(data):
