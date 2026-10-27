@@ -392,7 +392,7 @@ def _sheet(data):
     try:
         cells = openpyxl.load_workbook(io.BytesIO(data), read_only=True, data_only=True).active.iter_rows(values_only=True)
         header = [_cell(value).strip() for value in next(cells, ())]
-        rows = [dict(zip(header, map(_cell, values))) for values in cells if any(v not in (None, '') for v in values)]
+        rows = [dict(zip(header, map(_cell, values))) for values in cells if any(_cell(v).strip() for v in values)]
     except Exception as e:
         raise LogbookImportError(unreadable) from e
     return set(header), rows

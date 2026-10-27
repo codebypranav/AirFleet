@@ -523,12 +523,14 @@ class ImportExportTests(ApiTestCase):
         values = {'Date': datetime(2026, 1, 5), 'From': 'KPAE', 'To': 'AWO', 'Aircraft': 'N172SP', 'Type': 'C172',
                   'Time Off': '14:10', 'Total': 1.5, 'PIC': 1.5, 'Day Landings': 2, 'Remarks': 'Template'}
         sheet.append([values.get(column) for column in header])
+        sheet.append([' '])
         out = io.BytesIO()
         book.save(out)
 
         self.authenticate()
         res = self.upload(out.getvalue(), name='logbook.xlsx')
         self.assertEqual((res.data['source'], res.data['created']), ('template', 1), res.data)
+        self.assertEqual((res.data['skipped'], res.data['errors']), (0, []), res.data)
         flight = Flight.objects.get()
         self.assertEqual((flight.departure_airport, flight.arrival_airport), ('KPAE', 'KAWO'))
         self.assertEqual(flight.departure_time, datetime(2026, 1, 5, 14, 10, tzinfo=dt_timezone.utc))
