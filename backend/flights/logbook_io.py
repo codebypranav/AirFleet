@@ -47,7 +47,7 @@ TEMPLATE = {
     'approaches': 'Approaches', 'is_simulator': 'Simulator', 'notes': 'Remarks',
 }
 MAX_SHEET_BYTES = 50 * 1024 * 1024
-MAX_IMPORT_HOURS = 10_000
+MAX_IMPORT_HOURS = 1_000_000
 MAX_IMPORT_DATE = date(2200, 1, 1)
 
 
@@ -294,7 +294,7 @@ def parse_myflightbook(rows):
             flights.append({'_error': problem, '_raw': row})
             continue
         registration = _text(row, 'Tail Number').upper() or 'UNKNOWN'
-        stops = _text(row, 'Route').upper().split() or ['']
+        stops = _text(row, 'Route').upper().replace('-', ' ').split() or ['']
         night_landings = _int(row.get('FS Night Landings'))
         flights.append(_leg(
             _departure(day, row.get('Flight Start'), row.get('Engine Start')), total,

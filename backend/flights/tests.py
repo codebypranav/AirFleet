@@ -497,10 +497,14 @@ class ImportExportTests(ApiTestCase):
             'Comments,Engine Start,Engine End,Flight Start,Flight End\n'
             '2026-01-05,1234,C-172 S,C172,N172SP,N172SP,99,AMEL,1,,3,1,1,1.4,0.5,0.2,0.3,0,1.6,0,0,0,1.6,KPAE KBVS KAWO,'
             'First solo XC,2026-01-05 14:00:00Z,2026-01-05 15:45:00Z,2026-01-05 14:10:00Z,2026-01-05 15:40:00Z\n'
+            '2026-01-06,1235,C-172 S,C172,N172SP,N172SP,99,AMEL,0,,1,0,1,0,0,0,0,0,0,0,0,1.6,1.6,KSEA-KPDX,'
+            'Dash route,,,,\n'
         )
         res = self.upload(text)
-        self.assertEqual((res.data['source'], res.data['created']), ('myflightbook', 1), res.data)
-        flight = Flight.objects.get()
+        self.assertEqual((res.data['source'], res.data['created']), ('myflightbook', 2), res.data)
+        self.assertEqual(Flight.objects.values_list('departure_airport', 'arrival_airport', 'flight_plan').get(departure_airport='KSEA'),
+                         ('KSEA', 'KPDX', 'KSEA-KPDX'))
+        flight = Flight.objects.get(departure_airport='KPAE')
         self.assertEqual((flight.departure_airport, flight.arrival_airport, flight.flight_plan), ('KPAE', 'KAWO', 'KPAE KBVS KAWO'))
         self.assertEqual(flight.departure_time, datetime(2026, 1, 5, 14, 10, tzinfo=dt_timezone.utc))
         self.assertEqual((flight.total_time, flight.dual_received_time, flight.instrument_time), (timedelta(hours=1.6), timedelta(hours=1.6), timedelta(hours=0.2)))
@@ -579,6 +583,18 @@ class ImportExportTests(ApiTestCase):
         self.assertEqual(res.data['errors'][0]['row'], 1)
         self.assertEqual(Flight.objects.values_list('departure_time', 'day_landings').get(),
                          (datetime(2026, 1, 6, 12, 0, tzinfo=dt_timezone.utc), 0))
+
+    def test_import_reports_an_impossible_total_and_clamps_a_leg_time(self):
+        self.authenticate()
+        res = self.upload(
+            'Date,From,To,Aircraft,Total,PIC\n'
+            '2026-01-05,KJFK,KBOS,N1,15000,1.5\n'
+            '2026-01-06,KJFK,KBOS,N1,1.5,12000\n'
+        )
+        self.assertEqual((res.data['created'], res.data['skipped']), (1, 1), res.data)
+        self.assertIn('longer than a single flight', str(res.data['errors'][0]['errors']['total_time']))
+        self.assertEqual(Flight.objects.values_list('total_time', 'pic_time').get(),
+                         (timedelta(hours=1.5), timedelta(hours=1.5)))
 
     def test_import_reads_iso_datetime_takeoff(self):
         self.authenticate()
