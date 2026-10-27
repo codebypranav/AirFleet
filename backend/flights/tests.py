@@ -551,6 +551,12 @@ class ImportExportTests(ApiTestCase):
         self.assertEqual(res.status_code, 400)
         self.assertIn("Couldn't read this spreadsheet", res.data['error'])
 
+    def test_import_rejects_unreadable_text(self):
+        self.authenticate()
+        res = self.upload(b'"' + b'x' * 200_000 + b'",Total\n', name='logbook.txt')
+        self.assertEqual(res.status_code, 400, res.data)
+        self.assertIn("Couldn't read this file", res.data['error'])
+
 
 class LookupTests(ApiTestCase):
     def test_airport_endpoints(self):

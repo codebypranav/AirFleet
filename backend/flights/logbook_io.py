@@ -372,7 +372,7 @@ def _sheet(data):
     try:
         with zipfile.ZipFile(io.BytesIO(data)) as archive:
             size = sum(member.file_size for member in archive.infolist())
-    except zipfile.BadZipFile as e:
+    except Exception as e:
         raise LogbookImportError(unreadable) from e
     if size > MAX_SHEET_BYTES:
         raise LogbookImportError('This spreadsheet is too large to import. Split it into smaller files.')
@@ -397,14 +397,19 @@ def detect_and_parse(data):
         header, rows = _sheet(data)
     else:
         try:
-            text = data.decode('utf-8-sig')
-        except UnicodeDecodeError:
-            text = data.decode('latin-1')
-        head = text[:4000]
-        first_line = head.splitlines()[0] if head else ''
-        if 'Flights Table' in head or 'ForeFlight' in first_line:
-            return 'foreflight', *parse_foreflight(text)
-        header, rows = _table(text)
+            try:
+                text = data.decode('utf-8-sig')
+            except UnicodeDecodeError:
+                text = data.decode('latin-1')
+            head = text[:4000]
+            first_line = head.splitlines()[0] if head else ''
+            if 'Flights Table' in head or 'ForeFlight' in first_line:
+                return 'foreflight', *parse_foreflight(text)
+            header, rows = _table(text)
+        except LogbookImportError:
+            raise
+        except Exception as e:
+            raise LogbookImportError("Couldn't read this file. Export it again as a CSV, tab-delimited text or .xlsx file.") from e
     if {'flight_flightDate', 'aircraft_aircraftID'} <= header:
         return 'logten', *parse_logten(rows)
     if {'Date', 'Tail Number', 'Total Flight Time'} <= header:
