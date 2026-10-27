@@ -91,21 +91,21 @@ export default function ImportPage() {
             <Section title="Supported formats">
                 <p className="mb-6 text-sm text-ash">
                     Slash dates are read as month/day, so if your app writes day/month, export ISO dates (YYYY-MM-DD) instead.
+                    Three-letter airport codes are read as IATA or US FAA codes (LHR becomes EGLL, PAE becomes KPAE); a code
+                    that could mean either is listed for you to fix.
                 </p>
                 <dl className="grid gap-6 text-sm md:grid-cols-2">
                     <div>
                         <dt className="text-bone">ForeFlight</dt>
                         <dd className="mt-1 text-ash">
                             In ForeFlight, go to Logbook → Settings → Export and choose CSV. Aircraft types come across with your flights.
-                            Airports need ICAO codes; rows with local identifiers (like 1B9) are listed so you can add them by hand.
+                            Rows with local identifiers (like 1B9) are listed so you can add them by hand.
                         </dd>
                     </div>
                     <div>
                         <dt className="text-bone">LogTen Pro</dt>
                         <dd className="mt-1 text-ash">
                             In LogTen, run the Export Flights (Tab) exporter and upload the .txt file. Times are read as UTC.
-                            Three-letter codes are read as IATA or US FAA codes (LHR becomes EGLL, PAE becomes KPAE); a code
-                            that could mean either is listed for you to fix.
                         </dd>
                     </div>
                     <div>
