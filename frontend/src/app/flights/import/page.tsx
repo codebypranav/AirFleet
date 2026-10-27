@@ -112,7 +112,8 @@ export default function ImportPage() {
                         <dt className="text-bone">MyFlightbook</dt>
                         <dd className="mt-1 text-ash">
                             On MyFlightbook, open Logbook → Download and save the CSV. The first and last airports in each route
-                            become the departure and arrival, and the full route goes in the flight plan.
+                            become the departure and arrival, and the full route goes in the flight plan. Times are read as UTC,
+                            so download with UTC dates and times rather than local ones.
                         </dd>
                     </div>
                     <div>

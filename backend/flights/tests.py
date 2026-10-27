@@ -509,6 +509,11 @@ class ImportExportTests(ApiTestCase):
         book = openpyxl.load_workbook(io.BytesIO(res.content))
         sheet = book.active
         header = [cell.value for cell in sheet[1]]
+        self.assertEqual(header, [
+            'Date', 'From', 'To', 'Route', 'Aircraft', 'Type', 'Time Off', 'Total', 'PIC', 'SIC', 'Dual Received',
+            'Night', 'Actual Instrument', 'Simulated Instrument', 'Cross Country', 'Day Landings', 'Night Landings',
+            'Approaches', 'Simulator', 'Remarks',
+        ])
         values = {'Date': datetime(2026, 1, 5), 'From': 'KPAE', 'To': 'AWO', 'Aircraft': 'N172SP', 'Type': 'C172',
                   'Time Off': '14:10', 'Total': 1.5, 'PIC': 1.5, 'Day Landings': 2, 'Remarks': 'Template'}
         sheet.append([values.get(column) for column in header])
@@ -550,6 +555,25 @@ class ImportExportTests(ApiTestCase):
         res = self.upload(b'PK\x03\x04 not really a workbook', name='logbook.xlsx')
         self.assertEqual(res.status_code, 400)
         self.assertIn("Couldn't read this spreadsheet", res.data['error'])
+
+    def test_import_reports_absurd_numbers_per_row(self):
+        self.authenticate()
+        res = self.upload(
+            'Date,From,To,Aircraft,Total,Day Landings\n'
+            '2026-01-05,KJFK,KBOS,N1,100000000,1\n'
+            '2026-01-06,KJFK,KBOS,N1,1.0,1e400\n'
+        )
+        self.assertEqual(res.status_code, 201, res.data)
+        self.assertEqual((res.data['created'], res.data['skipped']), (1, 1))
+        self.assertEqual(res.data['errors'][0]['row'], 1)
+        self.assertEqual(Flight.objects.values_list('departure_time', 'day_landings').get(),
+                         (datetime(2026, 1, 6, 12, 0, tzinfo=dt_timezone.utc), 0))
+
+    def test_import_reads_iso_datetime_takeoff(self):
+        self.authenticate()
+        res = self.upload('Date,From,To,Aircraft,Total,Time Off\n2026-01-05,KJFK,KBOS,N1,1.0,2026-01-06T14:10:00Z\n')
+        self.assertEqual(res.data['created'], 1, res.data)
+        self.assertEqual(Flight.objects.get().departure_time, datetime(2026, 1, 6, 14, 10, tzinfo=dt_timezone.utc))
 
     def test_import_rejects_unreadable_text(self):
         self.authenticate()

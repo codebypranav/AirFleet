@@ -2,7 +2,7 @@
 import csv
 import io
 import zipfile
-from datetime import datetime, time, timedelta, timezone as dt_timezone
+from datetime import date, datetime, time, timedelta, timezone as dt_timezone
 
 import openpyxl
 
@@ -47,6 +47,8 @@ TEMPLATE = {
     'approaches': 'Approaches', 'is_simulator': 'Simulator', 'notes': 'Remarks',
 }
 MAX_SHEET_BYTES = 50 * 1024 * 1024
+MAX_IMPORT_HOURS = 10_000
+MAX_IMPORT_DATE = date(2200, 1, 1)
 
 
 def export_csv(flights):
@@ -70,16 +72,18 @@ def _hours(value):
     try:
         if ':' in value:
             hours, minutes = value.split(':')[:2]
-            return timedelta(hours=int(hours), minutes=int(minutes))
-        return timedelta(hours=float(value)) if value else timedelta(0)
-    except ValueError:
+            total = timedelta(hours=int(hours), minutes=int(minutes))
+        else:
+            total = timedelta(hours=float(value)) if value else timedelta(0)
+    except (ValueError, OverflowError):
         return timedelta(0)
+    return total if total <= timedelta(hours=MAX_IMPORT_HOURS) else timedelta(0)
 
 
 def _int(value):
     try:
         return int(float(value)) if value not in (None, '') else 0
-    except ValueError:
+    except (ValueError, OverflowError):
         return 0
 
 
@@ -89,7 +93,7 @@ def _text(row, column):
 
 def _clock(value):
     """Clock times are UTC and look like 1435, 14:35 or 14:35:00, alone or after a date."""
-    parts = (value or '').strip().rstrip('Z').split()
+    parts = (value or '').strip().rstrip('Z').replace('T', ' ').split()
     digits = ''.join(parts[-1].split(':')[:2]) if parts else ''
     if len(digits) in (3, 4) and digits.isdigit():
         digits = digits.zfill(4)
@@ -98,12 +102,13 @@ def _clock(value):
 
 
 def _day(value):
-    parts = (value or '').split()
+    parts = (value or '').replace('T', ' ').split()
     for pattern in ('%Y-%m-%d', '%m/%d/%Y', '%m/%d/%y'):
         try:
-            return datetime.strptime(parts[0] if parts else '', pattern).date()
+            day = datetime.strptime(parts[0] if parts else '', pattern).date()
         except ValueError:
-            pass
+            continue
+        return day if day < MAX_IMPORT_DATE else None
     return None
 
 
@@ -196,14 +201,12 @@ def parse_foreflight(text):
 
     flights = []
     for row in tables['Flights Table']:
+        date_text = _text(row, 'Date')
+        day = _day(date_text)
         total = _hours(row.get('TotalTime'))
-        if not row.get('Date') or total <= timedelta(0):
-            flights.append({'_error': 'Missing date or total time', '_raw': row})
-            continue
-        try:
-            day = datetime.strptime(row['Date'].strip(), '%Y-%m-%d').date()
-        except ValueError:
-            flights.append({'_error': f"Unrecognised date {row['Date']!r}", '_raw': row})
+        problem = _problem(date_text, day, total)
+        if problem:
+            flights.append({'_error': problem, '_raw': row})
             continue
         night_landings = _int(row.get('NightLandingsFullStop'))
         all_landings = _int(row.get('AllLandings'))
