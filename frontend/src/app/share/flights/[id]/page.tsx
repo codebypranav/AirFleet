@@ -6,7 +6,7 @@ import Link from 'next/link';
 import RouteMap from '@/components/RouteMap';
 import { EmptyState, PageHeader, PageShell, Section, Spinner, StatGrid } from '@/components/PageShell';
 import { getPublicFlight } from '@/utils/api';
-import { formatDate, formatDuration, formatTime, photoUrl } from '@/utils/format';
+import { MILESTONES, formatDate, formatDuration, formatTime, photoUrl } from '@/utils/format';
 import { useApi } from '@/utils/useApi';
 
 export default function SharedFlightPage({ params }: { params: Promise<{ id: string }> }) {
@@ -32,13 +32,15 @@ export default function SharedFlightPage({ params }: { params: Promise<{ id: str
             airports: flight.departure_airport === flight.arrival_airport ? [flight.departure_info] : [flight.departure_info, flight.arrival_info],
         }
         : null;
+    const route = `${flight.departure_airport} → ${flight.arrival_airport}`;
+    const airports = [flight.departure_info?.name, flight.arrival_info?.name].filter(Boolean).join(' to ');
 
     return (
         <PageShell variant="public">
             <PageHeader
                 eyebrow={`${formatDate(flight.departure_time, 'long')}${flight.is_simulator ? ' · Simulator' : ''}`}
-                title={`${flight.departure_airport} → ${flight.arrival_airport}`}
-                description={[flight.departure_info?.name, flight.arrival_info?.name].filter(Boolean).join(' to ')}
+                title={MILESTONES[flight.milestone] ?? route}
+                description={flight.milestone ? `${route} · ${airports}` : airports}
                 action={<Link href={`/pilots/${encodeURIComponent(flight.pilot)}`} className="btn btn-ghost">Flown by {flight.pilot}</Link>}
             />
             <StatGrid

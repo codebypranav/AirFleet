@@ -141,12 +141,18 @@ export const deleteFlight = (id: number | string) => apiJson<void>(`/flights/${i
 export async function downloadExport(filters: FlightFilters = {}) {
     const response = await apiFetch(`/flights/export/${query(filters)}`);
     const blob = await response.blob();
-    const name = response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? 'airfleet-logbook.csv';
+    saveBlob(blob, response.headers.get('Content-Disposition')?.match(/filename="(.+)"/)?.[1] ?? 'airfleet-logbook.csv');
+}
+
+export function saveBlob(blob: Blob, name: string) {
     const url = URL.createObjectURL(blob);
     const link = Object.assign(document.createElement('a'), { href: url, download: name });
     link.click();
     URL.revokeObjectURL(url);
 }
+
+export const flightCardUrl = (id: number | string) => `${API_BASE}/flights/${id}/card.png`;
+export const getFlightCard = (id: number | string) => apiFetch(`/flights/${id}/card.png`).then((r) => r.blob());
 
 export const importFlights = (file: File) => {
     const body = new FormData();

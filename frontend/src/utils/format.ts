@@ -113,6 +113,16 @@ export const CONDITIONS: Record<string, { label: string; className: string }> = 
     GROUNDED: { label: 'Grounded', className: 'border-rust/50 bg-rust/15 text-[#e7b6a1]' },
 };
 
+export const MILESTONES: Record<string, string> = {
+    first_solo: 'First solo',
+    first_solo_xc: 'First solo cross-country',
+    checkride_private: 'Private pilot checkride passed',
+    checkride_instrument: 'Instrument rating checkride passed',
+    checkride_commercial: 'Commercial pilot checkride passed',
+    checkride_cfi: 'Flight instructor checkride passed',
+    checkride_atp: 'ATP checkride passed',
+};
+
 export const conditionFor = (value: string) =>
     CONDITIONS[value] ?? { label: value, className: 'border-line bg-graphite text-stone' };
 

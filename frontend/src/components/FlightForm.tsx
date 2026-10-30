@@ -6,7 +6,7 @@ import AirportInput from '@/components/AirportInput';
 import { CameraIcon, CloudIcon, UploadIcon } from '@/components/Icons';
 import type { Airport, Flight } from '@/types/flight';
 import { getFleet, getMetar, getQuickLogStatus, getSimbrief, readFlightPlan, readQuickLog } from '@/utils/api';
-import { CONDITIONS, distanceNm, durationInput, formatHours, fromLocalInput, parseDurationInput, toLocalInput } from '@/utils/format';
+import { CONDITIONS, MILESTONES, distanceNm, durationInput, formatHours, fromLocalInput, parseDurationInput, toLocalInput } from '@/utils/format';
 
 const TIME_FIELDS = [
     ['pic_time', 'PIC'],
@@ -41,6 +41,7 @@ type FormState = {
     is_draft: boolean;
     hidden_from_followers: boolean;
     hide_notes: boolean;
+    milestone: string;
     weather_conditions: string;
     notes: string;
 } & Record<TimeField, string> & Record<CountField, string>;
@@ -75,6 +76,7 @@ function initialState(flight?: Flight): FormState {
         is_draft: flight?.is_draft ?? false,
         hidden_from_followers: flight?.hidden_from_followers ?? false,
         hide_notes: flight?.hide_notes ?? true,
+        milestone: flight?.milestone ?? '',
         weather_conditions: flight?.weather_conditions ?? '',
         notes: flight?.notes ?? '',
         pic_time: durationInput(flight?.pic_time),
@@ -271,6 +273,7 @@ export default function FlightForm({
         data.append('is_draft', String(form.is_draft));
         data.append('hidden_from_followers', String(form.hidden_from_followers));
         data.append('hide_notes', String(form.hide_notes));
+        data.append('milestone', form.is_simulator ? '' : form.milestone);
         for (const [key, label] of TIME_FIELDS) {
             const parsed = parseDurationInput(form[key]);
             if (parsed === null) {
@@ -478,6 +481,18 @@ export default function FlightForm({
                     {toggle('hide_notes', 'Keep my write-up to myself', 'Followers see the route and times, not what you wrote.')}
                     {(form.is_draft || flight?.is_draft) && toggle('is_draft', 'Draft', 'Planned, not flown yet. Left out of your totals until you untick this.')}
                 </div>
+                {!form.is_simulator && (
+                    <div className="mt-5">
+                        <label htmlFor="milestone" className="field-label">Milestone</label>
+                        <select id="milestone" name="milestone" value={form.milestone} onChange={handleChange} className="field-input">
+                            <option value="">None</option>
+                            {Object.entries(MILESTONES).map(([value, label]) => (
+                                <option key={value} value={value}>{label}</option>
+                            ))}
+                        </select>
+                        <p className="mt-1.5 text-xs text-ash">Headlines this flight’s share card.</p>
+                    </div>
+                )}
 
                 <label
                     htmlFor="photo"

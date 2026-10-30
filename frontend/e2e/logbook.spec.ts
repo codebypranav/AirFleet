@@ -18,9 +18,17 @@ test('a pilot logs, edits, shares, exports and deletes flights', async ({ page, 
     await page.getByRole('link', { name: 'Edit' }).click();
     await page.getByLabel('Notes').fill('Gusty crosswind on 4R');
     await page.getByLabel('Night', { exact: true }).fill('0:45');
+    await page.getByLabel('Milestone').selectOption('First solo');
     await page.getByRole('button', { name: 'Save changes' }).click();
     await expect(page.getByText('Gusty crosswind on 4R')).toBeVisible();
     await expect(page.getByText('45m').first()).toBeVisible();
+    const firstSolo = page.url().split('/').pop();
+
+    await page.evaluate(() => Object.defineProperty(navigator, 'canShare', { value: undefined }));
+    const cardPromise = page.waitForEvent('download');
+    await page.getByRole('button', { name: 'Share card' }).click();
+    const card = readFileSync((await (await cardPromise).path())!);
+    expect(card.subarray(1, 4).toString()).toBe('PNG');
 
     await logFlight(page, { from: 'KBOS', to: 'KJFK', reg: 'N172SP', day: '2026-01-06' });
 
@@ -71,6 +79,12 @@ test('a pilot logs, edits, shares, exports and deletes flights', async ({ page, 
     await guest.getByRole('link', { name: /KJFK/ }).first().click();
     await expect(guest.getByRole('link', { name: `Flown by ${username}` })).toBeVisible();
     await expect(guest.getByText('Gusty crosswind')).toHaveCount(0);
+
+    await guest.goto(`/share/flights/${firstSolo}`);
+    await expect(guest.getByRole('heading', { name: 'First solo' })).toBeVisible();
+    await expect(guest).toHaveTitle('First solo · AirFleet');
+    const ogImage = await guest.locator('meta[property="og:image"]').getAttribute('content');
+    expect((await guest.request.get(ogImage!)).headers()['content-type']).toBe('image/png');
     await guest.close();
 
     // Import into a fresh account

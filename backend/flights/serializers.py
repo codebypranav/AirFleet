@@ -187,6 +187,15 @@ class FlightSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError({
                     'registration_number': f"{registration} is grounded. Log its maintenance before adding new flights.",
                 })
+
+        milestone = current('milestone')
+        if milestone:
+            if current('is_simulator'):
+                raise serializers.ValidationError({'milestone': "Milestones can't be set on a simulator session."})
+            taken = Flight.objects.filter(user=self.context['request'].user, milestone=milestone).exclude(pk=getattr(self.instance, 'pk', None)).first()
+            if taken:
+                day = taken.departure_time
+                raise serializers.ValidationError({'milestone': f"Already set on your flight of {day.day} {day:%b %Y}."})
         return data
 
     def save(self, **kwargs):
@@ -212,7 +221,7 @@ class PublicFlightSerializer(serializers.ModelSerializer):
             'id', 'pilot', 'departure_airport', 'arrival_airport', 'departure_time', 'arrival_time',
             'total_time', 'distance', 'registration_number', 'aircraft_type', 'photo',
             'night_time', 'instrument_time', 'day_landings', 'night_landings', 'approaches',
-            'cross_country', 'is_simulator', 'departure_info', 'arrival_info',
+            'cross_country', 'is_simulator', 'departure_info', 'arrival_info', 'milestone',
         )
 
     def get_departure_info(self, obj):

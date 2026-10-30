@@ -19,7 +19,7 @@ from rest_framework.throttling import UserRateThrottle
 from rest_framework.views import APIView
 
 from groups.models import Group
-from . import airports, ask, crew, external, flight_plans, follows, insights, live, logbook_io, patterns, plan_review, quick_log, social
+from . import airports, ask, cards, crew, external, flight_plans, follows, insights, live, logbook_io, patterns, plan_review, quick_log, social
 from .models import Aircraft, Block, CrewSeat, Flight, Follow
 from .serializers import (
     AddCrewSerializer, AircraftSerializer, CommentSerializer, CrewInviteSerializer, CrewRoleSerializer, CrewSeatSerializer, FlightSerializer,
@@ -57,6 +57,10 @@ class CommentThrottle(UserRateThrottle):
 
 class LikeThrottle(UserRateThrottle):
     scope = 'like'
+
+
+class CardThrottle(UserRateThrottle):
+    scope = 'card'
 
 
 class FlightPagination(PageNumberPagination):
@@ -579,10 +583,17 @@ def simbrief(request):
 @permission_classes([AllowAny])
 def public_flight(request, pk):
     """A shareable flight page. Only flights of pilots who made their profile public."""
-    flight = get_object_or_404(
-        Flight.objects.logged().select_related('user', 'aircraft'), pk=pk, user__is_public=True, user__is_active=True,
-    )
+    flight = get_object_or_404(Flight.objects.shared().select_related('user', 'aircraft'), pk=pk)
     return Response(PublicFlightSerializer(flight, context={'request': request}).data)
+
+
+@api_view(['GET'])
+@permission_classes([AllowAny])
+@throttle_classes([CardThrottle])
+def flight_card(request, pk):
+    flights = Flight.objects.filter(Q(user_id=request.user.id) | Q(pk__in=Flight.objects.shared().values('pk')))
+    flight = get_object_or_404(flights.select_related('user', 'aircraft'), pk=pk)
+    return HttpResponse(cards.render(flight), content_type='image/png')
 
 
 @api_view(['GET'])
