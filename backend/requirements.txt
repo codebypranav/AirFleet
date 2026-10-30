@@ -29,6 +29,9 @@ google-auth==2.59.1
 # Flight plan PDFs
 pypdf==6.19.0
 
+# Spreadsheet import template (.xlsx)
+openpyxl==3.1.5
+
 # HTTP Requests
 requests==2.34.2
 

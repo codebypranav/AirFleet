@@ -101,7 +101,7 @@ export default function HomePage() {
             </section>
           ))}
           <p className="border-t border-line/70 pt-10 text-sm text-ash">
-            Also: CSV import from ForeFlight and export, METAR and SimBrief lookups, a photo from every leg,
+            Also: import from ForeFlight, LogTen Pro, MyFlightbook or a spreadsheet, CSV export, METAR and SimBrief lookups, a photo from every leg,
             rankings and public pilot pages.
           </p>
         </div>

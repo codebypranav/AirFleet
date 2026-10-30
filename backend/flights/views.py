@@ -338,6 +338,14 @@ def export_flights(request):
     return response
 
 
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def import_template(request):
+    response = HttpResponse(logbook_io.template_xlsx(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="airfleet-import-template.xlsx"'
+    return response
+
+
 class ImportFlightsView(APIView):
     permission_classes = [IsAuthenticated]
     parser_classes = [MultiPartParser, FormParser]
@@ -345,16 +353,11 @@ class ImportFlightsView(APIView):
     def post(self, request):
         upload = request.FILES.get('file')
         if not upload:
-            return Response({'error': 'Attach a CSV file as "file".'}, status=400)
+            return Response({'error': 'Attach a logbook file as "file".'}, status=400)
         if upload.size > MAX_IMPORT_BYTES:
             return Response({'error': 'Imports are limited to 5 MB.'}, status=400)
-        raw = upload.read()
         try:
-            text = raw.decode('utf-8-sig')
-        except UnicodeDecodeError:
-            text = raw.decode('latin-1')
-        try:
-            result = logbook_io.import_flights(text, request)
+            result = logbook_io.import_flights(upload.read(), request)
         except logbook_io.LogbookImportError as e:
             return Response({'error': str(e)}, status=400)
         return Response(result, status=201 if result['created'] else 200)

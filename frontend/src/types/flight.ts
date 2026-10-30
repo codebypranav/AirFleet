@@ -340,7 +340,7 @@ export interface GroupDetail extends Group {
 }
 
 export interface ImportResult {
-    source: 'airfleet' | 'foreflight';
+    source: 'airfleet' | 'foreflight' | 'logten' | 'myflightbook' | 'template';
     created: number;
     duplicates: number;
     skipped: number;

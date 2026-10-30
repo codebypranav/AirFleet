@@ -1,7 +1,8 @@
 """Airport lookups backed by a bundled extract of OurAirports (public domain).
 
 data/airports.csv.gz holds every open airport and seaplane base with a
-4-character ICAO-style code. Regenerate it from
+4-character ICAO-style code, plus its IATA code where OurAirports has one (`iata` is the
+`iata_code` of the OurAirports row whose ident, icao_code or gps_code is our code). Regenerate it from
 https://davidmegginson.github.io/ourairports-data/airports.csv when needed.
 """
 import csv
@@ -42,8 +43,18 @@ def _airports():
         }
 
 
+@lru_cache(maxsize=1)
+def _iata():
+    with gzip.open(DATA_FILE, 'rt', newline='', encoding='utf-8') as f:
+        return {row['iata']: row['code'] for row in csv.DictReader(f) if row['iata']}
+
+
 def get(code):
     return _airports().get((code or '').strip().upper())
+
+
+def from_iata(code):
+    return _iata().get((code or '').strip().upper())
 
 
 def search(query, limit=10):

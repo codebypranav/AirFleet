@@ -6,6 +6,7 @@ urlpatterns = [
     path('flights/', views.FlightListView.as_view(), name='flight-list'),
     path('flights/export/', views.export_flights, name='flight-export'),
     path('flights/import/', views.ImportFlightsView.as_view(), name='flight-import'),
+    path('flights/import/template/', views.import_template, name='flight-import-template'),
     path('flights/from-plan/', views.FlightPlanView.as_view(), name='flight-from-plan'),
     path('flights/quick-log/', views.QuickLogView.as_view(), name='flight-quick-log'),
     path('flights/<int:pk>/', views.FlightDetailView.as_view(), name='flight-detail'),

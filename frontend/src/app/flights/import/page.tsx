@@ -5,7 +5,15 @@ import Link from 'next/link';
 import { PageHeader, PageShell, Section } from '@/components/PageShell';
 import { CheckIcon, UploadIcon } from '@/components/Icons';
 import type { ImportResult } from '@/types/flight';
-import { errorMessage, importFlights } from '@/utils/api';
+import { API_BASE, errorMessage, importFlights } from '@/utils/api';
+
+const SOURCES: Record<ImportResult['source'], string> = {
+    airfleet: 'an AirFleet CSV',
+    foreflight: 'ForeFlight',
+    logten: 'LogTen Pro',
+    myflightbook: 'MyFlightbook',
+    template: 'the import template',
+};
 
 export default function ImportPage() {
     const [file, setFile] = useState<File | null>(null);
@@ -33,7 +41,7 @@ export default function ImportPage() {
             <PageHeader
                 eyebrow="Logbook · Import"
                 title="Import flights"
-                description="Bring in a logbook from ForeFlight or a CSV exported from AirFleet. Flights you already have are skipped."
+                description="Bring in a logbook from ForeFlight, LogTen Pro, MyFlightbook, a spreadsheet or an AirFleet CSV. Flights you already have are skipped."
             />
 
             <form onSubmit={submit} className="space-y-6 animate-rise">
@@ -45,9 +53,9 @@ export default function ImportPage() {
                     <span className="flex h-12 w-12 items-center justify-center rounded-full bg-graphite text-moss">
                         <UploadIcon className="h-5 w-5" />
                     </span>
-                    <span className="text-bone">{file ? file.name : 'Choose a CSV file'}</span>
-                    <span className="text-xs text-ash">Up to 5 MB</span>
-                    <input id="file" type="file" accept=".csv,text/csv" className="sr-only" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+                    <span className="text-bone">{file ? file.name : 'Choose a logbook file'}</span>
+                    <span className="text-xs text-ash">CSV, tab-delimited text or .xlsx, up to 5 MB</span>
+                    <input id="file" type="file" accept=".csv,.txt,.tsv,.xlsx,text/csv" className="sr-only" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
                 </label>
                 <div className="flex justify-end gap-3">
                     <Link href="/flights" className="btn btn-ghost">Back to logbook</Link>
@@ -61,7 +69,7 @@ export default function ImportPage() {
                 <Section title="Result">
                     <p className="flex items-center gap-2 text-bone" role="status">
                         <CheckIcon className="h-5 w-5 text-fern" />
-                        Imported {result.created} flight{result.created === 1 ? '' : 's'} from {result.source === 'foreflight' ? 'ForeFlight' : 'an AirFleet CSV'}.
+                        Imported {result.created} flight{result.created === 1 ? '' : 's'} from {SOURCES[result.source]}.
                         {result.duplicates > 0 && ` ${result.duplicates} already in your logbook.`}
                     </p>
                     {result.skipped > 0 && (
@@ -81,12 +89,38 @@ export default function ImportPage() {
             )}
 
             <Section title="Supported formats">
+                <p className="mb-6 text-sm text-ash">
+                    Slash dates are read as month/day, so if your app writes day/month, export ISO dates (YYYY-MM-DD) instead.
+                    Three-letter airport codes are read as IATA or US FAA codes (LHR becomes EGLL, PAE becomes KPAE); a code
+                    that could mean either is listed for you to fix.
+                </p>
                 <dl className="grid gap-6 text-sm md:grid-cols-2">
                     <div>
                         <dt className="text-bone">ForeFlight</dt>
                         <dd className="mt-1 text-ash">
                             In ForeFlight, go to Logbook → Settings → Export and choose CSV. Aircraft types come across with your flights.
-                            Airports need ICAO codes; rows with local identifiers (like 1B9) are listed so you can add them by hand.
+                            Rows with local identifiers (like 1B9) are listed so you can add them by hand.
+                        </dd>
+                    </div>
+                    <div>
+                        <dt className="text-bone">LogTen Pro</dt>
+                        <dd className="mt-1 text-ash">
+                            In LogTen, run the Export Flights (Tab) exporter and upload the .txt file. Times are read as UTC.
+                        </dd>
+                    </div>
+                    <div>
+                        <dt className="text-bone">MyFlightbook</dt>
+                        <dd className="mt-1 text-ash">
+                            On MyFlightbook, open Logbook → Download and save the CSV. The first and last airports in each route
+                            become the departure and arrival, and the full route goes in the flight plan. Times are read as UTC,
+                            so download with UTC dates and times rather than local ones.
+                        </dd>
+                    </div>
+                    <div>
+                        <dt className="text-bone">Spreadsheet template</dt>
+                        <dd className="mt-1 text-ash">
+                            <a href={`${API_BASE}/flights/import/template/`} className="text-fern hover:underline">Download the template</a>,
+                            fill in one flight per row and upload it as .xlsx or CSV. Durations can be 1.5 or 1:30; Time Off is UTC.
                         </dd>
                     </div>
                     <div>
