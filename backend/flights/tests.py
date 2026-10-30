@@ -794,6 +794,84 @@ class PublicProfileTests(ApiTestCase):
         self.assertNotIn('notes', shared)
 
 
+class MilestoneTests(ApiTestCase):
+    NEXT_DAY = {'departure_time': '2026-01-02T10:00:00Z', 'arrival_time': '2026-01-02T15:30:00Z'}
+
+    def test_one_flight_per_milestone(self):
+        self.authenticate()
+        first = self.add_flight(milestone='first_solo')
+        res = self.client.post('/api/flights/', {**FLIGHT, **self.NEXT_DAY, 'milestone': 'first_solo'}, format='json')
+        self.assertEqual(res.status_code, 400)
+        self.assertEqual(res.data['errors']['milestone'], ['Already set on your flight of 1 Jan 2026.'])
+        self.assertEqual(self.client.patch(f"/api/flights/{first['id']}/", {'milestone': 'first_solo', 'notes': 'x'}, format='json').status_code, 200)
+        self.add_flight(**self.NEXT_DAY, milestone='checkride_private')
+        self.add_flight(departure_time='2026-01-03T10:00:00Z', arrival_time='2026-01-03T15:30:00Z')
+
+    def test_other_pilots_milestones_dont_clash(self):
+        self.authenticate()
+        self.add_flight(milestone='first_solo')
+        self.authenticate('other')
+        self.add_flight(milestone='first_solo')
+
+    def test_rejected_on_simulator(self):
+        self.authenticate()
+        res = self.client.post('/api/flights/', {**FLIGHT, 'is_simulator': True, 'milestone': 'first_solo'}, format='json')
+        self.assertEqual(res.status_code, 400)
+        self.assertIn('milestone', res.data['errors'])
+
+    def test_public_flight_shows_milestone(self):
+        self.authenticate()
+        flight = self.add_flight(milestone='checkride_private')
+        self.client.patch('/api/me/', {'is_public': True}, format='json')
+        self.client.credentials()
+        self.assertEqual(self.client.get(f"/api/public/flights/{flight['id']}/").data['milestone'], 'checkride_private')
+
+
+@override_settings(STORAGES={
+    'default': {'BACKEND': 'django.core.files.storage.InMemoryStorage'},
+    'staticfiles': {'BACKEND': 'django.contrib.staticfiles.storage.StaticFilesStorage'},
+})
+class ShareCardTests(ApiTestCase):
+    def card(self, flight):
+        return self.client.get(f"/api/flights/{flight['id']}/card.png")
+
+    def assertCard(self, res):
+        from PIL import Image
+        self.assertEqual(res.status_code, 200)
+        self.assertEqual(res['Content-Type'], 'image/png')
+        self.assertEqual(Image.open(io.BytesIO(res.content)).size, (1080, 1350))
+
+    def test_owner_gets_card_of_private_flight_and_draft(self):
+        self.authenticate()
+        self.assertCard(self.card(self.add_flight(milestone='first_solo')))
+        self.assertCard(self.card(self.add_flight(departure_airport='LSZH', arrival_airport='LFPG', is_draft=True)))
+
+    def test_others_only_see_public_logged_flights(self):
+        self.authenticate()
+        flight = self.add_flight()
+        draft = self.add_flight(departure_time='2026-01-02T10:00:00Z', arrival_time='2026-01-02T15:30:00Z', is_draft=True)
+        self.authenticate('other')
+        self.assertEqual(self.card(flight).status_code, 404)
+        self.client.credentials()
+        self.assertEqual(self.card(flight).status_code, 404)
+        get_user_model().objects.filter(username='pilot').update(is_public=True)
+        self.assertCard(self.card(flight))
+        self.assertEqual(self.card(draft).status_code, 404)
+
+    def test_stale_token_is_refused_not_treated_as_anonymous(self):
+        self.authenticate()
+        flight = self.add_flight()
+        self.client.credentials(HTTP_AUTHORIZATION='Bearer expired')
+        self.assertEqual(self.card(flight).status_code, 401)
+
+    def test_card_with_photo_and_with_broken_photo(self):
+        self.authenticate()
+        res = self.client.post('/api/flights/', {**FLIGHT, 'photo': PhotoUploadTests.image(self, size=(1600, 900))}, format='multipart')
+        self.assertCard(self.card(res.data))
+        Flight.objects.filter(pk=res.data['id']).update(photo='flight_photos/missing.png')
+        self.assertCard(self.card(res.data))
+
+
 class CorsTests(APITestCase):
     def preflight(self, origin):
         res = self.client.options('/api/login/', HTTP_ORIGIN=origin, HTTP_ACCESS_CONTROL_REQUEST_METHOD='POST')

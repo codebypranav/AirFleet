@@ -14,6 +14,7 @@ urlpatterns = [
     path('flights/<int:pk>/crew/', views.CrewView.as_view(), name='flight-crew'),
     path('flights/<int:pk>/comments/', views.flight_comments, name='flight-comments'),
     path('flights/<int:pk>/like/', views.like_flight, name='flight-like'),
+    path('flights/<int:pk>/card.png', views.flight_card, name='flight-card'),
     path('comments/<int:pk>/', views.comment_detail, name='comment-detail'),
     path('comments/<int:pk>/like/', views.like_comment, name='comment-like'),
     path('notifications/', views.notification_list, name='notifications'),

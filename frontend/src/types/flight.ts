@@ -43,6 +43,7 @@ export interface Flight {
     in_flight: boolean;
     hidden_from_followers: boolean;
     hide_notes: boolean;
+    milestone: string;
     weather_conditions: string;
     signature: Signature | null;
     created_at: string;
@@ -147,6 +148,7 @@ export interface PublicFlight {
     is_simulator: boolean;
     departure_info: Airport | null;
     arrival_info: Airport | null;
+    milestone: string;
 }
 
 export interface Paginated<T> {

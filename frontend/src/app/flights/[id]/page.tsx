@@ -12,7 +12,7 @@ import { ErrorState, PageHeader, PageShell, Section, Spinner, StatGrid } from '@
 import { InsightList } from '@/components/Insights';
 import { DISCLAIMER, SignatureBadge, SignatureDetails } from '@/components/Signature';
 import type { Flight } from '@/types/flight';
-import { deleteFlight, getFlight, getPlanReview, getProfile } from '@/utils/api';
+import { deleteFlight, getFlight, getFlightCard, getPlanReview, getProfile, saveBlob } from '@/utils/api';
 import { conditionFor, durationToSeconds, formatDate, formatDuration, formatTime, photoUrl } from '@/utils/format';
 import { useApi } from '@/utils/useApi';
 
@@ -54,6 +54,7 @@ export default function FlightDetail({ params }: { params: Promise<{ id: string 
     const router = useRouter();
     const { data: flight, error, reload } = useApi(() => getFlight(id), id);
     const { data: profile } = useApi(getProfile);
+    const { data: card } = useApi(() => getFlightCard(id).then((blob) => new File([blob], `airfleet-flight-${id}.png`, { type: 'image/png' })), id);
     const [deleting, setDeleting] = useState(false);
     const [copied, setCopied] = useState(false);
 
@@ -96,6 +97,17 @@ export default function FlightDetail({ params }: { params: Promise<{ id: string 
         setTimeout(() => setCopied(false), 2000);
     };
 
+    const shareCard = async (file: File) => {
+        if (navigator.canShare?.({ files: [file] })) {
+            try {
+                return await navigator.share({ files: [file] });
+            } catch (e) {
+                if ((e as DOMException).name === 'AbortError') return;
+            }
+        }
+        saveBlob(file, file.name);
+    };
+
     return (
         <PageShell>
             <PageHeader
@@ -110,6 +122,10 @@ export default function FlightDetail({ params }: { params: Promise<{ id: string 
                                 {copied ? 'Link copied' : 'Share'}
                             </button>
                         )}
+                        <button onClick={() => card && shareCard(card)} disabled={!card} className="btn btn-ghost">
+                            <ShareIcon className="h-4 w-4" />
+                            Share card
+                        </button>
                         <Link href={`/flights/${flight.id}/edit`} className="btn btn-ghost">
                             <EditIcon className="h-4 w-4" />
                             Edit

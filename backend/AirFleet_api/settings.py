@@ -225,6 +225,7 @@ REST_FRAMEWORK = {
         'follow': '60/hour',
         'comment': '60/hour',
         'like': '300/hour',
+        'card': '300/hour',
         'auth': '30/minute',
     },
 }

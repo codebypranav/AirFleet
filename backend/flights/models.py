@@ -60,6 +60,9 @@ class FlightQuerySet(models.QuerySet):
     def open_to(self, viewer):
         return self.logged().filter(Q(user=viewer) | Q(pk__in=Flight.objects.followed_by(viewer).values('pk')))
 
+    def shared(self):
+        return self.logged().filter(user__is_public=True, user__is_active=True)
+
 
 def blocked_with(user, field):
     return (
@@ -125,6 +128,17 @@ class Flight(models.Model):
     hidden_from_followers = models.BooleanField(default=False)
     hide_notes = models.BooleanField(default=True)
 
+    MILESTONE_CHOICES = [
+        ('first_solo', 'First solo'),
+        ('first_solo_xc', 'First solo cross-country'),
+        ('checkride_private', 'Private pilot checkride passed'),
+        ('checkride_instrument', 'Instrument rating checkride passed'),
+        ('checkride_commercial', 'Commercial pilot checkride passed'),
+        ('checkride_cfi', 'Flight instructor checkride passed'),
+        ('checkride_atp', 'ATP checkride passed'),
+    ]
+    milestone = models.CharField(max_length=24, choices=MILESTONE_CHOICES, blank=True, default='')
+
     weather_conditions = models.TextField(blank=True, help_text="Usually the departure METAR")
 
     created_at = models.DateTimeField(auto_now_add=True)
@@ -135,6 +149,7 @@ class Flight(models.Model):
         indexes = [models.Index(fields=['user', '-departure_time'])]
         constraints = [
             models.UniqueConstraint(fields=['user'], condition=models.Q(in_flight=True), name='one_live_flight_per_pilot'),
+            models.UniqueConstraint(fields=['user', 'milestone'], condition=~models.Q(milestone=''), name='one_flight_per_milestone'),
         ]
 
     def __str__(self):
