@@ -64,6 +64,11 @@ give endorsements.
   template (.xlsx or CSV, downloadable from the import page). Duplicates are skipped and bad rows reported.
 - **Accounts:** profile editing with a profile picture, password change, password reset by email, optional Google
   sign-in, and opt-in public pilot profiles and shareable flight pages.
+- **Share cards:** *Share card* on a flight page shares (or downloads) a 1080×1350 image of the
+  flight: route, date, aircraft, block time and its photo. Tag a flight with a milestone (first solo,
+  first solo cross-country, or a private, instrument, commercial, CFI or ATP checkride) in the edit form
+  to make it the card's headline and the share page's title; each milestone fits one flight, and never
+  a simulator flight. A public flight's share page uses the card as its link preview.
 - **Flying with friends:** invite crewmates to a logged or live flight by username as Captain (PIC) or
   First officer (SIC). Each crewmate accepts from the Flights page and gets their own copy in their
   logbook, with the block time credited to their role. Notes, photos, landings, approaches,
@@ -122,7 +127,7 @@ give endorsements.
 - JWT authentication (`djangorestframework-simplejwt`), plus Google sign-in
 - OpenAI-compatible LLM client (Gemini, then Groq, free tiers) for quick log
 - `pypdf` for flight plan PDFs, `openpyxl` for the import template and .xlsx import,
-  `django-storages` for S3-compatible photo storage
+  `django-storages` for S3-compatible photo storage, Pillow for share cards
 - Gunicorn in a Docker container on Render
 
 The backend is organized around Django apps:
