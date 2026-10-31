@@ -62,7 +62,7 @@ give endorsements.
 - **Import/export:** CSV export of the logbook (or a filtered slice), and import of AirFleet
   CSVs, ForeFlight and MyFlightbook CSV exports, LogTen Pro tab-delimited exports, or a spreadsheet
   template (.xlsx or CSV, downloadable from the import page). Duplicates are skipped and bad rows reported.
-- **Accounts:** profile editing with a profile picture, password change, password reset by email, optional Google
+- **Accounts:** profile editing with a profile picture, password change on the Settings page, password reset by email, optional Google
   sign-in, and opt-in public pilot profiles and shareable flight pages.
 - **Share cards:** *Share card* on a flight page shares (or downloads) a 1080×1350 image of the
   flight: route, date, aircraft, block time and its photo. Tag a flight with a milestone (first solo,
@@ -116,7 +116,7 @@ give endorsements.
   to their profile can be invited as one and still logs their own flights. See
   [Instructor sign-off](#instructor-sign-off).
 - **Privacy:** a `/privacy` notice of what is stored and which services see it, and account
-  deletion from the profile page that erases the pilot's flights, aircraft, photos, likes, notifications
+  deletion from the Settings page that erases the pilot's flights, aircraft, photos, likes, notifications
   and comments (a comment with replies stays as *Comment deleted*).
 
 ## Technical architecture

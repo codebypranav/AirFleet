@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { register } from './helpers';
 
+test.afterEach(async ({ browser }) => {
+    await Promise.all(browser.contexts().map((context) => context.close()));
+});
+
 test('a pilot starts a group, another joins and wears the badge', async ({ browser }) => {
     const stamp = Date.now();
     const owner = await (await browser.newContext()).newPage();
@@ -8,6 +12,7 @@ test('a pilot starts a group, another joins and wears the badge', async ({ brows
     const name = `Ridge Soarers ${stamp}`;
 
     await register(owner, `owner${stamp}`);
+    await owner.getByRole('button', { name: 'Community' }).click();
     await owner.getByRole('link', { name: 'Groups' }).click();
     await owner.getByLabel('Group name').fill(name);
     await owner.getByRole('button', { name: 'Create group' }).click();

@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { logFlight, register } from './helpers';
 
+test.afterEach(async ({ browser }) => {
+    await Promise.all(browser.contexts().map((context) => context.close()));
+});
+
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==', 'base64');
 
 test('a captain adds a first officer, who accepts the flight into their logbook', async ({ browser }) => {

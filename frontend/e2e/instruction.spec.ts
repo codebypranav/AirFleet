@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { PASSWORD, logFlight, register } from './helpers';
 
+test.afterEach(async ({ browser }) => {
+    await Promise.all(browser.contexts().map((context) => context.close()));
+});
+
 test('an instructor signs, withdraws and endorses; editing a signed lesson invalidates the signature', async ({ browser }) => {
     const stamp = Date.now();
     const cfi = await (await browser.newContext()).newPage();
