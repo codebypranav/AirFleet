@@ -88,6 +88,7 @@ test('a pilot logs, edits, shares, exports and deletes flights', async ({ page, 
     await guest.close();
 
     // Import into a fresh account
+    await page.getByRole('button', { name: 'Account', exact: true }).click();
     await page.getByRole('button', { name: 'Log out' }).click();
     await register(page, `${username}b`);
     await page.goto('/flights/import');
@@ -182,7 +183,7 @@ test('a pilot deletes their account', async ({ page }) => {
     await register(page, username);
     await logFlight(page, { from: 'KJFK', to: 'KBOS', reg: 'n172sp', day: '2026-01-05' });
 
-    await page.goto('/profile');
+    await page.goto('/settings');
     const button = page.getByRole('button', { name: 'Delete account' });
     await expect(button).toBeDisabled();
     await page.getByLabel(`Type ${username} to confirm`).fill(username);
@@ -194,7 +195,7 @@ test('a pilot deletes their account', async ({ page }) => {
     await page.getByLabel('Password', { exact: true }).fill(PASSWORD);
     page.once('dialog', (dialog) => dialog.accept());
     await button.click();
-    await expect(page).not.toHaveURL(/\/profile$/);
+    await expect(page).not.toHaveURL(/\/settings$/);
 
     await page.goto('/login');
     await page.getByLabel('Username').fill(username);

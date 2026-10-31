@@ -8,6 +8,7 @@ test('a pilot starts a group, another joins and wears the badge', async ({ brows
     const name = `Ridge Soarers ${stamp}`;
 
     await register(owner, `owner${stamp}`);
+    await owner.getByRole('button', { name: 'Community' }).click();
     await owner.getByRole('link', { name: 'Groups' }).click();
     await owner.getByLabel('Group name').fill(name);
     await owner.getByRole('button', { name: 'Create group' }).click();
