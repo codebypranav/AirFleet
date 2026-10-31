@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { register } from './helpers';
 
+test.afterEach(async ({ browser }) => {
+    await Promise.all(browser.contexts().map((context) => context.close()));
+});
+
 test('a pilot starts a group, another joins and wears the badge', async ({ browser }) => {
     const stamp = Date.now();
     const owner = await (await browser.newContext()).newPage();

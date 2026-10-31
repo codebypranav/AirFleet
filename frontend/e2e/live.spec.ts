@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { register } from './helpers';
 
+test.afterEach(async ({ browser }) => {
+    await Promise.all(browser.contexts().map((context) => context.close()));
+});
+
 test('a captain starts a flight, the first officer sees it live, and the captain lands it', async ({ browser }) => {
     const stamp = Date.now();
     const captain = await (await browser.newContext()).newPage();

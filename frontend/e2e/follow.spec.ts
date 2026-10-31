@@ -1,6 +1,10 @@
 import { expect, test } from '@playwright/test';
 import { logFlight, register } from './helpers';
 
+test.afterEach(async ({ browser }) => {
+    await Promise.all(browser.contexts().map((context) => context.close()));
+});
+
 test('a follower sees a public pilot fly and log, and a private pilot approves a request', async ({ browser }) => {
     const stamp = Date.now();
     const amy = await (await browser.newContext()).newPage();
