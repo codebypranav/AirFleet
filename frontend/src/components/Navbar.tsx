@@ -4,32 +4,32 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Avatar from '@/components/Avatar';
-import { BrandMark, Wordmark } from '@/components/Brand';
+import { Wordmark } from '@/components/Brand';
 import { ArrowIcon, BellIcon } from '@/components/Icons';
 import { clearTokens, getProfile, getUnreadCount } from '@/utils/api';
 import { useApi, usePoll } from '@/utils/useApi';
 
-const GROUPS = [
-    {
-        label: 'Logbook',
-        links: [
-            { href: '/flights', label: 'Flights' },
-            { href: '/aircraft', label: 'Fleet' },
-            { href: '/stats', label: 'Stats' },
-            { href: '/instruction', label: 'Instruction' },
-        ],
-    },
-    {
-        label: 'Community',
-        links: [
-            { href: '/following', label: 'Following' },
-            { href: '/groups', label: 'Groups' },
-            { href: '/rankings', label: 'Rankings' },
-        ],
-    },
+const TABS = [
+    { href: '/flights', label: 'Flights' },
+    { href: '/aircraft', label: 'Fleet' },
+    { href: '/stats', label: 'Stats' },
+    { href: '/instruction', label: 'Instruction' },
+];
+
+const COMMUNITY = [
+    { href: '/following', label: 'Following' },
+    { href: '/groups', label: 'Groups' },
+    { href: '/rankings', label: 'Rankings' },
 ];
 
 const ITEM = 'block w-full rounded-lg px-3 py-2 text-left text-sm transition-colors';
+
+const tabClass = (active: boolean) =>
+    `relative flex items-center gap-1 rounded-full px-1 py-1.5 text-[13px] transition-colors min-[360px]:px-2 sm:px-3.5 sm:text-sm${
+        active ? 'bg-graphite text-paper' : 'text-ash hover:text-bone'
+    }`;
+
+const DOT = <span className="absolute left-1.5 top-1/2 hidden h-1 w-1 -translate-y-1/2 rounded-full bg-moss sm:block" />;
 
 function Menu({ trigger, label, active = false, right = false, buttonClass, children }: {
     trigger: React.ReactNode;
@@ -136,6 +136,7 @@ export default function Navbar({ variant = 'app' }: { variant?: 'app' | 'public'
     const pathname = usePathname();
 
     const isActive = (href: string) => pathname.startsWith(href);
+    const inCommunity = COMMUNITY.some(({ href }) => isActive(href));
 
     if (variant === 'public') {
         return (
@@ -154,44 +155,40 @@ export default function Navbar({ variant = 'app' }: { variant?: 'app' | 'public'
 
     return (
         <nav className="sticky top-0 z-40 border-b border-line/80 bg-ink/80 backdrop-blur-md">
-            <div className="mx-auto flex w-full max-w-5xl items-center justify-between gap-2 px-4 py-3 sm:gap-6 sm:px-6">
+            <div className="mx-auto flex w-full max-w-5xl flex-wrap items-center justify-between gap-x-6 gap-y-2 px-4 py-3 sm:px-6">
                 <Link href="/flights" aria-label="AirFleet logbook" className="shrink-0">
-                    <BrandMark className="h-9 w-9 text-fern sm:hidden" />
-                    <span className="hidden sm:block">
-                        <Wordmark />
-                    </span>
+                    <Wordmark />
                 </Link>
-                <div className="flex items-center gap-1">
-                    {GROUPS.map(({ label, links }) => {
-                        const active = links.some(({ href }) => isActive(href));
-                        return (
-                            <Menu
-                                key={label}
-                                active={active}
-                                buttonClass={`relative flex items-center gap-1 rounded-full px-2.5 py-1.5 text-sm transition-colors sm:px-3.5 ${
-                                    active ? 'bg-graphite text-paper' : 'text-ash hover:text-bone'
-                                }`}
-                                trigger={
-                                    <>
-                                        {active && <span className="absolute left-1 top-1/2 sm:left-1.5 h-1 w-1 -translate-y-1/2 rounded-full bg-moss" />}
-                                        {label}
-                                        <ArrowIcon className="h-3.5 w-3.5 rotate-90" />
-                                    </>
-                                }
+                <div className="order-last -mx-1 flex w-[calc(100%+0.5rem)] flex-wrap items-center justify-between md:order-none md:mx-0 md:w-auto md:gap-1">
+                    {TABS.map(({ href, label }) => (
+                        <Link key={href} href={href} aria-current={isActive(href) ? 'page' : undefined} className={tabClass(isActive(href))}>
+                            {isActive(href) && DOT}
+                            {label}
+                        </Link>
+                    ))}
+                    <Menu
+                        right
+                        active={inCommunity}
+                        buttonClass={tabClass(inCommunity)}
+                        trigger={
+                            <>
+                                {inCommunity && DOT}
+                                Community
+                                <ArrowIcon className="h-3.5 w-3.5 rotate-90" />
+                            </>
+                        }
+                    >
+                        {COMMUNITY.map(({ href, label }) => (
+                            <Link
+                                key={href}
+                                href={href}
+                                aria-current={isActive(href) ? 'page' : undefined}
+                                className={`${ITEM} ${isActive(href) ? 'bg-graphite text-paper' : 'text-ash hover:bg-graphite hover:text-bone'}`}
                             >
-                                {links.map(({ href, label }) => (
-                                    <Link
-                                        key={href}
-                                        href={href}
-                                        aria-current={isActive(href) ? 'page' : undefined}
-                                        className={`${ITEM} ${isActive(href) ? 'bg-graphite text-paper' : 'text-ash hover:bg-graphite hover:text-bone'}`}
-                                    >
-                                        {label}
-                                    </Link>
-                                ))}
-                            </Menu>
-                        );
-                    })}
+                                {label}
+                            </Link>
+                        ))}
+                    </Menu>
                 </div>
                 <div className="flex items-center gap-1 sm:gap-2">
                     <Bell active={isActive('/notifications')} />
